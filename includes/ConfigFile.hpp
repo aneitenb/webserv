@@ -6,7 +6,7 @@
 /*   By: aneitenb <aneitenb@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/20 12:47:33 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/01/20 15:56:07 by aneitenb         ###   ########.fr       */
+/*   Updated: 2025/01/28 14:19:09 by aneitenb         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,45 +15,48 @@
 #include "Webserv.hpp"
 
 //Type definitions for readability
-typedef std::map<std::string, std::string> ServerConfig;
+typedef std::map<std::string, std::string> ServerDirectives;
+typedef std::map<std::string, ServerDirectives> ServerConfig;  // path -> directives
 typedef std::vector<ServerConfig> ServerConfigs;
 
-class ConfigFile
-{
-	private:
-	std::ifstream _configFile;
-	std::string _configContent;
-	ServerConfigs _servers;		//Stores all server configurations
-	std::vector<int> _ports;	//Stores all server ports
-
-	//Private member functions
-	bool parseFile(const std::string& filename);
-	bool parseServers();
-	bool validateConfig();
-	bool checkPorts();	//check for duplicate ports
+class ConfigurationFile {
+private:
+	std::ifstream		_configFile;
+	std::string			_configContent;
+	ServerConfig		_tempServer;
+	ServerConfigs		_servers;
+	std::vector<size_t>	_ports;
 	
-	///Utility functions
-	bool isValidPort(const std::string& port);
-	void trimString(std::string& str);
+	// Private member functions
+	int	_readFile(void);
+	int	_parseConfigFile(void);
+	int	_setupDefaultValues(ServerDirectives& directives);
+	int	_validatePort(const std::string& port);
 
-	public:
-	ConfigFile();
-    ~ConfigFile();
+	//Delete copy operators to avoid two objects managing a single file
+	ConfigurationFile(ConfigurationFile const &rhs);
+	ConfigurationFile& operator=(ConfigurationFile const &rhs);
+	
+public:
+	// Exceptions
+	class ErrorOpeningConfFile : public std::exception {
+		virtual const char* what() const throw();
+	};
+	
+	class ErrorInvalidConfig : public std::exception {
+		virtual const char* what() const throw();
+	};
+	
+	class ErrorInvalidPort : public std::exception {
+		virtual const char* what() const throw();
+	};
 
-    // Delete copy constructor and assignment operator
-    ConfigFile(const ConfigFile&) = delete;
-    ConfigFile& operator=(const ConfigFile&) = delete;
+	// Constructor and Destructor
+	ConfigurationFile(void);
+	~ConfigurationFile(void);
 
-    // Main function to initialize and parse config
-    bool init(const std::string& filename);
-
-    // Getters
-    const ServerConfigs& getServers() const;
-    const std::vector<int>& getPorts() const;
-
-    // Custom exceptions
-    class ConfigFileError : public std::runtime_error {
-        public:
-            explicit ConfigFileError(const std::string& msg) : std::runtime_error(msg) {}
-    };
-}
+	// Public member functions
+	void						initializeConfFile(const std::string& filename);
+	const ServerConfigs&		getServers(void) const;
+	const std::vector<size_t>&	getPorts(void) const;
+};

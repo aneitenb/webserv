@@ -6,7 +6,7 @@
 /*   By: aneitenb <aneitenb@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/20 12:47:42 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/01/20 15:53:07 by aneitenb         ###   ########.fr       */
+/*   Updated: 2025/01/28 14:53:18 by aneitenb         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,3 +21,4 @@
 //OTHER
 #include <vector>
 #include <map>
+#include <algorithm>
