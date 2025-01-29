@@ -6,7 +6,7 @@
 /*   By: aneitenb <aneitenb@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/20 12:47:33 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/01/28 14:19:09 by aneitenb         ###   ########.fr       */
+/*   Updated: 2025/01/29 16:56:53 by aneitenb         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -38,20 +38,6 @@ private:
 	ConfigurationFile& operator=(ConfigurationFile const &rhs);
 	
 public:
-	// Exceptions
-	class ErrorOpeningConfFile : public std::exception {
-		virtual const char* what() const throw();
-	};
-	
-	class ErrorInvalidConfig : public std::exception {
-		virtual const char* what() const throw();
-	};
-	
-	class ErrorInvalidPort : public std::exception {
-		virtual const char* what() const throw();
-	};
-
-	// Constructor and Destructor
 	ConfigurationFile(void);
 	~ConfigurationFile(void);
 

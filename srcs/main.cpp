@@ -6,7 +6,7 @@
 /*   By: aneitenb <aneitenb@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/20 12:50:45 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/01/28 14:56:45 by aneitenb         ###   ########.fr       */
+/*   Updated: 2025/01/28 15:21:32 by aneitenb         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,7 +19,7 @@ int main (int argc, char **argv)
 {
 	if (argc > 2)
 	{
-		std::cerr << "Webserv: Wrong amount of parameters. Cannot initialize server." << std::endl;
+		std::cerr << "Error: Wrong amount of parameters. Cannot initialize server." << std::endl;
 		return (1);
 	}
 
@@ -28,12 +28,12 @@ int main (int argc, char **argv)
 		ConfigurationFile config;
 		std::string configFile;
 		
-		if (argc == 1)  // No configuration file provided
+		if (argc == 1)
 		{
 			configFile = "./configuration/basic.conf";
 			std::cout << "Using default configuration file:" << configFile << std::endl;
 		}
-		else  // Configuration file provided as argument
+		else
 		{
 			configFile = argv[1];
 			std::cout << "Using provided configuration file: " << configFile << std::endl;

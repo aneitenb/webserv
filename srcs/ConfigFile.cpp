@@ -6,11 +6,12 @@
 /*   By: aneitenb <aneitenb@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/28 09:56:54 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/01/28 14:19:54 by aneitenb         ###   ########.fr       */
+/*   Updated: 2025/01/29 16:57:08 by aneitenb         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "../includes/ConfigFile.hpp"
+#include "../includes/ConfigErrors.hpp"
 
 ConfigurationFile::ConfigurationFile(void) {}
 
@@ -20,26 +21,14 @@ ConfigurationFile::~ConfigurationFile(void) {
 	}
 }
 
-const char* ConfigurationFile::ErrorOpeningConfFile::what(void) const throw() {
-	return "Could not open configuration file";
-}
-
-const char* ConfigurationFile::ErrorInvalidConfig::what() const throw () {
-	return "Invalid configuration format";
-}
-	
-const char* ConfigurationFile::ErrorInvalidPort::what() const throw() {
-	return "Invalid port number";
-}
-
 void ConfigurationFile::initializeConfFile(const std::string& filename) {
 	_configFile.open(filename.c_str());
 	if (_configFile.fail())
 		throw ErrorOpeningConfFile();
 	if (_readFile() == -1)
-		throw ErrorInvalidConfig();
+		throw ErrorInvalidConfig("Empty configuration file");
 	if (_parseConfigFile() == -1)
-		throw ErrorInvalidConfig();
+		throw ErrorInvalidConfig("invalid configuration format");
 }
 
 int ConfigurationFile::_readFile(void) {
@@ -62,7 +51,7 @@ int ConfigurationFile::_parseConfigFile(void) {
 	
 	// Validate the port
 	if (_validatePort(directives["listen"]) == -1)
-		return -1;
+		throw ErrorInvalidPort("Port number must be between 0 and 65535");
 		
 	// Store the configuration
 	_tempServer["/"] = directives;
@@ -76,21 +65,29 @@ int ConfigurationFile::_setupDefaultValues(ServerDirectives& directives) {
 	directives["listen"] = "8080";
 	directives["host"] = "127.0.0.1";
 	directives["server_name"] = "localhost";
-	directives["root"] = "./www";
+	directives["root"] = "webpage";
 	
 	return 0;
 }
 
 int ConfigurationFile::_validatePort(const std::string& port) {
 	std::istringstream iss(port);
-	size_t portNum;
-	
-	iss >> portNum;
-	if (iss.fail() || portNum > 65535)
-		return -1;
-		
-	_ports.push_back(portNum);
-	return 0;
+    size_t portNum;
+    
+    if (!(iss >> portNum) || !iss.eof()) {
+        throw ErrorInvalidPort("Port must be a valid number");
+    }
+    
+    if (portNum > 65535) {
+        throw ErrorInvalidPort("Port number must be between 0 and 65535");
+    }
+    
+    if (std::find(_ports.begin(), _ports.end(), portNum) != _ports.end()) {
+        throw ErrorInvalidPort("Port " + port + " is already in use");
+    }
+    
+    _ports.push_back(portNum);
+    return 0;
 }
 
 const ServerConfigs& ConfigurationFile::getServers(void) const {
