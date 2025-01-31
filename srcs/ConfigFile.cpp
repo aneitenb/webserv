@@ -6,7 +6,7 @@
 /*   By: aneitenb <aneitenb@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/28 09:56:54 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/01/29 16:57:08 by aneitenb         ###   ########.fr       */
+/*   Updated: 2025/01/31 15:22:42 by aneitenb         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -43,7 +43,6 @@ int ConfigurationFile::_readFile(void) {
 }
 
 int ConfigurationFile::_parseConfigFile(void) {
-	// Basic day-one parsing: Just handle server blocks with port and host
 	ServerDirectives directives;
 	
 	// For day one, we'll just set up a basic server configuration
