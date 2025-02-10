@@ -6,7 +6,7 @@
 /*   By: aneitenb <aneitenb@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/28 09:56:54 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/02/10 14:15:10 by aneitenb         ###   ########.fr       */
+/*   Updated: 2025/02/10 16:23:27 by aneitenb         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -72,14 +72,14 @@ int ConfigurationFile::_parseConfigFile(void) {
 			if (!inServerBlock)
 				throw ErrorInvalidConfig("Unexpected closing bracket");
 		
-		// Validate server configuration before adding
-		if (_validateServerBlock(currentServer)) {
-			_addPort(currentServer["listen"]);  // Add port if validation passed
-			_servers.push_back(currentServer);
+			// Validate server configuration before adding
+			if (_validateServerBlock(currentServer)) {
+				_addPort(currentServer["listen"]);  // Add port if validation passed
+				_servers.push_back(currentServer);
 			}
 		
-		inServerBlock = false;
-		continue;
+			inServerBlock = false;
+			continue;
 		}
 
 		// Parse directives inside server block
