@@ -6,16 +6,14 @@
 /*   By: aneitenb <aneitenb@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/20 12:50:45 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/01/28 15:21:32 by aneitenb         ###   ########.fr       */
+/*   Updated: 2025/02/10 13:35:36 by aneitenb         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "../includes/Webserv.hpp"
 #include "../includes/ConfigFile.hpp"
 
-
-
-int main (int argc, char **argv)
+int main(int argc, char **argv)
 {
 	if (argc > 2)
 	{
@@ -28,10 +26,11 @@ int main (int argc, char **argv)
 		ConfigurationFile config;
 		std::string configFile;
 		
+		// Set configuration file path
 		if (argc == 1)
 		{
 			configFile = "./configuration/basic.conf";
-			std::cout << "Using default configuration file:" << configFile << std::endl;
+			std::cout << "Using default configuration file: " << configFile << std::endl;
 		}
 		else
 		{
@@ -39,26 +38,18 @@ int main (int argc, char **argv)
 			std::cout << "Using provided configuration file: " << configFile << std::endl;
 		}
 		
+		// Initialize configuration
 		config.initializeConfFile(configFile);
 		std::cout << "Configuration initialized successfully!" << std::endl;
 		
-		/*
-		* Get configuration data (for future use)
-		* Lets set up a server manager class that'll use this information to create 
-		* and initialize multiple server instances - one for each configuration 
-		* in the servers vector. Each server will be set up to listen on its 
-		* specified port (from ports), handle incoming HTTP requests according 
-		* to its configuration (routing requests to correct directories, handling 
-		* allowed methods, serving error pages when needed), and manage client 
-		* connections
-		*/
-		const ServerConfigs& servers = config.getServers();
+		// Get configuration data
+		const std::vector<ServerBlocks>& servers = config.getServers();
 		const std::vector<size_t>& ports = config.getPorts();
-		(void)servers;
-		(void)ports;
 
+		// Print configuration summary
 		std::cout << "\nConfiguration Summary:" << std::endl;
 		std::cout << "Number of servers configured: " << servers.size() << std::endl;
+		
 		std::cout << "Configured ports: ";
 		for (size_t i = 0; i < ports.size(); ++i)
 		{
@@ -67,6 +58,18 @@ int main (int argc, char **argv)
 				std::cout << ", ";
 		}
 		std::cout << std::endl;
+
+		// Print each server's basic info
+		for (size_t i = 0; i < servers.size(); ++i)
+		{
+			std::cout << "\nServer " << i + 1 << " Configuration:" << std::endl;
+			std::map<std::string, std::string>::const_iterator it;
+			for (it = servers[i].begin(); it != servers[i].end(); ++it)
+			{
+				std::cout << "  " << it->first << ": " << it->second << std::endl;
+			}
+		}
+
 		std::cout << "\nServer initialized successfully. Ready for implementation of server logic." << std::endl;
 		
 		// Future: Set up and run servers
@@ -79,5 +82,4 @@ int main (int argc, char **argv)
 		std::cerr << "Error: " << e.what() << std::endl;
 		return (1);
 	}
-	return (0);
 }
