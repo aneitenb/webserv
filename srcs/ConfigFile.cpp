@@ -6,7 +6,7 @@
 /*   By: aneitenb <aneitenb@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/28 09:56:54 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/02/10 16:23:27 by aneitenb         ###   ########.fr       */
+/*   Updated: 2025/02/10 17:01:29 by aneitenb         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -43,10 +43,22 @@ int ConfigurationFile::_readFile(void) {
 }
 
 int ConfigurationFile::_parseConfigFile(void) {
-	std::istringstream iss(_configContent);
 	std::string line;
 	ServerBlocks currentServer;
-	bool inServerBlock = false;
+	bool inServerBlock;
+	bool inLocationBlock;
+	std::string currentLocation;
+	int bracketCount;
+	// size_t delimiter;
+	std::string key;
+	std::string value;
+	// int result;
+	
+	std::istringstream iss(_configContent);
+	inServerBlock = false;
+	inLocationBlock = false;
+	bracketCount = 0;
+	// result = 0;
 
 	// Read file line by line
 	while (std::getline(iss, line)) {
@@ -57,50 +69,131 @@ int ConfigurationFile::_parseConfigFile(void) {
 		if (line.empty() || line[0] == '#')
 			continue;
 
+		// Remove inline comments
+		size_t commentPos = line.find('#');
+		if (commentPos != std::string::npos) {
+			line = _trimWhitespace(line.substr(0, commentPos));
+		}
+
 		// Check for server block start
-		if (line == "server {") {
+		if (line == "server {" || line == "server{}") {
 			if (inServerBlock)
 				throw ErrorInvalidConfig("Nested server blocks not allowed");
 			inServerBlock = true;
+			bracketCount++;
 			currentServer.clear();
 			_setupDefaultValues(currentServer);
 			continue;
 		}
 
-		// Check for server block end
-		if (line == "}") {
-			if (!inServerBlock)
-				throw ErrorInvalidConfig("Unexpected closing bracket");
+		 // Location block start
+        if (inServerBlock && line.substr(0, 9) == "location ") {
+            inLocationBlock = true;
+            
+            // Extract location path and validate format
+            size_t pathStart = 9;  // After "location "
+            size_t pathEnd = line.find('{');
+            if (pathEnd == std::string::npos)
+                throw ErrorInvalidConfig("Invalid location block format: " + line);
+                
+            currentLocation = _trimWhitespace(line.substr(pathStart, pathEnd - pathStart));
+            if (currentLocation.empty())
+                throw ErrorInvalidConfig("Empty location path: " + line);
+
+            bracketCount++;
+            continue;
+        }
+
+        // Handle closing brackets
+        if (line == "}") {
+            if (!inServerBlock)
+                throw ErrorInvalidConfig("Unexpected closing bracket");
+            
+            bracketCount--;
+            
+            if (inLocationBlock && bracketCount == 1) {
+                // End of location block
+                inLocationBlock = false;
+                currentLocation.clear();
+            }
+            else if (bracketCount == 0) {
+                // End of server block
+                if (_validateServerBlock(currentServer)) {
+                    _addPort(currentServer["listen"]);
+                    _servers.push_back(currentServer);
+                }
+                inServerBlock = false;
+            }
+            continue;
+        }
+
+// Parse directives
+        if (inServerBlock && !line.empty()) {
+            // Skip opening braces
+            if (line == "{")
+                continue;
+
+            size_t delimiter = line.find(' ');
+            if (delimiter == std::string::npos)
+                throw ErrorInvalidConfig("Invalid directive format: " + line);
+
+            std::string key = line.substr(0, delimiter);
+            std::string value = _trimWhitespace(line.substr(delimiter + 1));
+
+            // Only check for semicolons on regular directives, not on block starts
+            if (!value.empty() && value[value.length() - 1] == ';') {
+                value = value.substr(0, value.length() - 1);
+                value = _trimWhitespace(value);
+
+                if (inLocationBlock) {
+                    // Store location directives with location path prefix
+                    currentServer["location_" + currentLocation + "_" + key] = value;
+                } else {
+                    currentServer[key] = value;
+                }
+            }
+            else if (!inLocationBlock && !line.empty() && line.find("{") == std::string::npos) {
+                // Only throw semicolon error for non-block directives
+                throw ErrorInvalidConfig("Missing semicolon in directive: " + line);
+            }
+        }
+    }
+
+	// 	// Check for server block end
+	// 	if (line == "}") {
+	// 		if (!inServerBlock)
+	// 			throw ErrorInvalidConfig("Unexpected closing bracket");
 		
-			// Validate server configuration before adding
-			if (_validateServerBlock(currentServer)) {
-				_addPort(currentServer["listen"]);  // Add port if validation passed
-				_servers.push_back(currentServer);
-			}
+	// 		// Validate server configuration before adding
+	// 		if (_validateServerBlock(currentServer)) {
+	// 			_addPort(currentServer["listen"]);  // Add port if validation passed
+	// 			_servers.push_back(currentServer);
+	// 		}
 		
-			inServerBlock = false;
-			continue;
-		}
+	// 		inServerBlock = false;
+	// 		continue;
+	// 	}
 
-		// Parse directives inside server block
-		if (inServerBlock) {
-			size_t delimiter = line.find(' ');
-			if (delimiter == std::string::npos)
-				throw ErrorInvalidConfig("Invalid directive format: " + line);
+	// 	// Parse directives inside server block
+	// 	if (inServerBlock) {
+	// 		delimiter = line.find(' ');
+	// 		if (delimiter == std::string::npos)
+	// 			throw ErrorInvalidConfig("Invalid directive format: " + line);
 
-			std::string key = line.substr(0, delimiter);
-			std::string value = _trimWhitespace(line.substr(delimiter + 1));
+	// 		 key = line.substr(0, delimiter);
+	// 		 value = _trimWhitespace(line.substr(delimiter + 1));
 
-			// Remove semicolon at the end if present
-			if (!value.empty() && value[value.length() - 1] == ';') {
-    			value = value.substr(0, value.length() - 1);
-			}
-			else
-				throw ErrorInvalidConfig("Missing semicolon in directive: " + line);
-
-			currentServer[key] = value;
-		}
-	}
+	// 		// Remove semicolon at the end if present
+	// 		if (!value.empty() && value[value.length() - 1] == ';') {
+	// 			value = value.substr(0, value.length() - 1);
+	// 			value = _trimWhitespace(value);  // Trim again after removing semicolon
+	// 			currentServer[key] = value;
+	// 		}
+	// 		else if (!line.empty()){	 // Only throw error if line isn't empty after comment removal
+	// 			throw ErrorInvalidConfig("Missing semicolon in directive: " + line);
+	// 		}
+	// 	}
+	// }
 
 	// Check if we ended with an unclosed server block
 	if (inServerBlock)
