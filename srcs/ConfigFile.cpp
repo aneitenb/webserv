@@ -6,7 +6,7 @@
 /*   By: aneitenb <aneitenb@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/28 09:56:54 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/02/11 14:22:35 by aneitenb         ###   ########.fr       */
+/*   Updated: 2025/02/11 16:42:41 by aneitenb         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -51,7 +51,7 @@ int ConfigurationFile::_parseConfigFile(void) {
 	int bracketCount;
 	size_t commentPos;
 	size_t pathStart;
-    size_t pathEnd;
+	size_t pathEnd;
 	size_t delimiter;
 	std::string key;
 	std::string value;
@@ -86,77 +86,80 @@ int ConfigurationFile::_parseConfigFile(void) {
 		}
 
 		 // Location block start
-        if (inServerBlock && line.substr(0, 9) == "location ") {
-            inLocationBlock = true;
-            
-            // Extract location path and validate format
-            pathStart = 9;  // After "location "
-            pathEnd = line.find('{');
-            if (pathEnd == std::string::npos)
-                throw ErrorInvalidConfig("Invalid location block format: " + line);
-                
-            currentLocation = _trimWhitespace(line.substr(pathStart, pathEnd - pathStart));
-            if (currentLocation.empty())
-                throw ErrorInvalidConfig("Empty location path: " + line);
+		if (inServerBlock && line.substr(0, 9) == "location ") {
+			inLocationBlock = true;
+			
+			// Extract location path and validate format
+			pathStart = 9;  // After "location "
+			pathEnd = line.find('{');
+			if (pathEnd == std::string::npos)
+				throw ErrorInvalidConfig("Invalid location block format: " + line);
+				
+			currentLocation = _trimWhitespace(line.substr(pathStart, pathEnd - pathStart));
+			if (currentLocation.empty())
+				throw ErrorInvalidConfig("Empty location path: " + line);
 
-            bracketCount++;
-            continue;
-        }
+			bracketCount++;
+			continue;
+		}
 
-        // Handle closing brackets
-        if (line == "}") {
-            if (!inServerBlock)
-                throw ErrorInvalidConfig("Unexpected closing bracket");
-            
-            bracketCount--;
-            
-            if (inLocationBlock && bracketCount == 1) {
-                // End of location block
-                inLocationBlock = false;
-                currentLocation.clear();
-            }
-            else if (bracketCount == 0) {
-                // End of server block
-                if (_validateServerBlock(currentServer)) {
-                    _addPort(currentServer["listen"]);
-                    _servers.push_back(currentServer);
-                }
-                inServerBlock = false;
-            }
-            continue;
-        }
+		// Handle closing brackets
+		if (line == "}") {
+			if (!inServerBlock)
+				throw ErrorInvalidConfig("Unexpected closing bracket");
+			
+			bracketCount--;
+			
+			if (inLocationBlock && bracketCount == 1) {
+				// End of location block
+				inLocationBlock = false;
+				currentLocation.clear();
+			}
+			else if (bracketCount == 0) {
+				// End of server block
+				if (_validateServerBlock(currentServer)) {
+					_addPort(currentServer["listen"]);
+					_servers.push_back(currentServer);
+				}
+				inServerBlock = false;
+			}
+			continue;
+		}
 
 		// Parse directives
-        if (inServerBlock && !line.empty()) {
-            // Skip opening braces
-            if (line == "{")
-                continue;
+		if (inServerBlock && !line.empty()) {
+			// Skip opening braces
+			if (line == "{")
+				continue;
 
-            delimiter = line.find(' ');
-            if (delimiter == std::string::npos)
-                throw ErrorInvalidConfig("Invalid directive format: " + line);
+			delimiter = line.find(' ');
+			if (delimiter == std::string::npos)
+				throw ErrorInvalidConfig("Invalid directive format: " + line);
 
-            key = line.substr(0, delimiter);
-            value = _trimWhitespace(line.substr(delimiter + 1));
+			key = line.substr(0, delimiter);
+			value = _trimWhitespace(line.substr(delimiter + 1));
+			
+			if (!_isValidDirective(key) && key.substr(0, 9) != "location_")
+				throw ErrorInvalidConfig("Unknown directive: " + key);
 
-            // Only check for semicolons on regular directives, not on block starts
-            if (!value.empty() && value[value.length() - 1] == ';') {
-                value = value.substr(0, value.length() - 1);
-                value = _trimWhitespace(value);
+			// Only check for semicolons on regular directives, not on block starts
+			if (!value.empty() && value[value.length() - 1] == ';') {
+				value = value.substr(0, value.length() - 1);
+				value = _trimWhitespace(value);
 
-                if (inLocationBlock) {
-                    // Store location directives with location path prefix
-                    currentServer["location_" + currentLocation + "_" + key] = value;
-                } else {
-                    currentServer[key] = value;
-                }
-            }
-            else if (!inLocationBlock && !line.empty() && line.find("{") == std::string::npos) {
-                // Only throw semicolon error for non-block directives
-                throw ErrorInvalidConfig("Missing semicolon in directive: " + line);
-            }
-        }
-    }
+				if (inLocationBlock) {
+					// Store location directives with location path prefix
+					currentServer["location_" + currentLocation + "_" + key] = value;
+				} else {
+					currentServer[key] = value;
+				}
+			}
+			else if (!inLocationBlock && !line.empty() && line.find("{") == std::string::npos) {
+				// Only throw semicolon error for non-block directives
+				throw ErrorInvalidConfig("Missing semicolon in directive: " + line);
+			}
+		}
+	}
 
 	// Check if we ended with an unclosed server block
 	if (inServerBlock)
@@ -167,6 +170,55 @@ int ConfigurationFile::_parseConfigFile(void) {
 		throw ErrorInvalidConfig("No valid server blocks found");
 
 	return 0;
+}
+
+const std::set<std::string> ConfigurationFile::_validDirectives = {
+	// Server level directives
+	"listen",
+	"host",
+	"root",
+	"server_name",
+	"client_max_body_size",
+	"error_page",
+	"index",
+	
+	// Location level directives
+	"return",
+	"autoindex",
+	"cgi_pass",
+	"cgi_param",
+	"allowed_methods",
+	"upload_store",
+	"alias"
+};
+
+bool ConfigurationFile::_isValidDirective(const std::string& directive) const {
+	return _validDirectives.find(directive) != _validDirectives.end();
+}
+
+bool ConfigurationFile::_checkPermissions(const std::string& path, bool writeAccess) const {
+	struct stat buffer;	//system structure defined in sys/stat.h contains info about file
+	
+	// Stat gets file status, takes: file path (in c style string), where to store. Returns 0 on success
+	if (stat(path.c_str(), &buffer) != 0)
+		return false;
+		
+	// Check read access: path, mode to look for
+	if (access(path.c_str(), R_OK) != 0)
+		return false;
+		
+	// Check write access if needed
+	if (writeAccess && access(path.c_str(), W_OK) != 0)
+		return false;
+		
+	// Check if it's a directory (S_ISDIR macro that checks if file type bits in st_mode of struct stat indicate directory)
+	if (S_ISDIR(buffer.st_mode)) {
+		// Directories need execute permission to list contents
+		if (access(path.c_str(), X_OK) != 0)
+			return false;
+	}
+	
+	return true;
 }
 
 std::string ConfigurationFile::_trimWhitespace(const std::string& str) const {
@@ -197,19 +249,41 @@ bool ConfigurationFile::_validateServerBlock(const ServerBlocks& directives) con
 			throw ErrorInvalidConfig("Missing required directive: " + requiredDirectives[i]);
 		}
 	}
-	
-	// Validate listen directive (port)
-	if (!_isValidPort(directives.at("listen")))
-		throw ErrorInvalidPort("Invalid port number");
-	
-	// Validate host directive (IP)
-	if (!_isValidIP(directives.at("host")))
-		throw ErrorInvalidIP("Invalid IP address");
+	// Validate each directive
+	for (ServerBlocks::const_iterator it = directives.begin(); it != directives.end(); ++it) {
+		std::string directive = it->first;
+		std::string value = it->second;
 		
-	// Validate root directive (path)
-	if (!_isValidPath(directives.at("root")))
-		throw ErrorInvalidConfig("Invalid root path");
-	
+		// Skip location block directives (they start with "location_")
+		if (directive.substr(0, 9) == "location_")
+			continue;
+			
+		// Check if directive is valid
+		if (!_isValidDirective(directive))
+			throw ErrorInvalidConfig("Unknown directive: " + directive);
+			
+		// Validate listen directive (port)
+		if (directive == "listen" && !_isValidPort(value))
+			throw ErrorInvalidPort("Invalid port number");
+			
+		// Validate host directive (IP)
+		if (directive == "host" && !_isValidIP(value))
+			throw ErrorInvalidIP("Invalid IP address");
+			
+		// Check root path and permissions
+		if (directive == "root") {
+			if (!_isValidPath(value))
+				throw ErrorInvalidConfig("Invalid root path");
+			if (!_checkPermissions(value, true))
+				throw ErrorInvalidConfig("Insufficient permissions for root path: " + value);
+		}
+		
+		// Validate CGI paths if present
+		// if (directive == "cgi_pass" && !_checkPermissions(value))
+		// 	throw ErrorInvalidConfig("Invalid CGI executable or insufficient permissions: " + value);
+		// if (directive == "cgi_param" && !_checkPermissions(value))
+		// 	throw ErrorInvalidConfig("Invalid CGI executable or insufficient permissions: " + value);
+	}
 	return true;
 }
 
@@ -219,7 +293,7 @@ int ConfigurationFile::_setupDefaultValues(ServerBlocks& directives) {
 	directives["host"] = "127.0.0.1";
 	directives["server_name"] = "localhost";
 	directives["root"] = "webpage";
-	directives["directory_listing"] = "off";
+	directives["autoindex"] = "off";
 	directives["client_max_body_size"] = "1048576";  // 1MB default
 	return 0;
 }
