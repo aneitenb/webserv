@@ -6,7 +6,7 @@
 /*   By: aneitenb <aneitenb@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/20 12:50:45 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/02/11 15:25:22 by aneitenb         ###   ########.fr       */
+/*   Updated: 2025/02/11 17:22:28 by aneitenb         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -24,22 +24,21 @@ int main(int argc, char **argv)
 	try
 	{
 		ConfigurationFile config;
-		std::string configFile;
 		
 		// Set configuration file path
 		if (argc == 1)
 		{
-			configFile = "./configuration/basic.conf";
-			std::cout << "Using default configuration file: " << configFile << std::endl;
+			config.initializeConfFile("");
+			std::cout << "Using default configuration file" << std::endl;
 		}
 		else
 		{
-			configFile = argv[1];
-			std::cout << "Using provided configuration file: " << configFile << std::endl;
+			config.initializeConfFile(argv[1]);
+			std::cout << "Using provided configuration file: " << argv[1] << std::endl;
 		}
 		
 		// Initialize configuration
-		config.initializeConfFile(configFile);
+		
 		std::cout << "Configuration initialized successfully!" << std::endl;
 		
 		// Get configuration data

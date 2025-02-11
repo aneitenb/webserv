@@ -6,7 +6,7 @@
 /*   By: aneitenb <aneitenb@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/28 09:56:54 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/02/11 16:42:41 by aneitenb         ###   ########.fr       */
+/*   Updated: 2025/02/11 17:16:08 by aneitenb         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -22,6 +22,11 @@ ConfigurationFile::~ConfigurationFile(void) {
 }
 
 void ConfigurationFile::initializeConfFile(const std::string& filename) {
+	if (filename.empty()) {
+		_setupDefaultServer();
+		return;
+	}
+	
 	_configFile.open(filename.c_str());
 	if (_configFile.fail())
 		throw ErrorOpeningConfFile();
@@ -81,7 +86,6 @@ int ConfigurationFile::_parseConfigFile(void) {
 			inServerBlock = true;
 			bracketCount++;
 			currentServer.clear();
-			_setupDefaultValues(currentServer);
 			continue;
 		}
 
@@ -287,15 +291,20 @@ bool ConfigurationFile::_validateServerBlock(const ServerBlocks& directives) con
 	return true;
 }
 
-int ConfigurationFile::_setupDefaultValues(ServerBlocks& directives) {
-	// Set default values for a basic server configuration
-	directives["listen"] = "8080";
-	directives["host"] = "127.0.0.1";
-	directives["server_name"] = "localhost";
-	directives["root"] = "webpage";
-	directives["autoindex"] = "off";
-	directives["client_max_body_size"] = "1048576";  // 1MB default
-	return 0;
+void ConfigurationFile::_setupDefaultServer(void) {
+	ServerBlocks	defaultServer;
+	
+	defaultServer["listen"] = "8080";
+	defaultServer["host"] = "127.0.0.1";
+	defaultServer["server_name"] = "localhost";
+	defaultServer["root"] = "webpage";
+	defaultServer["autoindex"] = "off";
+	defaultServer["client_max_body_size"] = "1048576";	// 1 megabyte
+	
+	if (_validateServerBlock(defaultServer)) {
+		_addPort(defaultServer["listen"]);
+		_servers.push_back(defaultServer);
+	}
 }
 
 bool ConfigurationFile::_isValidIP(const std::string& ip) const {
@@ -367,7 +376,7 @@ bool ConfigurationFile::_isValidPath(const std::string& path) const{
 	return true;
 }
 
-bool ConfigurationFile::_isDirectoryListingValid(const std::string& value) const{
+bool ConfigurationFile::_isAutoindexValid(const std::string& value) const{
 	if (value == "on")
 		return true;
 	if (value == "off")

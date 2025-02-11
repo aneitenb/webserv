@@ -6,7 +6,7 @@
 /*   By: aneitenb <aneitenb@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/20 12:47:33 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/02/11 15:20:04 by aneitenb         ###   ########.fr       */
+/*   Updated: 2025/02/11 17:15:04 by aneitenb         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -27,14 +27,14 @@ private:
 	// FIle handling
 	int	_readFile(void);
 	int	_parseConfigFile(void);
-	int	_setupDefaultValues(ServerBlocks& directives);
+	void	_setupDefaultServer(void);
 	
 	//validation methods & helper functions
 	bool _isValidPort(const std::string& port) const;  // Just validation
 	int _addPort(const std::string& port);  
 	bool _isValidIP(const std::string& ip) const;
 	bool _isValidPath(const std::string& path) const;
-	bool _isDirectoryListingValid(const std::string& value) const;
+	bool _isAutoindexValid(const std::string& value) const;
 	bool _validateServerBlock(const ServerBlocks& directives) const;
 	bool _isValidDirective(const std::string& directive) const;
 	bool _checkPermissions(const std::string& path, bool needWrite = false) const;
