@@ -6,7 +6,7 @@
 /*   By: aneitenb <aneitenb@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/20 12:50:45 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/02/10 14:21:36 by aneitenb         ###   ########.fr       */
+/*   Updated: 2025/02/11 15:25:22 by aneitenb         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -46,7 +46,6 @@ int main(int argc, char **argv)
 		const std::vector<ServerBlocks>& servers = config.getServers();
 		const std::vector<size_t>& ports = config.getPorts();
 
-		// Print configuration summary
 		std::cout << "\nConfiguration Summary:" << std::endl;
 		std::cout << "Number of servers configured: " << servers.size() << std::endl;
 		
@@ -59,7 +58,7 @@ int main(int argc, char **argv)
 		}
 		std::cout << std::endl;
 
-		// Print each server's basic info
+		// Print each server's info
 		for (size_t i = 0; i < servers.size(); ++i)
 		{
 			std::cout << "\nServer " << i + 1 << " Configuration:" << std::endl;
