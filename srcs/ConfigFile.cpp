@@ -6,7 +6,7 @@
 /*   By: aneitenb <aneitenb@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/28 09:56:54 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/02/11 17:16:08 by aneitenb         ###   ########.fr       */
+/*   Updated: 2025/02/12 16:21:00 by aneitenb         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -38,6 +38,7 @@ void ConfigurationFile::initializeConfFile(const std::string& filename) {
 
 int ConfigurationFile::_readFile(void) {
 	std::stringstream buffer;
+	
 	buffer << _configFile.rdbuf();
 	_configContent = buffer.str();
 	_configFile.close();
@@ -388,8 +389,8 @@ std::string ConfigurationFile::_getValue(const ServerBlocks& directives, const s
 	ServerBlocks::const_iterator it;
 	
 	it = directives.find(key);
-	if (it != directives.end())
-		return it->second;	//return its value
+	if (it != directives.end())	//If find() can't find the key, it returns this end() position
+		return it->second;	//it->first gets the key, it->second gets the value
 	else 
 		return "";	//return empty string if key word isn't found
 }

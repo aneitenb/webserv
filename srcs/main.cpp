@@ -6,7 +6,7 @@
 /*   By: aneitenb <aneitenb@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/20 12:50:45 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/02/11 17:22:28 by aneitenb         ###   ########.fr       */
+/*   Updated: 2025/02/12 16:13:46 by aneitenb         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -36,9 +36,6 @@ int main(int argc, char **argv)
 			config.initializeConfFile(argv[1]);
 			std::cout << "Using provided configuration file: " << argv[1] << std::endl;
 		}
-		
-		// Initialize configuration
-		
 		std::cout << "Configuration initialized successfully!" << std::endl;
 		
 		// Get configuration data
@@ -67,11 +64,8 @@ int main(int argc, char **argv)
 				std::cout << "  " << it->first << ": " << it->second << std::endl;
 			}
 		}
-
-		std::cout << "\nServer initialized successfully. Ready for implementation of server logic." << std::endl;
 		
 		// Future: Set up and run servers
-		// TODO: Add server initialization and running logic
 
 		return (0);
 	}
