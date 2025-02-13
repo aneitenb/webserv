@@ -6,59 +6,45 @@
 /*   By: aneitenb <aneitenb@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/20 12:50:45 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/01/28 14:56:45 by aneitenb         ###   ########.fr       */
+/*   Updated: 2025/02/12 16:13:46 by aneitenb         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "../includes/Webserv.hpp"
 #include "../includes/ConfigFile.hpp"
 
-
-
-int main (int argc, char **argv)
+int main(int argc, char **argv)
 {
 	if (argc > 2)
 	{
-		std::cerr << "Webserv: Wrong amount of parameters. Cannot initialize server." << std::endl;
+		std::cerr << "Error: Wrong amount of parameters. Cannot initialize server." << std::endl;
 		return (1);
 	}
 
 	try
 	{
 		ConfigurationFile config;
-		std::string configFile;
 		
-		if (argc == 1)  // No configuration file provided
+		// Set configuration file path
+		if (argc == 1)
 		{
-			configFile = "./configuration/basic.conf";
-			std::cout << "Using default configuration file:" << configFile << std::endl;
+			config.initializeConfFile("");
+			std::cout << "Using default configuration file" << std::endl;
 		}
-		else  // Configuration file provided as argument
+		else
 		{
-			configFile = argv[1];
-			std::cout << "Using provided configuration file: " << configFile << std::endl;
+			config.initializeConfFile(argv[1]);
+			std::cout << "Using provided configuration file: " << argv[1] << std::endl;
 		}
-		
-		config.initializeConfFile(configFile);
 		std::cout << "Configuration initialized successfully!" << std::endl;
 		
-		/*
-		* Get configuration data (for future use)
-		* Lets set up a server manager class that'll use this information to create 
-		* and initialize multiple server instances - one for each configuration 
-		* in the servers vector. Each server will be set up to listen on its 
-		* specified port (from ports), handle incoming HTTP requests according 
-		* to its configuration (routing requests to correct directories, handling 
-		* allowed methods, serving error pages when needed), and manage client 
-		* connections
-		*/
-		const ServerConfigs& servers = config.getServers();
+		// Get configuration data
+		const std::vector<ServerBlocks>& servers = config.getServers();
 		const std::vector<size_t>& ports = config.getPorts();
-		(void)servers;
-		(void)ports;
 
 		std::cout << "\nConfiguration Summary:" << std::endl;
 		std::cout << "Number of servers configured: " << servers.size() << std::endl;
+		
 		std::cout << "Configured ports: ";
 		for (size_t i = 0; i < ports.size(); ++i)
 		{
@@ -67,10 +53,19 @@ int main (int argc, char **argv)
 				std::cout << ", ";
 		}
 		std::cout << std::endl;
-		std::cout << "\nServer initialized successfully. Ready for implementation of server logic." << std::endl;
+
+		// Print each server's info
+		for (size_t i = 0; i < servers.size(); ++i)
+		{
+			std::cout << "\nServer " << i + 1 << " Configuration:" << std::endl;
+			std::map<std::string, std::string>::const_iterator it;
+			for (it = servers[i].begin(); it != servers[i].end(); ++it)
+			{
+				std::cout << "  " << it->first << ": " << it->second << std::endl;
+			}
+		}
 		
 		// Future: Set up and run servers
-		// TODO: Add server initialization and running logic
 
 		return (0);
 	}
@@ -79,5 +74,4 @@ int main (int argc, char **argv)
 		std::cerr << "Error: " << e.what() << std::endl;
 		return (1);
 	}
-	return (0);
 }
