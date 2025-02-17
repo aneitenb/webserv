@@ -3,17 +3,48 @@
 /*                                                        :::      ::::::::   */
 /*   main.cpp                                           :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: aneitenb <aneitenb@student.hive.fi>        +#+  +:+       +#+        */
+/*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/20 12:50:45 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/01/28 14:56:45 by aneitenb         ###   ########.fr       */
+/*   Updated: 2025/02/17 18:41:50 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "../includes/Webserv.hpp"
 #include "../includes/ConfigFile.hpp"
 
+int	setup_socket(void){
+	int	fd;
+	fd = (AF_INET, SOCK_STREAM, 0);
+	return (fd);
+}
 
+void	start_server(const std::vector<size_t> *ports){
+	int give_size = ports->size(); //if 5 ports, size 5
+	struct polling entries[give_size] = {0};
+	for (size_t i = 0; i < ports->size(); i++){
+		entries[i].address.sin_port = htons(ports[i]);
+		entries[i].address.sin_family = AF_INET;
+		entries[i].address.sin_addr.s_addr = INADDR_ANY;
+		entries[i].listens = TRUE;
+		entries[i].state = 1;
+		entries[i].addr_size = sizeof(entries[i].address);
+		entries[i].pfd.fd = setup_socket();
+		if (entries[i].pfd.fd == -1){
+			exit(1); //add cleanup and error handling
+		}
+		if (fcntl(entries[i].pfd.fd, F_SETFL, O_NONBLOCK) == -1){
+			exit(1); //add cleanup and error handling
+		}
+		if (bind(entries[i].pfd.fd,(struct sockaddr*)&entries[i].address, entries[i].addr_size)  == -1){
+			exit(1); //add cleanup and error handling
+		}
+		if (listen(entries[i].pfd.fd, 5) == -1){ //change to max number of clients i think
+			exit(1); //add cleanup and error handling
+		}
+	}
+
+}
 
 int main (int argc, char **argv)
 {
@@ -53,7 +84,7 @@ int main (int argc, char **argv)
 		* connections
 		*/
 		const ServerConfigs& servers = config.getServers();
-		const std::vector<size_t>& ports = config.getPorts();
+		const std::vector<size_t>& ports = config.getPorts(); //ports need to be in uint32t
 		(void)servers;
 		(void)ports;
 
@@ -71,6 +102,8 @@ int main (int argc, char **argv)
 		
 		// Future: Set up and run servers
 		// TODO: Add server initialization and running logic
+		
+		start_server(&ports);
 
 		return (0);
 	}

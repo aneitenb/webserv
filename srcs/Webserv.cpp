@@ -6,7 +6,7 @@
 /*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/12 19:36:46 by mspasic           #+#    #+#             */
-/*   Updated: 2025/02/12 19:38:07 by mspasic          ###   ########.fr       */
+/*   Updated: 2025/02/17 18:19:24 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -23,7 +23,7 @@
 #include <map>
 #include <algorithm>
 
-Webserv::Webserv(){}
+// Webserv::Webserv(){}
 
-Webserv::~Webserv(){}
+// Webserv::~Webserv(){}
 
