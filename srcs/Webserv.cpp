@@ -1,16 +1,16 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   Webserv.hpp                                        :+:      :+:    :+:   */
+/*   Webserv.cpp                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/01/20 12:47:42 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/02/12 19:35:51 by mspasic          ###   ########.fr       */
+/*   Created: 2025/02/12 19:36:46 by mspasic           #+#    #+#             */
+/*   Updated: 2025/02/12 19:38:07 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#pragma once
+#include "Webserv.hpp"
 
 //STREAM
 #include <iostream>
@@ -23,12 +23,7 @@
 #include <map>
 #include <algorithm>
 
-class Webserv {
-    private:
+Webserv::Webserv(){}
 
+Webserv::~Webserv(){}
 
-    public:
-        Webserv();
-        ~Webserv();
-
-};
