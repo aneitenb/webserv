@@ -6,7 +6,7 @@
 /*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/20 12:50:45 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/02/17 18:41:50 by mspasic          ###   ########.fr       */
+/*   Updated: 2025/02/17 18:56:09 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,7 +21,7 @@ int	setup_socket(void){
 
 void	start_server(const std::vector<size_t> *ports){
 	int give_size = ports->size(); //if 5 ports, size 5
-	struct polling entries[give_size] = {0};
+	struct polling entries[give_size] = {0}; //vector type so I can add more fds at the end and not just give enough for the listening addresses
 	for (size_t i = 0; i < ports->size(); i++){
 		entries[i].address.sin_port = htons(ports[i]);
 		entries[i].address.sin_family = AF_INET;
@@ -43,7 +43,22 @@ void	start_server(const std::vector<size_t> *ports){
 			exit(1); //add cleanup and error handling
 		}
 	}
-
+	while (1){
+		//poll(...)
+		//interpret result:
+			// if this is a new connection on a listening socket 
+				//accept()
+				//set to non-block
+				//add to pollfd array
+			//if client ready
+				//read request
+				//(continue) write (in chunks if buffer full)
+			//if client closed or error occurs
+				//remove from array
+			//else
+				//cleanup, close
+				//break
+	}
 }
 
 int main (int argc, char **argv)
