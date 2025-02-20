@@ -6,7 +6,7 @@
 /*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/20 12:50:45 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/02/20 18:00:32 by mspasic          ###   ########.fr       */
+/*   Updated: 2025/02/20 18:40:50 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -23,33 +23,59 @@ int	setup_socket(void){
 
 void	start_server(const std::vector<size_t> *ports){
 	int give_size = ports->size(); //if 5 ports, size 5
-	struct polling entries[give_size] = {0}; //or use new?
-	std::vector<struct pollfd*> pfds;
+	struct polling listen_soc[give_size] = {0}; //or use new?
+	std::vector<pollfd> pfds;
+	int result;
 	
+	//first set up the listening sockets
 	for (size_t i = 0; i < ports->size(); i++){
-		entries[i].address.sin_port = htons(ports[i]);
-		entries[i].address.sin_family = AF_INET;
-		entries[i].address.sin_addr.s_addr = INADDR_ANY;
-		entries[i].listens = TRUE;
-		entries[i].state = 1;
-		entries[i].addr_size = sizeof(entries[i].address);
-		entries[i].fds = setup_socket();
-		if (entries[i].fds == -1){
+		listen_soc[i].address.sin_port = htons(ports[i]);
+		listen_soc[i].address.sin_family = AF_INET;
+		listen_soc[i].address.sin_addr.s_addr = INADDR_ANY;
+		listen_soc[i].listens = TRUE;
+		listen_soc[i].state = 1;
+		listen_soc[i].addr_size = sizeof(listen_soc[i].address);
+
+		listen_soc[i].fds = setup_socket();
+		if (listen_soc[i].fds == -1){
 			exit(1); //add cleanup and error handling
 		}
-		if (fcntl(entries[i].fds, F_SETFL, O_NONBLOCK) == -1){
+		if (fcntl(listen_soc[i].fds, F_SETFL, O_NONBLOCK) == -1){
 			exit(1); //add cleanup and error handling
 		}
-		if (bind(entries[i].fds,(struct sockaddr*)&entries[i].address, entries[i].addr_size)  == -1){
+		if (bind(listen_soc[i].fds,(struct sockaddr*)&listen_soc[i].address, listen_soc[i].addr_size)  == -1){
 			exit(1); //add cleanup and error handling
 		}
-		if (listen(entries[i].fds, 5) == -1){ //change to max number of clients i think
+		if (listen(listen_soc[i].fds, 5) == -1){ //change to max number of clients i think
 			exit(1); //add cleanup and error handling
 		}
-		pfds.emplace_back(&(entries[i].fds));
+		pfds.push_back({listen_soc[i].fds, POLLIN, 0});
 	}
 	while (1){
+		result = poll(pfds.data(), pfds.size(), 5000);
+		switch (result){
+			case -1: {
+				//error handling, cleanup
+				exit(1);
+			}
+			case 0:{
+				//do we exit with a message?
+				//should the server be running in this case?
+				//timeout expired btw
+				break ;
+			}
+			default:{
 
+				break;
+			}
+		}
+/* 
+`poll() waits for events instead of constantly checking sockets.
+✅ POLLIN (Readable) → Incoming data (or a new client on the listening socket).
+✅ POLLOUT (Writable) → Ready to send data.
+✅ POLLERR, POLLHUP, POLLNVAL → Handle errors/disconnects.
+✅ Timeout Handling (poll() returning 0) → Prevent infinite blocking if no activity.
+*/
 		//poll(...)
 		//interpret result:
 			// if this is a new connection on a listening socket 

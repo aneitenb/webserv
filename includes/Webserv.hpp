@@ -6,7 +6,7 @@
 /*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/20 12:47:42 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/02/20 17:49:47 by mspasic          ###   ########.fr       */
+/*   Updated: 2025/02/20 18:04:24 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -55,10 +55,10 @@ struct in_addr {
 struct polling{
     sockaddr_in address;
     bool   listens;
+    int fds;
     int state;
-    // socklen_t   addr_size;
-    struct pollfd pfd;
-    char *buffer;
+    socklen_t   addr_size;
+    std::vector <char *> buffer; 
 };
 
 // class Webserv {
