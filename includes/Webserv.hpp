@@ -6,7 +6,7 @@
 /*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/20 12:47:42 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/02/17 18:25:14 by mspasic          ###   ########.fr       */
+/*   Updated: 2025/02/20 17:49:47 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -37,13 +37,28 @@
 //states
 #define DONE 0
 
+/*
+
+struct sockaddr_in {
+    short            sin_family;   // e.g. AF_INET
+    unsigned short   sin_port;     // e.g. htons(3490)
+    struct in_addr   sin_addr;     // see struct in_addr, below
+    char             sin_zero[8];  // zero this if you want to
+};
+
+struct in_addr {
+    unsigned long s_addr;  // load with inet_aton()
+};
+*/
+
+
 struct polling{
-    struct pollfd pfd;
-    bool   listens;
-    char *buffer[1024];
     sockaddr_in address;
-    socklen_t   addr_size;
+    bool   listens;
     int state;
+    // socklen_t   addr_size;
+    struct pollfd pfd;
+    char *buffer;
 };
 
 // class Webserv {

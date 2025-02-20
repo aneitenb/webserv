@@ -6,12 +6,14 @@
 /*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/20 12:50:45 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/02/17 18:56:09 by mspasic          ###   ########.fr       */
+/*   Updated: 2025/02/20 18:00:32 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "../includes/Webserv.hpp"
 #include "../includes/ConfigFile.hpp"
+#include <vector>
+
 
 int	setup_socket(void){
 	int	fd;
@@ -21,7 +23,9 @@ int	setup_socket(void){
 
 void	start_server(const std::vector<size_t> *ports){
 	int give_size = ports->size(); //if 5 ports, size 5
-	struct polling entries[give_size] = {0}; //vector type so I can add more fds at the end and not just give enough for the listening addresses
+	struct polling entries[give_size] = {0}; //or use new?
+	std::vector<struct pollfd*> pfds;
+	
 	for (size_t i = 0; i < ports->size(); i++){
 		entries[i].address.sin_port = htons(ports[i]);
 		entries[i].address.sin_family = AF_INET;
@@ -29,21 +33,23 @@ void	start_server(const std::vector<size_t> *ports){
 		entries[i].listens = TRUE;
 		entries[i].state = 1;
 		entries[i].addr_size = sizeof(entries[i].address);
-		entries[i].pfd.fd = setup_socket();
-		if (entries[i].pfd.fd == -1){
+		entries[i].fds = setup_socket();
+		if (entries[i].fds == -1){
 			exit(1); //add cleanup and error handling
 		}
-		if (fcntl(entries[i].pfd.fd, F_SETFL, O_NONBLOCK) == -1){
+		if (fcntl(entries[i].fds, F_SETFL, O_NONBLOCK) == -1){
 			exit(1); //add cleanup and error handling
 		}
-		if (bind(entries[i].pfd.fd,(struct sockaddr*)&entries[i].address, entries[i].addr_size)  == -1){
+		if (bind(entries[i].fds,(struct sockaddr*)&entries[i].address, entries[i].addr_size)  == -1){
 			exit(1); //add cleanup and error handling
 		}
-		if (listen(entries[i].pfd.fd, 5) == -1){ //change to max number of clients i think
+		if (listen(entries[i].fds, 5) == -1){ //change to max number of clients i think
 			exit(1); //add cleanup and error handling
 		}
+		pfds.emplace_back(&(entries[i].fds));
 	}
 	while (1){
+
 		//poll(...)
 		//interpret result:
 			// if this is a new connection on a listening socket 
