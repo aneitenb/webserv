@@ -6,7 +6,7 @@
 /*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/20 12:50:45 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/02/20 18:40:50 by mspasic          ###   ########.fr       */
+/*   Updated: 2025/02/21 16:38:49 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,7 +17,7 @@
 
 int	setup_socket(void){
 	int	fd;
-	fd = (AF_INET, SOCK_STREAM, 0);
+	fd = socket(AF_INET, SOCK_STREAM, 0);
 	return (fd);
 }
 
@@ -50,6 +50,7 @@ void	start_server(const std::vector<size_t> *ports){
 			exit(1); //add cleanup and error handling
 		}
 		pfds.push_back({listen_soc[i].fds, POLLIN, 0});
+		pfds.at(i).events = POLLIN;
 	}
 	while (1){
 		result = poll(pfds.data(), pfds.size(), 5000);
@@ -65,7 +66,27 @@ void	start_server(const std::vector<size_t> *ports){
 				break ;
 			}
 			default:{
-
+				//check first if there are any new clients trying to connect
+				for (size_t i = 0; i < ports->size(); i++){
+					if (pfds.at(i).revents & POLLIN){
+						struct sockaddr_in clAddr;
+						socklen_t addr_size = sizeof(clAddr);
+						int clientFd = accept(pfds.at(i).fd, (struct sockaddr *)&clAddr, &addr_size);
+						if (clientFd == -1){
+							//log error
+							i++;
+							continue;
+						}
+						if (fcntl(clientFd, F_SETFL, O_NONBLOCK) == -1){
+							//log error
+							close (clientFd);
+							i++;
+							continue;
+						}
+						
+						// if clientFd is valid then pfds.push_back({ clientFd, POLL_IN, 0 })
+					}
+				}
 				break;
 			}
 		}
