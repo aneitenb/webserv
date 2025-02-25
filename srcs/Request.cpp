@@ -6,7 +6,7 @@
 /*   By: aneitenb <aneitenb@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/24 16:55:06 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/02/25 16:14:08 by aneitenb         ###   ########.fr       */
+/*   Updated: 2025/02/25 17:53:30 by aneitenb         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -136,6 +136,55 @@ int Request::parseHeaders(const std::string& headerBlock)
 	return 0;
 }
 
+int	Request::processChunkedBody(std::string& bodyContent)
+{
+	std::string		fullBody;
+	std::string		chunkSizeStr;
+	std::string		chunkData;
+	unsigned int	chunkSize;
+	size_t			lineEnd;
+	size_t			pos;
+
+	pos = 0;
+	_partialBody += bodyContent;
+	bodyContent.clear();
+	while (pos < _partialBody.size())
+	{
+		lineEnd = _partialBody.find("\r\n", pos);
+		if (lineEnd == std::string::npos)
+			break;	//need more data
+		
+		//parse chunk size
+		chunkSizeStr = _partialBody.substr(pos, lineEnd);
+		std::istringstream iss(chunkSizeStr);
+		iss >> std::hex >> chunkSize;
+		
+		//check if chunk is complete
+		if (_partialBody.size() < lineEnd + 2 + chunkSize + 2)
+			break;	//need more data
+
+		//extract chunk data
+		if (chunkSize > 0)
+		{
+			chunkData = _partialBody.substr(lineEnd + 2, chunkSize);
+			fullBody += chunkData;
+		}
+		
+		//move past this chunk
+		pos = lineEnd + 2 + chunkSize + 2;
+		
+		if (chunkSize == 0)	//we've reached the end
+		{
+			_body = fullBody;
+			_partialBody.clear();
+			return 0;
+		}
+	}
+	 //update partial body with what's left
+	 _partialBody = _partialBody.substr(pos);
+	 return 0;	
+}
+
 int Request::parseBody(const std::string& bodyContent)
 {
 	_body += bodyContent;
@@ -143,7 +192,7 @@ int Request::parseBody(const std::string& bodyContent)
 	//if we have content-length we can check if body is complete
 	if (_contentLength > 0 && _body.size() >= _contentLength)
 	{
-		_body = _body.substr(0, _contentLength);
+		_body = _body.substr(0, _contentLength);	//any extra data likely belongs to next request
 		return 0;
 	}
 	return 0;
@@ -187,4 +236,19 @@ bool Request::isComplete() const
 bool Request::isValid() const
 {
 	return _isValid;
+}
+
+bool Request::isChunked() const
+{
+	return _isChunked;
+}
+
+size_t Request::getContentLength() const
+{
+	return _contentLength;
+}
+
+std::string Request::getContentType() const
+{
+	return _contentType;
 }

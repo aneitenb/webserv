@@ -6,7 +6,7 @@
 /*   By: aneitenb <aneitenb@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/24 16:54:53 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/02/25 15:11:45 by aneitenb         ###   ########.fr       */
+/*   Updated: 2025/02/25 17:12:44 by aneitenb         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -23,7 +23,7 @@ private:
 	std::string _body;
 	std::string	_contentType;
 	std::string	_boundry;
-	std::string	_remainingBody;
+	std::string	_partialBody;
 	size_t		_contentLength;
 	bool 		_parsingComplete;
 	bool 		_isValid;
