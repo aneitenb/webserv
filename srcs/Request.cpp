@@ -6,7 +6,7 @@
 /*   By: aneitenb <aneitenb@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/24 16:55:06 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/02/24 20:07:38 by aneitenb         ###   ########.fr       */
+/*   Updated: 2025/02/25 16:14:08 by aneitenb         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -24,13 +24,12 @@ int Request::parseRequest(const std::string& rawRequest)
 	size_t		requestLineEnd;
 	std::string	requestLine;
 	std::string	headerBlock;
+	std::string	contentLengthStr;
+	
 	
 	headerEnd = rawRequest.find("\r\n\r\n"); //standard HTTP delimiter that separates the headers from the body
 	if (headerEnd == std::string::npos)
-	{
-		//not complete yet
-		return 0;
-	}
+		return 0;	//need more data
 	
 	//split requests into header and body
 	headerSection = rawRequest.substr(0, headerEnd);
@@ -52,12 +51,36 @@ int Request::parseRequest(const std::string& rawRequest)
 	headerBlock = headerSection.substr(requestLineEnd + 2);
 	if (parseHeaders(headerBlock) != 0)
 		return -1;
-		
+
+	//check for chunked request with transfer encoding header
+	_isChunked = (_headers.find("Transfer-Encoding") != _headers.end() &&
+					_headers["Transfer-Encoding"] == "chunked");
+
+	//check for normal requests with content length header
+	contentLengthStr = getHeader("Content-Length");
+	_contentLength = 0;
+	if (!contentLengthStr.empty())
+	{
+		std::istringstream iss(contentLengthStr);
+		iss >> _contentLength;	//converting the string to size_t
+	}
+
+	_contentType = getHeader("Content-Type");
+			
 	//parse body if it exists
 	if (!bodySection.empty())
 	{
-		if (parseBody(bodySection) != 0)
+		if (_isChunked)
+		{
+			if (processChunkedBody(bodySection) != 0)
+				return -1;
+		}
+		else if (parseBody(bodySection) != 0)
 			return -1;
+
+			//check that we have complete body based on content-length
+		if (!_isChunked && _contentLength > 0 && _body.length() < _contentLength)
+			return 0;
 	}
 	
 	_parsingComplete = true;
@@ -89,7 +112,7 @@ int Request::parseHeaders(const std::string& headerBlock)
 
 	while (std::getline(iss, line))
 	{
-		//remove possible trailing \r 
+		//remove trailing \r if there is one
 		if (!line.empty() && line[line.length() - 1] == '\r')
 			line.erase(line.length() - 1);
 		if (line.empty())
@@ -115,7 +138,14 @@ int Request::parseHeaders(const std::string& headerBlock)
 
 int Request::parseBody(const std::string& bodyContent)
 {
-	_body = bodyContent;
+	_body += bodyContent;
+	
+	//if we have content-length we can check if body is complete
+	if (_contentLength > 0 && _body.size() >= _contentLength)
+	{
+		_body = _body.substr(0, _contentLength);
+		return 0;
+	}
 	return 0;
 }
 

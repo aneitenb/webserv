@@ -6,7 +6,7 @@
 /*   By: aneitenb <aneitenb@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/24 16:54:53 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/02/24 16:56:37 by aneitenb         ###   ########.fr       */
+/*   Updated: 2025/02/25 15:11:45 by aneitenb         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,13 +16,18 @@
 
 class Request {
 private:
+	std::map<std::string, std::string> _headers;
 	std::string _method;
 	std::string _uri;
 	std::string _httpVersion;
-	std::map<std::string, std::string> _headers;
 	std::string _body;
-	bool _parsingComplete;
-	bool _isValid;
+	std::string	_contentType;
+	std::string	_boundry;
+	std::string	_remainingBody;
+	size_t		_contentLength;
+	bool 		_parsingComplete;
+	bool 		_isValid;
+	bool 		_isChunked;
 
 public:
 	Request();
@@ -40,6 +45,10 @@ public:
 	std::string getVersion() const;
 	std::string getHeader(const std::string& key) const;
 	std::string getBody() const;
-	bool isComplete() const;
-	bool isValid() const;
+	std::string getContentType() const;
+	size_t		getContentLength() const;
+	int			processChunkedBody(std::string& bodyContent);
+	bool 		isComplete() const;
+	bool 		isValid() const;
+	bool		isChunked() const;
 };
