@@ -6,7 +6,7 @@
 /*   By: aneitenb <aneitenb@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/24 16:55:06 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/02/25 17:53:30 by aneitenb         ###   ########.fr       */
+/*   Updated: 2025/02/26 16:33:22 by aneitenb         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -84,7 +84,10 @@ int Request::parseRequest(const std::string& rawRequest)
 	}
 	
 	_parsingComplete = true;
-	_isValid = true;
+	_isValid = true;	//USED??
+	if (_parsingComplete && _method == "GET")
+		processGetRequest();
+	
 	return 1;
 }
 
@@ -134,6 +137,48 @@ int Request::parseHeaders(const std::string& headerBlock)
 		_headers[headerName] = headerValue;
 	}
 	return 0;
+}
+
+int Request::processGetRequest()
+{
+	size_t		pos;
+	std::string	path;
+	
+	path = _uri;
+	pos = path.find("?");
+	if (pos != std::string::npos)
+		path = path.substr(0, pos);
+	_resourcePath = decodeURI(path);
+	return 0;
+}
+
+std::string Request::decodeURI(const std::string& uri)
+{
+	std::string decoded;
+	std::string	hexStr;
+	int			value;
+
+	for (size_t i = 0; i < uri.length(); ++i)
+	{
+		if (uri[i] == '%' && i + 2 < uri.length())
+		{
+			//getting hexadecimal value after the % (URI encoding example: %2F)
+			hexStr = uri.substr(i + 1, 2);
+			
+			//convert hex into an int (hexadecimal 2F becomes integer 47)
+			std::istringstream iss(hexStr);
+			iss >> std::hex >> value;
+			
+			//convert integer value into a character (47 represents the forward slash "/" character in ASCII)
+			decoded += static_cast<char>(value);	//this casting operator does compile-time type check, so safer 
+			i += 2;	//skip the hex digits
+		}
+		else if (uri[i] == '+')	//used to represent a space
+			decoded += ' ';
+		else
+			decoded += uri[i];	//regular character
+	}
+	return decoded;
 }
 
 int	Request::processChunkedBody(std::string& bodyContent)
@@ -198,6 +243,16 @@ int Request::parseBody(const std::string& bodyContent)
 	return 0;
 }
 
+std::string Request::getHeader(const std::string& key) const
+{
+	std::map<std::string, std::string>::const_iterator it;
+
+	it = _headers.find(key);
+	if (it != _headers.end())	//checks if key was found
+		return it->second;		//points to key/value pair, first would be key, second is value(header content)
+	return "";
+}
+
 std::string Request::getMethod() const
 {
 	return _method;
@@ -213,19 +268,24 @@ std::string Request::getVersion() const
 	return _httpVersion;
 }
 
-std::string Request::getHeader(const std::string& key) const
-{
-	std::map<std::string, std::string>::const_iterator it;
-
-	it = _headers.find(key);
-	if (it != _headers.end())	//checks if key was found
-		return it->second;		//points to key/value pair, first would be key, second is value(header content)
-	return "";
-}
-
 std::string Request::getBody() const
 {
 	return _body;
+}
+
+std::string Request::getContentType() const
+{
+	return _contentType;
+}
+
+std::string Request::getResourcePath() const
+{
+	return _resourcePath;
+}
+
+size_t Request::getContentLength() const
+{
+	return _contentLength;
 }
 
 bool Request::isComplete() const
@@ -241,14 +301,4 @@ bool Request::isValid() const
 bool Request::isChunked() const
 {
 	return _isChunked;
-}
-
-size_t Request::getContentLength() const
-{
-	return _contentLength;
-}
-
-std::string Request::getContentType() const
-{
-	return _contentType;
 }

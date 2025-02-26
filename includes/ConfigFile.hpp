@@ -6,7 +6,7 @@
 /*   By: aneitenb <aneitenb@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/20 12:47:33 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/02/24 16:55:57 by aneitenb         ###   ########.fr       */
+/*   Updated: 2025/02/26 15:09:27 by aneitenb         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -46,9 +46,9 @@ private:
 	void _setValue(ServerBlocks& directives, const std::string& key, const std::string& value);
 	bool _hasValue(const ServerBlocks& directives, const std::string& key) const;
 
-	//Delete copy operators to avoid two objects managing a single file
-	ConfigurationFile(ConfigurationFile const &rhs);
-	ConfigurationFile& operator=(ConfigurationFile const &rhs);
+	//Delete copy operators to avoid two objects managing a single file, do we need these even?
+	// ConfigurationFile(ConfigurationFile const &rhs);
+	// ConfigurationFile& operator=(ConfigurationFile const &rhs);
 	
 public:
 	ConfigurationFile(void);
