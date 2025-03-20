@@ -6,7 +6,7 @@
 #    By: aneitenb <aneitenb@student.hive.fi>        +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2025/01/20 12:43:09 by aneitenb          #+#    #+#              #
-#    Updated: 2025/03/20 15:02:38 by ivalimak         ###   ########.fr        #
+#    Updated: 2025/03/20 16:21:47 by ivalimak         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -26,9 +26,18 @@ SRCDIR	=	srcs
 OBJDIR	=	obj
 INCDIR	=	includes
 
+CONFIGDIR	=	config
+SERVERDIR	=	server
+
+CONFIGFILES	=	ConfigErrors.cpp \
+				ConfigFile.cpp
+
+SERVERFILES	=	EventLoop.cpp \
+				Server.cpp
+
 FILES	=	main.cpp \
-			ConfigFile.cpp \
-			ConfigErrors.cpp
+			$(addprefix $(CONFIGDIR)/, $(CONFIGFILES)) \
+			$(addprefix $(SERVERDIR)/, $(SERVERFILES))
 
 SRCS	=	$(addprefix $(SRCDIR)/, $(FILES))
 OBJS	=	$(patsubst $(SRCDIR)/%.cpp, $(OBJDIR)/%.o, $(SRCS))
@@ -42,7 +51,8 @@ $(NAME): $(OBJDIR) $(OBJS)
 
 $(OBJDIR):
 	@printf "\e[1;38;5;42mWEBSERV >\e[m Creating objdir\n"
-	@mkdir -p $(OBJDIR)
+	@mkdir -p $(OBJDIR)/$(CONFIGDIR)
+	@mkdir -p $(OBJDIR)/$(SERVERDIR)
 
 $(OBJDIR)/%.o: $(SRCDIR)/%.cpp
 	@printf "\e[1;38;5;42mWEBSERV >\e[m Compiling %s\n" $@
@@ -57,4 +67,9 @@ fclean: clean
 
 re: fclean all
 
-.PHONY: all clean fclean re
+db:
+	@printf "\e[1;38;5;42mWEBSERV >\e[m Creating compilation command database\n"
+	@compiledb make --no-print-directory BUILD=$(BUILD) cflags.extra=$(cflags.extra) | sed -E '/^##.*\.\.\.$$|^[[:space:]]*$$/d'
+	@printf "\e[1;38;5;42mWEBSERV >\e[m \e[1mDone!\e[m\n"
+
+.PHONY: all clean fclean re db
