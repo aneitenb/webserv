@@ -1,0 +1,10 @@
+*.a
+*.o
+*.out
+*.log
+*.txt
+*test*
+.cache
+.clangd
+compile_commands.json
+webserv
