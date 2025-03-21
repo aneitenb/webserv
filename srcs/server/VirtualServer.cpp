@@ -6,7 +6,7 @@
 /*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/20 16:26:02 by mspasic           #+#    #+#             */
-/*   Updated: 2025/03/21 20:24:26 by mspasic          ###   ########.fr       */
+/*   Updated: 2025/03/21 20:42:30 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,14 +20,27 @@
 // #include <poll.h>
 #include <cstring> //memset
 
-#define IP "127.0.0.1"
 
-VirtualServer::VirtualServer(){
+VirtualServer::VirtualServer(int list_sock_fd){
     std::cout << "Creating client server\n";
+    _sockfd = 0;
+    _addr_size = sizeof(_address);
+    if ((_sockfd = accept(list_sock_fd, (struct sockaddr *)&_address, &_addr_size)) == -1){
+        std::cerr << "Error: accept() failed; could not accept client\n";
+        std::cerr << strerror(errno) << "\n";
+        this->~VirtualServer();  //can i do this? 
+    }
+
+    if (fcntl(_sockfd, F_SETFD, O_NONBLOCK) == -1){
+        std::cerr << "Error: difailed to manipulate client flags\n";
+        std::cerr << strerror(errno) << "\n";
+        this->~VirtualServer();          
+    }
 }
 
-VirtualServer::VirtualServer(ConfigurationFile _config){ //arg is going to change
+VirtualServer::VirtualServer(){ //arg is going to change
     std::cout << "Creating listening socket\n";
+    _sockfd = 0;
     memset(&_address, 0, sizeof(_address)); //clear out just in case; do we need the 2nd memset then?
     _address.sin_port = htons(PORT);
     _address.sin_family = AF_INET;
@@ -40,7 +53,9 @@ VirtualServer::VirtualServer(ConfigurationFile _config){ //arg is going to chang
 
 VirtualServer::~VirtualServer(){
     std::cout << "Virtual server destroyed\n";
-    close(_sockfd);
+    if (_sockfd)
+        close(_sockfd);
+    _sockfd = 0;
 }
 
 int VirtualServer::setup_fd(void){
