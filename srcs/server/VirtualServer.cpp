@@ -6,7 +6,7 @@
 /*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/20 16:26:02 by mspasic           #+#    #+#             */
-/*   Updated: 2025/03/21 18:25:06 by mspasic          ###   ########.fr       */
+/*   Updated: 2025/03/21 20:24:26 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -26,19 +26,16 @@ VirtualServer::VirtualServer(){
     std::cout << "Creating client server\n";
 }
 
-VirtualServer::VirtualServer(ConfigurationFile _config){
+VirtualServer::VirtualServer(ConfigurationFile _config){ //arg is going to change
     std::cout << "Creating listening socket\n";
-    memset(&_address, 0, sizeof(_address));
+    memset(&_address, 0, sizeof(_address)); //clear out just in case; do we need the 2nd memset then?
     _address.sin_port = htons(PORT);
     _address.sin_family = AF_INET;
     memset(&(_address.sin_zero), '\0', 8); //zero the rest of the struct
-    
-    if (inet_pton(AF_INET, IP, &(_address.sin_addr.s_addr)) <= 0){
-        std::cerr << "Error: socket() failed\n";
-        std::cerr << strerror(errno) << "\n";
-        return (-1);
-    }
     _addr_size = sizeof(_address);
+
+    if (this->setup_fd() == -1)
+        this->~VirtualServer(); //can I do this?
 }
 
 VirtualServer::~VirtualServer(){
@@ -47,6 +44,13 @@ VirtualServer::~VirtualServer(){
 }
 
 int VirtualServer::setup_fd(void){
+    //get the IP address
+    if (inet_pton(AF_INET, IP, &(_address.sin_addr.s_addr)) <= 0){
+        std::cerr << "Error: socket() failed\n";
+        std::cerr << strerror(errno) << "\n";
+        return (-1);
+    }
+    //socket()
     if (_sockfd = socket(PF_INET, SOCK_STREAM, 0) == -1){
         std::cerr << "Error: socket() failed\n";
         std::cerr << strerror(errno) << "\n";
@@ -80,4 +84,16 @@ int VirtualServer::setup_fd(void){
         std::cerr << strerror(errno) << "\n";
         return (-1);
     }
+    //for the listening socket bind and listen
+    if ((bind(_sockfd, (struct sockaddr *)&_address, sizeof(struct sockaddr)) == -1)){
+        std::cerr << "Error: bind() failed\n";
+        std::cerr << strerror(errno) << "\n";
+        return (-1);        
+    }
+    if ((listen(_sockfd, 20) == -1)){
+        std::cerr << "Error: listen() failed\n";
+        std::cerr << strerror(errno) << "\n";
+        return (-1);        
+    }
+    return (0);
 }
