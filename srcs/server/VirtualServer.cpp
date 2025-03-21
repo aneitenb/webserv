@@ -6,7 +6,7 @@
 /*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/20 16:26:02 by mspasic           #+#    #+#             */
-/*   Updated: 2025/03/21 20:42:30 by mspasic          ###   ########.fr       */
+/*   Updated: 2025/03/21 20:45:33 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -36,6 +36,8 @@ VirtualServer::VirtualServer(int list_sock_fd){
         std::cerr << strerror(errno) << "\n";
         this->~VirtualServer();          
     }
+
+    //add to epoll array
 }
 
 VirtualServer::VirtualServer(){ //arg is going to change
@@ -49,6 +51,8 @@ VirtualServer::VirtualServer(){ //arg is going to change
 
     if (this->setup_fd() == -1)
         this->~VirtualServer(); //can I do this?
+    
+    //add to epoll array
 }
 
 VirtualServer::~VirtualServer(){
