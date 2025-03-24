@@ -6,7 +6,7 @@
 /*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/20 16:26:51 by mspasic           #+#    #+#             */
-/*   Updated: 2025/03/24 16:07:37 by mspasic          ###   ########.fr       */
+/*   Updated: 2025/03/24 20:10:38 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,9 +15,12 @@
 #include "ConfigFile.hpp"
 #include <arpa/inet.h> //uints, sockaddr_in
 #include <string> //std::string
+#include <sys/epoll.h> //struct epoll_event
 
 #define PORT 8080
 #define IP "127.0.0.1"
+
+//socket type
 #define LISTENING 0
 #define CLIENT 1
 
@@ -31,6 +34,7 @@ class VirtualServer {
         socklen_t           _addr_size;
         int                 _sock_err;
         int                 _type;
+        struct epoll_event  _event;
         VirtualServer() = default;
     public:
         VirtualServer(int list_sock_fd); //for clients

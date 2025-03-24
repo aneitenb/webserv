@@ -6,7 +6,7 @@
 /*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/20 16:26:02 by mspasic           #+#    #+#             */
-/*   Updated: 2025/03/24 16:06:52 by mspasic          ###   ########.fr       */
+/*   Updated: 2025/03/24 20:38:43 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -22,9 +22,9 @@
 
 
 VirtualServer::VirtualServer(int list_sock_fd){
-    std::cout << "Creating client server\n";
+    std::cout << "Creating client server//New connection from a client accepted\n";
     _type = CLIENT;
-    _sockfd = 0;
+    _sockfd = -1;
     _addr_size = sizeof(_address);
     if ((_sockfd = accept(list_sock_fd, (struct sockaddr *)&_address, &_addr_size)) == -1){
         std::cerr << "Error: accept() failed; could not accept client\n";
@@ -32,19 +32,22 @@ VirtualServer::VirtualServer(int list_sock_fd){
         this->~VirtualServer();  //can i do this? 
     }
 
-    if (fcntl(_sockfd, F_SETFD, O_NONBLOCK) == -1){
+    if (fcntl(_sockfd, F_SETFL, O_NONBLOCK) == -1){
         std::cerr << "Error: difailed to manipulate client flags\n";
         std::cerr << strerror(errno) << "\n";
         this->~VirtualServer();          
     }
-
+    //get info if you want but not needed 
+    _event.data.fd = _sockfd;
+    _event.events = EPOLLIN | EPOLLET;
     //add to epoll array
+    //create connection object with client information
 }
 
 VirtualServer::VirtualServer(){ //arg is going to change
     std::cout << "Creating listening socket\n";
     _type = LISTENING;
-    _sockfd = 0;
+    _sockfd = -1;
     memset(&_address, 0, sizeof(_address)); //clear out just in case; do we need the 2nd memset then?
     _address.sin_port = htons(PORT);
     _address.sin_family = AF_INET;
@@ -53,6 +56,9 @@ VirtualServer::VirtualServer(){ //arg is going to change
 
     if (this->setup_fd() == -1)
         this->~VirtualServer(); //can I do this?
+    
+    _event.data.fd = _sockfd;
+    _event.events = EPOLLIN | EPOLLET;
     
     //add to epoll array
 }
