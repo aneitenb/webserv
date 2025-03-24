@@ -6,7 +6,7 @@
 /*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/20 16:26:02 by mspasic           #+#    #+#             */
-/*   Updated: 2025/03/21 20:45:33 by mspasic          ###   ########.fr       */
+/*   Updated: 2025/03/24 16:06:52 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -23,6 +23,7 @@
 
 VirtualServer::VirtualServer(int list_sock_fd){
     std::cout << "Creating client server\n";
+    _type = CLIENT;
     _sockfd = 0;
     _addr_size = sizeof(_address);
     if ((_sockfd = accept(list_sock_fd, (struct sockaddr *)&_address, &_addr_size)) == -1){
@@ -42,6 +43,7 @@ VirtualServer::VirtualServer(int list_sock_fd){
 
 VirtualServer::VirtualServer(){ //arg is going to change
     std::cout << "Creating listening socket\n";
+    _type = LISTENING;
     _sockfd = 0;
     memset(&_address, 0, sizeof(_address)); //clear out just in case; do we need the 2nd memset then?
     _address.sin_port = htons(PORT);
@@ -115,4 +117,8 @@ int VirtualServer::setup_fd(void){
         return (-1);        
     }
     return (0);
+}
+
+int VirtualServer::get_type(void){
+    return(_type);
 }
