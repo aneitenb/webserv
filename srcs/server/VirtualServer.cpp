@@ -6,7 +6,7 @@
 /*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/20 16:26:02 by mspasic           #+#    #+#             */
-/*   Updated: 2025/03/24 20:38:43 by mspasic          ###   ########.fr       */
+/*   Updated: 2025/03/25 17:20:09 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -53,6 +53,14 @@ VirtualServer::VirtualServer(){ //arg is going to change
     _address.sin_family = AF_INET;
     memset(&(_address.sin_zero), '\0', 8); //zero the rest of the struct
     _addr_size = sizeof(_address);
+    //get the IP address; IP is std::string   NOT ALLOWED?
+
+    
+    if (inet_pton(AF_INET, IP, &(_address.sin_addr.s_addr)) <= 0){
+        std::cerr << "Error: inet_pton() failed\n";
+        std::cerr << strerror(errno) << "\n";
+        return (-1);
+    }
 
     if (this->setup_fd() == -1)
         this->~VirtualServer(); //can I do this?
@@ -71,12 +79,7 @@ VirtualServer::~VirtualServer(){
 }
 
 int VirtualServer::setup_fd(void){
-    //get the IP address
-    if (inet_pton(AF_INET, IP, &(_address.sin_addr.s_addr)) <= 0){
-        std::cerr << "Error: socket() failed\n";
-        std::cerr << strerror(errno) << "\n";
-        return (-1);
-    }
+
     //socket()
     if (_sockfd = socket(PF_INET, SOCK_STREAM, 0) == -1){
         std::cerr << "Error: socket() failed\n";
@@ -87,21 +90,21 @@ int VirtualServer::setup_fd(void){
     //CONSIDER: SO_RCVBUF / SO_SNDBUF, SO_LINGER, SO_KEEPALIVE, TCP_NODELAY
     //get socket error
     if ((setsockopt(_sockfd, SOL_SOCKET, SO_ERROR, &_sock_err, sizeof(_sock_err))) == -1){
-        std::cerr << "Error: sersockopt() failed: SO_ERROR\n";
+        std::cerr << "Error: setsockopt() failed: SO_ERROR\n";
         std::cerr << strerror(errno) << "\n";
         return (-1);
     }
     //reuse port, multiple bind on the same port
     int reuse_port = 1;
     if ((setsockopt(_sockfd, SOL_SOCKET, SO_REUSEPORT, &reuse_port, sizeof(reuse_port))) == -1){
-        std::cerr << "Error: sersockopt() failed: SO_REUSEPORT\n";
+        std::cerr << "Error: setsockopt() failed: SO_REUSEPORT\n";
         std::cerr << strerror(errno) << "\n";
         return (-1);
     }
     //reuse address: reuse a local address or port that is in the TIME_WAIT state (e.g., after closing a socket
     int reuse_addr = 1;
     if ((setsockopt(_sockfd, SOL_SOCKET, SO_REUSEADDR, &reuse_addr, sizeof(reuse_addr))) == -1){
-        std::cerr << "Error: sersockopt() failed: SO_REUSEADDR\n";
+        std::cerr << "Error: setsockopt() failed: SO_REUSEADDR\n";
         std::cerr << strerror(errno) << "\n";
         return (-1);
     }

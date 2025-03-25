@@ -6,7 +6,7 @@
 /*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/24 19:32:39 by mspasic           #+#    #+#             */
-/*   Updated: 2025/03/24 20:09:18 by mspasic          ###   ########.fr       */
+/*   Updated: 2025/03/25 16:44:48 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -35,6 +35,27 @@ int EventLoop::addToEpoll(int fd, uint32_t events){
 
 void EventLoop::run(){
     while(1){
-
-    }
+        //wait
+        //check if wait failed
+            //if errno == EINTR continue look this up
+            //error handling
+        //process events; wait returns the number of events that need to be resolved
+            //if there is something to be resolved with one of the listening sockets
+            //means a new connection can be accepted
+                //accept, check the clientfd, set to nonblock, addto epoll with ein and elet
+                //new Connection class object
+            //otherwise
+                //look through the connections for the correct fd to resolve
+                    //check for errors or disconnect //epollerr | epollhup
+                    //remove from epoll
+                    //delete connection object
+                    //vector.erase(currentfd)
+                    //close(currentfd)
+                    //continue
+                //if its epollin and not a listening socket, means that it can be read
+                    //figure it out
+                //if its epollout and not a listening socket, means that it can be written into
+                    //figure it out
+//*needs a map/dictionary to connect fds and connections?
+    }   
 }
