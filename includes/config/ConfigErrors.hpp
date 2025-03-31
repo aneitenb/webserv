@@ -3,57 +3,50 @@
 /*                                                        :::      ::::::::   */
 /*   ConfigErrors.hpp                                   :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: aneitenb <aneitenb@student.hive.fi>        +#+  +:+       +#+        */
+/*   By: aneitenb <aneitenb@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/29 15:43:47 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/01/29 16:55:16 by aneitenb         ###   ########.fr       */
+/*   Updated: 2025/03/31 12:55:34 by aneitenb         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #pragma once
 
-#include "Webserv.hpp"
+#include "../Webserv.hpp"
 
-class ErrorOpeningConfFile : public std::exception {
+// base class for all configuration errors
+class ConfigError : public std::exception {
 private:
 	std::string _message;
+
 public:
-	explicit ErrorOpeningConfFile();	/// explicit prevents implicit type conversions
-	ErrorOpeningConfFile(const ErrorOpeningConfFile& other);
-	ErrorOpeningConfFile& operator=(const ErrorOpeningConfFile& other);
-	virtual ~ErrorOpeningConfFile() throw();
+	ConfigError(const std::string& message = "Configuration error");
+	virtual ~ConfigError() throw();
+	
 	virtual const char* what() const throw();
+	virtual std::string getErrorType() const;
 };
 
-class ErrorInvalidConfig : public std::exception {
-private:
-	std::string _message;
+class ErrorOpeningConfFile : public ConfigError {
 public:
-	explicit ErrorInvalidConfig(const std::string& msg);
-	ErrorInvalidConfig(const ErrorInvalidConfig& other);
-	ErrorInvalidConfig& operator=(const ErrorInvalidConfig& other);
-	virtual ~ErrorInvalidConfig() throw();
-	virtual const char* what() const throw();
+	ErrorOpeningConfFile(const std::string& message = "Could not open configuration file");
+	std::string getErrorType() const override;
 };
 
-class ErrorInvalidPort : public std::exception {
-private:
-	std::string _message;
+class ErrorInvalidConfig : public ConfigError {
 public:
-	explicit ErrorInvalidPort(const std::string& msg);
-	ErrorInvalidPort(const ErrorInvalidPort& other);
-	ErrorInvalidPort& operator=(const ErrorInvalidPort& other);
-	virtual ~ErrorInvalidPort() throw();
-	virtual const char* what() const throw();
+	ErrorInvalidConfig(const std::string& message = "Invalid configuration format");
+	std::string getErrorType() const override;
 };
 
-class ErrorInvalidIP : public std::exception {
-private:
-	std::string _message;
+class ErrorInvalidPort : public ConfigError {
 public:
-	explicit ErrorInvalidIP(const std::string& msg);
-	ErrorInvalidIP(const ErrorInvalidIP& other);
-	ErrorInvalidIP& operator=(const ErrorInvalidIP& other);
-	virtual ~ErrorInvalidIP() throw();
-	virtual const char* what() const throw();
+	ErrorInvalidPort(const std::string& message = "Invalid port number");
+	std::string getErrorType() const override;
+};
+
+class ErrorInvalidIP : public ConfigError {
+public:
+	ErrorInvalidIP(const std::string& message = "Invalid IP address");
+	std::string getErrorType() const override;
 };

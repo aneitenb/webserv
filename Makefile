@@ -3,10 +3,10 @@
 #                                                         :::      ::::::::    #
 #    Makefile                                           :+:      :+:    :+:    #
 #                                                     +:+ +:+         +:+      #
-#    By: aneitenb <aneitenb@student.hive.fi>        +#+  +:+       +#+         #
+#    By: aneitenb <aneitenb@student.42.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2025/01/20 12:43:09 by aneitenb          #+#    #+#              #
-#    Updated: 2025/03/20 16:21:47 by ivalimak         ###   ########.fr        #
+#    Updated: 2025/03/31 13:50:43 by aneitenb         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -30,14 +30,17 @@ CONFIGDIR	=	config
 SERVERDIR	=	server
 
 CONFIGFILES	=	ConfigErrors.cpp \
-				ConfigFile.cpp
+				ConfigFile.cpp \
+				LocationBlock.cpp \
+				ServerBlock.cpp
+				
 
-SERVERFILES	=	EventLoop.cpp \
-				Server.cpp
+#SERVERFILES	=	EventLoop.cpp \
+				#Server.cpp
 
 FILES	=	main.cpp \
 			$(addprefix $(CONFIGDIR)/, $(CONFIGFILES)) \
-			$(addprefix $(SERVERDIR)/, $(SERVERFILES))
+			#$(addprefix $(SERVERDIR)/, $(SERVERFILES))
 
 SRCS	=	$(addprefix $(SRCDIR)/, $(FILES))
 OBJS	=	$(patsubst $(SRCDIR)/%.cpp, $(OBJDIR)/%.o, $(SRCS))
@@ -52,7 +55,7 @@ $(NAME): $(OBJDIR) $(OBJS)
 $(OBJDIR):
 	@printf "\e[1;38;5;42mWEBSERV >\e[m Creating objdir\n"
 	@mkdir -p $(OBJDIR)/$(CONFIGDIR)
-	@mkdir -p $(OBJDIR)/$(SERVERDIR)
+#	@mkdir -p $(OBJDIR)/$(SERVERDIR)
 
 $(OBJDIR)/%.o: $(SRCDIR)/%.cpp
 	@printf "\e[1;38;5;42mWEBSERV >\e[m Compiling %s\n" $@
