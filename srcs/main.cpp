@@ -6,7 +6,7 @@
 /*   By: aneitenb <aneitenb@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/20 12:50:45 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/03/31 14:11:38 by aneitenb         ###   ########.fr       */
+/*   Updated: 2025/04/01 17:39:19 by aneitenb         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -41,8 +41,6 @@ int main(int ac, char **av)
 		return 1; 
 	}
 	
-	
-	
 	// Parse configuration file
 	ConfigurationFile config;
 	try {
@@ -69,15 +67,17 @@ void displayServerInfo(const ConfigurationFile& config)
 	std::cout << "Found " << serverCount << " server(s)" << std::endl;
 	
 	for (size_t i = 0; i < serverCount; i++) {
+		const ServerBlock& server = config.getServerBlock(i);
+		
 		std::cout << "\n----- Server " << i + 1 << " -----" << std::endl;
-		std::cout << "Host: " << config.getHost(i) << std::endl;
-		std::cout << "Port: " << config.getPort(i) << std::endl;
-		std::cout << "Server Name: " << config.getServerName(i) << std::endl;
-		std::cout << "Root: " << config.getRoot(i) << std::endl;
-		std::cout << "Max Body Size: " << config.getClientMaxBodySize(i) << " bytes" << std::endl;
+		std::cout << "Host: " << server.getHost() << std::endl;
+		std::cout << "Port: " << server.getListen() << std::endl;
+		std::cout << "Server Name: " << server.getServerName() << std::endl;
+		std::cout << "Root: " << server.getRoot() << std::endl;
+		std::cout << "Max Body Size: " << server.getClientMaxBodySize() << " bytes" << std::endl;
 		
 		// Display error pages
-		std::vector<std::pair<int, std::string>> errorPages = config.getErrorPages(i);
+		std::vector<std::pair<int, std::string>> errorPages = server.getErrorPages();
 		if (!errorPages.empty()) {
 			std::cout << "Error Pages:" << std::endl;
 			for (const auto& page : errorPages) {
@@ -86,7 +86,7 @@ void displayServerInfo(const ConfigurationFile& config)
 		}
 		
 		// Display location blocks
-		std::map<std::string, LocationBlock> locations = config.getLocationBlocks(i);
+		std::map<std::string, LocationBlock> locations = server.getLocationBlocks();
 		if (!locations.empty()) {
 			std::cout << "Location Blocks:" << std::endl;
 			for (const auto& loc : locations) {

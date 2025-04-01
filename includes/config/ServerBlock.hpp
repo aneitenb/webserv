@@ -6,7 +6,7 @@
 /*   By: aneitenb <aneitenb@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/31 12:48:30 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/03/31 12:50:10 by aneitenb         ###   ########.fr       */
+/*   Updated: 2025/04/01 17:46:21 by aneitenb         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -29,6 +29,8 @@ private:
 	std::vector<std::pair<int, std::string>> error_pages;
 	std::string index;
 	std::map<std::string, LocationBlock> location_blocks;
+	bool _hasCustomErrorPages;
+	std::string _defaultErrorDir;
 
 public:
 	ServerBlock();
@@ -45,6 +47,9 @@ public:
 	void addErrorPage(int status, const std::string& path);
 	bool hasErrorPage(int status) const;
 	std::string getErrorPage(int status) const;
+	std::vector<std::pair<int, std::string>> getErrorPages() const;
+	std::string getDefaultErrorDir() const;
+	bool hasCustomErrorPages() const;
 	
 	// Getter and setter methods
 	std::string getListen() const;
@@ -62,7 +67,6 @@ public:
 	size_t getClientMaxBodySize() const;
 	void setClientMaxBodySize(size_t size);
 	
-	std::vector<std::pair<int, std::string>> getErrorPages() const;
 	
 	std::string getIndex() const;
 	void setIndex(const std::string& index);

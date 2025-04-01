@@ -6,7 +6,7 @@
 /*   By: aneitenb <aneitenb@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/31 12:48:34 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/03/31 14:07:39 by aneitenb         ###   ########.fr       */
+/*   Updated: 2025/04/01 17:49:25 by aneitenb         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,7 +15,11 @@
 ServerBlock::ServerBlock() :
 	listen(""),
 	host(""),
-	client_max_body_size(0) {
+	client_max_body_size(0),
+	index("index.html"),
+	_hasCustomErrorPages(false),
+	_defaultErrorDir("/errors")
+{
 }
 
 ServerBlock::~ServerBlock() {
@@ -29,7 +33,9 @@ void ServerBlock::clear() {
 	client_max_body_size = 0;
 	error_pages.clear();
 	location_blocks.clear();
-	index = "";
+	index = "index.html";
+	_hasCustomErrorPages = false;
+    _defaultErrorDir = "/errors";
 }
 
 bool ServerBlock::hasLocationBlock(const std::string& path) const {
@@ -74,15 +80,14 @@ void ServerBlock::addErrorPage(int status, const std::string& path) {
 	if (path.length() > MAX_ROOT_PATH_LENGTH) {
 		throw std::runtime_error("Error page path too long (max " + std::to_string(MAX_ROOT_PATH_LENGTH) + " characters)");
 	}
-	
 	// Check if we already have an error page for this status
 	for (size_t i = 0; i < error_pages.size(); i++) {
 		if (error_pages[i].first == status) {
 			throw std::runtime_error("Duplicate error page for status code: " + std::to_string(status));
 		}
 	}
-	
 	error_pages.push_back(std::make_pair(status, path));
+	_hasCustomErrorPages = true;
 }
 
 bool ServerBlock::hasErrorPage(int status) const {
@@ -95,12 +100,28 @@ bool ServerBlock::hasErrorPage(int status) const {
 }
 
 std::string ServerBlock::getErrorPage(int status) const {
-	for (size_t i = 0; i < error_pages.size(); i++) {
-		if (error_pages[i].first == status) {
-			return error_pages[i].second;
+	if (_hasCustomErrorPages) {
+		for (const auto& page : error_pages) {
+			if (page.first == status) {
+				return page.second;
+			}
 		}
 	}
-	return "";
+	//use default if no custom page
+	std::string defaultPath = _defaultErrorDir + "/" + std::to_string(status) + ".html";
+	return defaultPath;
+}
+
+std::vector<std::pair<int, std::string>> ServerBlock::getErrorPages() const {
+	return error_pages;
+}
+
+std::string ServerBlock::getDefaultErrorDir() const {
+	return _defaultErrorDir;
+}
+
+bool ServerBlock::hasCustomErrorPages() const {
+	return _hasCustomErrorPages;
 }
 
 std::string ServerBlock::getListen() const {
@@ -141,10 +162,6 @@ size_t ServerBlock::getClientMaxBodySize() const {
 
 void ServerBlock::setClientMaxBodySize(size_t size) {
 	this->client_max_body_size = size;
-}
-
-std::vector<std::pair<int, std::string>> ServerBlock::getErrorPages() const {
-	return error_pages;
 }
 
 std::string ServerBlock::getIndex() const {

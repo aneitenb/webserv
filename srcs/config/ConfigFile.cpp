@@ -6,7 +6,7 @@
 /*   By: aneitenb <aneitenb@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/28 09:56:54 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/03/31 14:07:58 by aneitenb         ###   ########.fr       */
+/*   Updated: 2025/04/01 18:53:49 by aneitenb         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -133,10 +133,16 @@ int ConfigurationFile::_parseConfigFile(void) {
 			else if (bracketCount == 0) {
 				//end of server block
 				if (_validateServerBlock(currentServer)) {
+					//check if port is already in use by another server
+					std::string newPort = currentServer.getListen();
+					for (size_t i = 0; i < _servers.size(); i++) {
+						if (_servers[i].getListen() == newPort && _servers[i].getHost() == currentServer.getHost()) {
+							throw ErrorInvalidConfig("Port " + newPort + " is already in use by another server with the same host");
+						}
+					}
 					_servers.push_back(currentServer);
-					_ports.push_back(currentServer.getListen());
-				}
 				inServerBlock = false;
+				}
 			}
 			continue;
 		}
@@ -246,6 +252,12 @@ void ConfigurationFile::_parseServerDirective(ServerBlock& server, const std::st
 	else if (key == "index") {
 		if (value.length() > MAX_ROOT_PATH_LENGTH)
 			throw ErrorInvalidConfig("Index path too long (max " + std::to_string(MAX_ROOT_PATH_LENGTH) + " characters)");
+		//check if index file exists in server's root
+		std::string fullPath = server.getRoot() + "/" + value;
+		if (!_isValidPath(fullPath))
+			throw ErrorInvalidConfig("Specified index file does not exist: " + fullPath);
+		if (!_checkPermissions(fullPath, false))
+			throw ErrorInvalidConfig("Insufficient permissions for index file: " + fullPath);
 		server.setIndex(value);
 	}
 }
@@ -347,6 +359,12 @@ void ConfigurationFile::_parseLocationDirective(ServerBlock& server, const std::
 	else if (key == "index") {
 		if (value.length() > MAX_ROOT_PATH_LENGTH)
 			throw ErrorInvalidConfig("Index path too long (max " + std::to_string(MAX_ROOT_PATH_LENGTH) + " characters)");
+		//check if index file exists in server's root
+		std::string fullPath = server.getRoot() + "/" + value;
+		if (!_isValidPath(fullPath))
+			throw ErrorInvalidConfig("Specified index file does not exist: " + fullPath);
+		if (!_checkPermissions(fullPath, false))
+			throw ErrorInvalidConfig("Insufficient permissions for index file: " + fullPath);
 		locBlock.setIndex(value);
 	}
 	
@@ -355,7 +373,6 @@ void ConfigurationFile::_parseLocationDirective(ServerBlock& server, const std::
 }
 
 bool ConfigurationFile::_validateServerBlock(const ServerBlock& server) const {
-	//check required directives
 	if (server.getListen().empty())
 		throw ErrorInvalidConfig("Missing or invalid 'listen' directive");
 	if (server.getHost().empty())
@@ -367,6 +384,14 @@ bool ConfigurationFile::_validateServerBlock(const ServerBlock& server) const {
 		throw ErrorInvalidConfig("Invalid root path: " + server.getRoot());
 	if (!_checkPermissions(server.getRoot(), true))
 		throw ErrorInvalidConfig("Insufficient permissions for root path: " + server.getRoot());
+	
+	if (!server.getIndex().empty()) {
+		std::string fullIndexPath = server.getRoot() + "/" + server.getIndex();
+		if (!_isValidPath(fullIndexPath))
+			throw ErrorInvalidConfig("Default index file not found: " + fullIndexPath);
+		if (!_checkPermissions(fullIndexPath, false))
+			throw ErrorInvalidConfig("Insufficient read permissions for index file: " + fullIndexPath);
+	}
 		
 	const std::map<std::string, LocationBlock>& locationBlocks = server.getLocationBlocks();
 	for (std::map<std::string, LocationBlock>::const_iterator it = locationBlocks.begin(); 
@@ -452,27 +477,12 @@ bool ConfigurationFile::_isValidPort(const std::string& port) const {
 	return true;
 }
 
-int ConfigurationFile::_addPort(const std::string& port) {
-	if (!_isValidPort(port)) {
-		throw ErrorInvalidPort("Port must be a valid number between 0 and 65535");
-	}
-	if (std::find(_ports.begin(), _ports.end(), port) != _ports.end()) {
-		throw ErrorInvalidPort("Port " + port + " is already in use");
-	}
-	_ports.push_back(port);
-	return 0;
-}
-
 bool ConfigurationFile::_isValidPath(const std::string& path) const {
 	if (path.empty())
 		return false;
 		
 	struct stat buffer;
 	return stat(path.c_str(), &buffer) == 0;
-}
-
-bool ConfigurationFile::_isAutoindexValid(const std::string& value) const {
-	return value == "on" || value == "off";
 }
 
 bool ConfigurationFile::_checkPermissions(const std::string& path, bool writeAccess) const {
@@ -551,48 +561,6 @@ ServerBlock ConfigurationFile::getServerBlockByNameAndIP(
 	throw std::runtime_error("No server block found matching name: " + serverName + " and/or IP: " + ipAddress);
 }
 
-std::string ConfigurationFile::getPort(size_t index) const {
-	if (index >= _servers.size())
-		throw std::out_of_range("Server index out of range");
-	return _servers[index].getListen();
-}
-
-std::string ConfigurationFile::getHost(size_t index) const {
-	if (index >= _servers.size())
-		throw std::out_of_range("Server index out of range");
-	return _servers[index].getHost();
-}
-
-std::string ConfigurationFile::getServerName(size_t index) const {
-	if (index >= _servers.size())
-		throw std::out_of_range("Server index out of range");
-	return _servers[index].getServerName();
-}
-
-std::string ConfigurationFile::getRoot(size_t index) const {
-	if (index >= _servers.size())
-		throw std::out_of_range("Server index out of range");
-	return _servers[index].getRoot();
-}
-
-size_t ConfigurationFile::getClientMaxBodySize(size_t index) const {
-	if (index >= _servers.size())
-		throw std::out_of_range("Server index out of range");
-	return _servers[index].getClientMaxBodySize();
-}
-
-std::vector<std::pair<int, std::string>> ConfigurationFile::getErrorPages(size_t index) const {
-	if (index >= _servers.size())
-		throw std::out_of_range("Server index out of range");
-	return _servers[index].getErrorPages();
-}
-
-std::map<std::string, LocationBlock> ConfigurationFile::getLocationBlocks(size_t index) const {
-	if (index >= _servers.size())
-		throw std::out_of_range("Server index out of range");
-	return _servers[index].getLocationBlocks();
-}
-
 size_t ConfigurationFile::getServerCount() const {
-	return _servers.size();
+    return _servers.size();
 }
