@@ -6,7 +6,7 @@
 /*   By: aneitenb <aneitenb@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/28 09:56:54 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/04/01 18:53:49 by aneitenb         ###   ########.fr       */
+/*   Updated: 2025/04/02 17:43:27 by aneitenb         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -133,13 +133,6 @@ int ConfigurationFile::_parseConfigFile(void) {
 			else if (bracketCount == 0) {
 				//end of server block
 				if (_validateServerBlock(currentServer)) {
-					//check if port is already in use by another server
-					std::string newPort = currentServer.getListen();
-					for (size_t i = 0; i < _servers.size(); i++) {
-						if (_servers[i].getListen() == newPort && _servers[i].getHost() == currentServer.getHost()) {
-							throw ErrorInvalidConfig("Port " + newPort + " is already in use by another server with the same host");
-						}
-					}
 					_servers.push_back(currentServer);
 				inServerBlock = false;
 				}
@@ -195,7 +188,9 @@ void ConfigurationFile::_parseServerDirective(ServerBlock& server, const std::st
 	if (key == "listen") {
 		if (!_isValidPort(value))
 			throw ErrorInvalidPort("Invalid port number: " + value);
-		server.setListen(value);
+		if (server.hasPort(value))
+			throw ErrorInvalidConfig("Duplicate port in server block: " + value);
+		server.addListen(value);
 	}
 	else if (key == "host") {
 		if (!_isValidIP(value))
@@ -373,10 +368,10 @@ void ConfigurationFile::_parseLocationDirective(ServerBlock& server, const std::
 }
 
 bool ConfigurationFile::_validateServerBlock(const ServerBlock& server) const {
-	if (server.getListen().empty())
-		throw ErrorInvalidConfig("Missing or invalid 'listen' directive");
+	if (server.getListen().size() == 0)
+		throw ErrorInvalidConfig("Missing 'listen' directive");
 	if (server.getHost().empty())
-		throw ErrorInvalidConfig("Missing or invalid 'host' directive");
+		throw ErrorInvalidConfig("Missing 'host' directive");
 	if (server.getRoot().empty())
 		throw ErrorInvalidConfig("Missing 'root' directive");
 
@@ -472,8 +467,11 @@ bool ConfigurationFile::_isValidPort(const std::string& port) const {
 	
 	if (!(iss >> portNum) || !iss.eof())
 		return false;
-	if (portNum > 65535)
+	if (portNum < 1 || portNum > 65535)
 		return false;
+	if (portNum < 1024 && geteuid() != 0) {
+		return false;  //need root privileges for ports < 1024
+	}
 	return true;
 }
 
@@ -534,33 +532,70 @@ ServerBlock ConfigurationFile::getServerBlock(size_t index) const {
 	return _servers[index];
 }
 
-ServerBlock ConfigurationFile::getServerBlockByNameAndIP(
-	const std::string& serverName, 
-	const std::string& ipAddress) const {
+//returns first server matching IP and port
+const ServerBlock& ConfigurationFile::getServerBlockByIPPort(
+		const std::string& ipAddress, const std::string& port) const {
 	
-	//find an exact match with both name and IP
-	for (size_t i = 0; i < _servers.size(); i++) {
-		if (_servers[i].getServerName() == serverName && 
-			_servers[i].getHost() == ipAddress) {
-			return _servers[i];
+	for (size_t i = 0; i < _servers.size(); ++i) {
+		const ServerBlock& server = _servers[i];
+		const std::vector<std::string>& serverPorts = server.getListen();
+		
+		//If the port is not found anywhere in the vector, std::find returns serverPorts.end(), 
+		//which is a special iterator position that points just past the end of the vector
+		if (std::find(serverPorts.begin(), serverPorts.end(), port) != serverPorts.end()) {
+			// IP matches or server is set to listen on all interfaces
+			if (server.getHost() == ipAddress || server.getHost() == "0.0.0.0") {
+				return server; //return the first matching server
+			}
 		}
 	}
-	//if no exact match, find by IP only
-	for (size_t i = 0; i < _servers.size(); i++) {
-		if (_servers[i].getHost() == ipAddress) {
-			return _servers[i];
+	throw ErrorNoMatchingServer("No server configured for IP:port " + ipAddress + ":" + port);
+}
+
+//returns all servers matching IP and port
+std::vector<const ServerBlock*> ConfigurationFile::getAllServerBlocksByIPPort(
+		const std::string& ipAddress, const std::string& port) const {
+	
+	std::vector<const ServerBlock*> matchingServers;
+	
+	for (size_t i = 0; i < _servers.size(); ++i) {
+		const ServerBlock& server = _servers[i];
+		const std::vector<std::string>& serverPorts = server.getListen();
+		
+		if (std::find(serverPorts.begin(), serverPorts.end(), port) != serverPorts.end()) {
+			if (server.getHost() == ipAddress || server.getHost() == "0.0.0.0") {
+				matchingServers.push_back(&_servers[i]);
+			}
 		}
 	}
-	//find by name only
-	for (size_t i = 0; i < _servers.size(); i++) {
-		if (_servers[i].getServerName() == serverName) {
-			return _servers[i];
+	if (matchingServers.empty())
+		throw ErrorNoMatchingServer("No server configured for IP:port " + ipAddress + ":" + port);
+	return matchingServers;
+}
+
+// returns server matching IP, port, and server name
+const ServerBlock& ConfigurationFile::getServerBlockByHostPortName(
+		const std::string& ipAddress, const std::string& port, 
+		const std::string& serverName) const {
+	
+	// get all matching servers by IP and port
+	std::vector<const ServerBlock*> matchingServers = 
+		getAllServerBlocksByIPPort(ipAddress, port);
+	if (matchingServers.empty()) {
+		throw ErrorNoMatchingServer("No server configured for IP:port " + ipAddress + ":" + port);
+	}
+	
+	// find one with matching server name
+	for (size_t i = 0; i < matchingServers.size(); ++i) {
+		if (matchingServers[i]->getServerName() == serverName) {
+			return *matchingServers[i];
 		}
 	}
 	
-	throw std::runtime_error("No server block found matching name: " + serverName + " and/or IP: " + ipAddress);
+	// If no exact server name match, return the first server (default)
+	return *matchingServers[0];
 }
 
 size_t ConfigurationFile::getServerCount() const {
-    return _servers.size();
+	return _servers.size();
 }

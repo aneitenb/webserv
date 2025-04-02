@@ -6,7 +6,7 @@
 /*   By: aneitenb <aneitenb@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/20 12:47:33 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/04/01 18:13:19 by aneitenb         ###   ########.fr       */
+/*   Updated: 2025/04/02 17:32:26 by aneitenb         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -54,7 +54,10 @@ public:
 	void initialize(const std::string& filename);
 
 	ServerBlock getServerBlock(size_t index) const;
-	ServerBlock getServerBlockByNameAndIP(const std::string& serverName, const std::string& ipAddress) const;
+	const ServerBlock& getServerBlockByIPPort(const std::string& ipAddress, const std::string& port) const;
+	std::vector<const ServerBlock*> getAllServerBlocksByIPPort(const std::string& ipAddress, const std::string& port) const;
+	const ServerBlock& getServerBlockByHostPortName(const std::string& ipAddress, const std::string& port, 
+				const std::string& serverName) const;
 	size_t getServerCount() const;
 };
 

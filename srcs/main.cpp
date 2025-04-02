@@ -6,7 +6,7 @@
 /*   By: aneitenb <aneitenb@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/20 12:50:45 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/04/01 17:39:19 by aneitenb         ###   ########.fr       */
+/*   Updated: 2025/04/02 17:06:24 by aneitenb         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -71,7 +71,15 @@ void displayServerInfo(const ConfigurationFile& config)
 		
 		std::cout << "\n----- Server " << i + 1 << " -----" << std::endl;
 		std::cout << "Host: " << server.getHost() << std::endl;
-		std::cout << "Port: " << server.getListen() << std::endl;
+		std::cout << "Ports: ";
+		const std::vector<std::string>& ports = server.getListen();
+		for (size_t i = 0; i < ports.size(); ++i) {
+   		 std::cout << ports[i];
+    		if (i < ports.size() - 1) {
+     		   std::cout << ", ";
+    		}
+		}
+		std::cout << std::endl;
 		std::cout << "Server Name: " << server.getServerName() << std::endl;
 		std::cout << "Root: " << server.getRoot() << std::endl;
 		std::cout << "Max Body Size: " << server.getClientMaxBodySize() << " bytes" << std::endl;

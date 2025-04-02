@@ -6,7 +6,7 @@
 /*   By: aneitenb <aneitenb@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/29 15:46:34 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/03/31 14:08:04 by aneitenb         ###   ########.fr       */
+/*   Updated: 2025/04/02 17:21:39 by aneitenb         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -55,4 +55,12 @@ ErrorInvalidIP::ErrorInvalidIP(const std::string& message)
 
 std::string ErrorInvalidIP::getErrorType() const {
 	return "IP Address Error";
+}
+
+// ===== ErrorNoMatchingServer =====
+ErrorNoMatchingServer::ErrorNoMatchingServer(const std::string& message) 
+    : ConfigError(message) {}
+
+std::string ErrorNoMatchingServer::getErrorType() const {
+    return "Server Matching Error";
 }

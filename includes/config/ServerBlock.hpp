@@ -6,7 +6,7 @@
 /*   By: aneitenb <aneitenb@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/31 12:48:30 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/04/01 17:46:21 by aneitenb         ###   ########.fr       */
+/*   Updated: 2025/04/02 17:43:50 by aneitenb         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,19 +16,20 @@
 #include "LocationBlock.hpp"
 
 #define MAX_SERVER_NAME_LENGTH 50
+#define MAX_PATH_LENGTH 50
 #define MAX_ROOT_PATH_LENGTH 255
 #define MAX_BODY_SIZE 1073741824 // 1GB
 
 class ServerBlock {
 private:
-	std::string listen;
-	std::string host;
-	std::string server_name;
-	std::string root;
-	size_t client_max_body_size;
-	std::vector<std::pair<int, std::string>> error_pages;
-	std::string index;
-	std::map<std::string, LocationBlock> location_blocks;
+	std::vector<std::string> _listen;
+	std::string _host;
+	std::string _serverName;
+	std::string _root;
+	size_t _clientMaxBodySize;
+	std::vector<std::pair<int, std::string>> _errorPages;
+	std::string _index;
+	std::map<std::string, LocationBlock> _locationBlocks;
 	bool _hasCustomErrorPages;
 	std::string _defaultErrorDir;
 
@@ -52,8 +53,10 @@ public:
 	bool hasCustomErrorPages() const;
 	
 	// Getter and setter methods
-	std::string getListen() const;
-	void setListen(const std::string& listen);
+	const std::vector<std::string>& getListen() const;
+	void addListen(const std::string& port);
+	bool hasPort(const std::string& port) const;
+	//void setListen(const std::string& listen);
 	
 	std::string getHost() const;
 	void setHost(const std::string& host);
