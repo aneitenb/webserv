@@ -3,14 +3,14 @@
 /*                                                        :::      ::::::::   */
 /*   main.cpp                                           :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: aneitenb <aneitenb@student.42.fr>          +#+  +:+       +#+        */
+/*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/20 12:50:45 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/03/20 15:56:56 by aneitenb         ###   ########.fr       */
+/*   Updated: 2025/04/03 15:56:59 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "../includes/Webserv.hpp"
+#include "../includes/WebServer.hpp"
 #include "../includes/ConfigFile.hpp"
 
 int main(int argc, char **argv)

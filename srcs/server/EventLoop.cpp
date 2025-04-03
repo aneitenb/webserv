@@ -6,12 +6,16 @@
 /*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/24 19:32:39 by mspasic           #+#    #+#             */
-/*   Updated: 2025/03/25 16:44:48 by mspasic          ###   ########.fr       */
+/*   Updated: 2025/04/03 16:43:37 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "../server/EventLoop.hpp"
 #include <string.h>
+#include <iostream> //cerr
+#include <unistd.h> //close
+
+EventLoop::EventLoop(){};
 
 EventLoop::EventLoop(int maxEvents){
     //clean up just in case

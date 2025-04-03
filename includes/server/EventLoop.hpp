@@ -6,14 +6,14 @@
 /*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/20 14:51:49 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/03/24 19:49:02 by mspasic          ###   ########.fr       */
+/*   Updated: 2025/04/03 16:43:18 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #pragma once
 
 #include <vector>
-#include "VirtualServer.hpp"
+#include "VirtualHost.hpp"
 #include <sys/epoll.h>
 
 #define MAX_EVENTS 1024
@@ -43,6 +43,7 @@ private:
     // int _maxEvents = MAX_EVENTS;
 public:
     EventLoop(int maxEvents);
+    EventLoop();
     ~EventLoop();
     int     addToEpoll (int fd, uint32_t events);
     int     modifyEpoll();

@@ -3,16 +3,16 @@
 /*                                                        :::      ::::::::   */
 /*   ConfigErrors.hpp                                   :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: aneitenb <aneitenb@student.hive.fi>        +#+  +:+       +#+        */
+/*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/29 15:43:47 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/01/29 16:55:16 by aneitenb         ###   ########.fr       */
+/*   Updated: 2025/04/03 15:56:59 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #pragma once
 
-#include "Webserv.hpp"
+#include "WebServer.hpp"
 
 class ErrorOpeningConfFile : public std::exception {
 private:

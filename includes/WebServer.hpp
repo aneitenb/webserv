@@ -1,12 +1,12 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   Webserv.hpp                                        :+:      :+:    :+:   */
+/*   WebServerer.hpp                                      :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: aneitenb <aneitenb@student.hive.fi>        +#+  +:+       +#+        */
+/*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/20 12:47:42 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/02/11 15:16:08 by aneitenb         ###   ########.fr       */
+/*   Updated: 2025/04/03 15:55:50 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -27,3 +27,23 @@
 #include <unistd.h>
 
 #include <exception>
+
+#include "EventLoop.hpp"
+#include "Listener.hpp"
+#include "VirtualHost.hpp"
+#include "config/ConfigFile.hpp"
+
+class	WebServer{
+private:
+	std::vector<Listener>       _listeners;
+	std::vector<VirtualHost>	_virtualHosts;
+	EventLoop					_eventLoop;
+	WebServer obj(const WebServer& other) = delete;
+	WebServer& operator=(const WebServer& other) = delete;
+public:
+	WebServer();
+	~WebServer();
+
+	void	initialize(std::vector<ServerBlocks> serBlocks); //create listening and virtual hosts, set them
+	void	run(void); //epoll + accepting connections + event handling
+};

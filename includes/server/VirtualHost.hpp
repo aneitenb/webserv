@@ -1,18 +1,18 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   VirtualServer.hpp                                  :+:      :+:    :+:   */
+/*   VirtualHost.hpp                                    :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/20 16:26:51 by mspasic           #+#    #+#             */
-/*   Updated: 2025/03/25 17:19:50 by mspasic          ###   ########.fr       */
+/*   Updated: 2025/04/03 15:55:12 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #pragma once
 
-#include "ConfigFile.hpp"
+// #include "config"
 #include <arpa/inet.h> //uints, sockaddr_in
 #include <string> //std::string
 #include <sys/epoll.h> //struct epoll_event
@@ -24,7 +24,7 @@
 #define LISTENING 0
 #define CLIENT 1
 
-class VirtualServer {
+class VirtualHost {
     private:
         uint16_t            _port; /*or is all this going to stay parsend in the conif class and we just point at it here?*/
         uint32_t            _IP;
@@ -35,11 +35,12 @@ class VirtualServer {
         int                 _sock_err;
         int                 _type;
         struct epoll_event  _event;
-        VirtualServer() = default;
+        //locations oor a config file?
+        VirtualHost() = default;
     public:
-        VirtualServer(int list_sock_fd); //for clients
-        VirtualServer(); // for listening sockets
-        ~VirtualServer();
+        VirtualHost(int list_sock_fd); //for clients
+        VirtualHost(); // for listening sockets
+        ~VirtualHost();
         int setup_fd(void);
         int get_type();
 };

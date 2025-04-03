@@ -3,16 +3,16 @@
 /*                                                        :::      ::::::::   */
 /*   ConfigFile.hpp                                     :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: aneitenb <aneitenb@student.hive.fi>        +#+  +:+       +#+        */
+/*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/20 12:47:33 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/02/11 17:15:04 by aneitenb         ###   ########.fr       */
+/*   Updated: 2025/04/03 15:56:59 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #pragma once
 
-#include "Webserv.hpp"
+#include "WebServer.hpp"
 
 //Type definitions for readability
 typedef std::map<std::string, std::string> ServerBlocks;

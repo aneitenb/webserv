@@ -1,7 +1,7 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   VirtualServer.cpp                                  :+:      :+:    :+:   */
+/*   VirtualHost.cpp                                  :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
@@ -10,18 +10,19 @@
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "VirtualServer.hpp"
+#include "VirtualHost.hpp"
 
 // #include <sys/socket.h>
 // #include <netinet/in.h>
-// #include <unistd.h>
+// #include <unistd.h> //close
 #include <fcntl.h> //fcntl
 #include <netdb.h> //getaddrinfo
 // #include <poll.h>
 #include <cstring> //memset
+#include <iostream>
 
 
-VirtualServer::VirtualServer(int list_sock_fd){
+VirtualHost::VirtualHost(int list_sock_fd){
     std::cout << "Creating client server//New connection from a client accepted\n";
     _type = CLIENT;
     _sockfd = -1;
@@ -29,13 +30,13 @@ VirtualServer::VirtualServer(int list_sock_fd){
     if ((_sockfd = accept(list_sock_fd, (struct sockaddr *)&_address, &_addr_size)) == -1){
         std::cerr << "Error: accept() failed; could not accept client\n";
         std::cerr << strerror(errno) << "\n";
-        this->~VirtualServer();  //can i do this? 
+        this->~VirtualHost();  //can i do this? 
     }
 
     if (fcntl(_sockfd, F_SETFL, O_NONBLOCK) == -1){
         std::cerr << "Error: difailed to manipulate client flags\n";
         std::cerr << strerror(errno) << "\n";
-        this->~VirtualServer();          
+        this->~VirtualHost();          
     }
     //get info if you want but not needed 
     _event.data.fd = _sockfd;
@@ -44,7 +45,7 @@ VirtualServer::VirtualServer(int list_sock_fd){
     //create connection object with client information
 }
 
-VirtualServer::VirtualServer(){ //arg is going to change
+VirtualHost::VirtualHost(){ //arg is going to change
     std::cout << "Creating listening socket\n";
     _type = LISTENING;
     _sockfd = -1;
@@ -63,7 +64,7 @@ VirtualServer::VirtualServer(){ //arg is going to change
     }
 
     if (this->setup_fd() == -1)
-        this->~VirtualServer(); //can I do this?
+        this->~VirtualHost(); //can I do this?
     
     _event.data.fd = _sockfd;
     _event.events = EPOLLIN | EPOLLET;
@@ -71,14 +72,14 @@ VirtualServer::VirtualServer(){ //arg is going to change
     //add to epoll array
 }
 
-VirtualServer::~VirtualServer(){
+VirtualHost::~VirtualHost(){
     std::cout << "Virtual server destroyed\n";
     if (_sockfd)
         close(_sockfd);
     _sockfd = 0;
 }
 
-int VirtualServer::setup_fd(void){
+int VirtualHost::setup_fd(void){
 
     //socket()
     if (_sockfd = socket(PF_INET, SOCK_STREAM, 0) == -1){
@@ -128,6 +129,6 @@ int VirtualServer::setup_fd(void){
     return (0);
 }
 
-int VirtualServer::get_type(void){
+int VirtualHost::get_type(void){
     return(_type);
 }
