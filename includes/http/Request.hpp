@@ -6,7 +6,7 @@
 /*   By: ivalimak <ivalimak@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/20 16:46:50 by ivalimak          #+#    #+#             */
-/*   Updated: 2025/03/27 15:17:38 by ivalimak         ###   ########.fr       */
+/*   Updated: 2025/04/03 15:29:36 by ivalimak         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -35,8 +35,6 @@ class Request
 	private:
 		headerlist_t	_headers;
 
-		std::string	_resourcePath;
-		std::string	_partialBody;
 		std::string	_contentType;
 		std::string	_version;
 		std::string	_method;
@@ -64,7 +62,6 @@ class Request
 		const headerlist_t	&getHeaderList(void) const;
 
 		const std::string	&getHeader(const std::string &key) const;
-		const std::string	&getResourcePath(void) const;
 		const std::string	&getContentType(void) const;
 		const std::string	&getVersion(void) const;
 		const std::string	&getMethod(void) const;

@@ -6,7 +6,7 @@
 /*   By: ivalimak <ivalimak@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/20 17:06:20 by ivalimak          #+#    #+#             */
-/*   Updated: 2025/03/27 15:33:24 by ivalimak         ###   ########.fr       */
+/*   Updated: 2025/04/03 15:29:24 by ivalimak         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,7 +14,7 @@
 #include "http/Request.hpp"
 
 #define _find(c, x)	(std::find(c.cbegin(), c.cend(), x))
-#define _trimLWS(s)	(s.erase(0, s.find_first_not_of("\r\n \t")), s.erase(s.find_last_not_of("\r\n \t") + 1))
+#define _trimLWS(s)	(s.erase(0, s.find_first_not_of(LWS)), s.erase(s.find_last_not_of(LWS) + 1))
 
 Request::Request(const std::string &rawRequest): _contentLength(0), _chunked(false) {
 	std::string	bodySection;
@@ -101,11 +101,9 @@ std::string	Request::_decodeURI(const std::string &uri) {
 }
 
 bool	Request::_parseRequestLine(std::stringstream line) {
-	static const std::array<std::string, 3>	_validMethods = {"GET", "POST", "DELETE"};
-
 	if (!(line >> this->_method >> this->_uri >> this->_version))
 		return false;
-	return (_find(_validMethods, this->_method) && this->_version == "HTTP/1.1") ? true : false;
+	return true;
 }
 
 bool	Request::_parseHeaders(std::stringstream rawHeaders) {
@@ -123,7 +121,6 @@ bool	Request::_parseHeaders(std::stringstream rawHeaders) {
 				return false;
 			key = line.substr(0, sep);
 			val = line.substr(sep + 1);
-			_trimLWS(key);
 			_trimLWS(val);
 			this->_headers[key] = val;
 		}
@@ -151,8 +148,6 @@ const std::string	&Request::getHeader(const std::string &key) const {
 		throw Request::FieldNotFoundException();
 	return field->second;
 }
-
-const std::string	&Request::getResourcePath(void) const { return this->_resourcePath; }
 
 const std::string	&Request::getContentType(void) const { return this->_contentType; }
 
