@@ -6,7 +6,7 @@
 /*   By: ivalimak <ivalimak@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/20 17:06:20 by ivalimak          #+#    #+#             */
-/*   Updated: 2025/04/03 15:29:24 by ivalimak         ###   ########.fr       */
+/*   Updated: 2025/04/03 16:57:26 by ivalimak         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -43,48 +43,48 @@ Request::Request(const std::string &rawRequest): _contentLength(0), _chunked(fal
 	} catch (std::exception) {} // is missing Content-Type an error ?
 	bodySection = (rawRequest.length() > headerEnd + 4) ? rawRequest.substr(headerEnd + 4) : "";
 	if (!bodySection.empty()) {
-		bool _rv = (this->_chunked) ? this->_processChunkedBody(std::stringstream(bodySection)) : this->_parseBody(bodySection);
+		bool _rv = (this->_chunked) ? this->processChunkedBody(std::stringstream(bodySection)) : this->_parseBody(bodySection);
 		if (!_rv)
 			throw Request::InvalidBodyException();
 	}
-	this->_parsed = true;
+	this->_parsed = !this->_chunked;
 }
 
 Request::~Request(void) {}
 
-// private methods
-bool Request::_processChunkedBody(std::stringstream bodySection) {
+// public methods
+bool	Request::processChunkedBody(std::stringstream bodySection) {
+	std::string	entityHeaders;
 	std::string	chunkSizeStr;
-	std::string chunkData;
+	std::string	headerLine;
+	std::string	chunkData;
 	size_t		chunkSize;
-	size_t		length;
-	char		*Data;
 
-	length = 0;
 	std::getline(bodySection, chunkSizeStr);
-	if (chunkSizeStr.empty() || chunkSizeStr[chunkSizeStr.length() - 1] != *CR)
+	if (chunkSizeStr.empty() || *chunkSizeStr.end() != *CR)
 		return false;
-	chunkSize = std::stoul(chunkSizeStr.substr(0, chunkSizeStr.find(";\t")), 0, 16);
-	while (chunkSize > 0) {
-		Data = new char[chunkSize + 3];
-		bodySection.read(Data, chunkSize + 2);
-		chunkData = std::string(Data);
-		if (chunkData.length() != chunkSize + 2 || chunkData.substr(chunkSize, 2) != CRLF)
+	try {
+		chunkSize = std::stoul(chunkSizeStr.substr(0, chunkSizeStr.find(";" CR)), 0, 16);
+	} catch (std::exception &) { return false; } // invalid chunk size line
+	if (chunkSize) {
+		chunkData.resize(chunkSize);
+		bodySection.read(&chunkData[0], chunkSize);
+		if (chunkData.length() != chunkSize)
 			return false;
-		this->_body += std::string(Data).substr(0, chunkSize);
-		length += chunkSize;
-		delete[] Data;
-		std::getline(bodySection, chunkSizeStr);
-		if (chunkSizeStr.empty() || chunkSizeStr[chunkSizeStr.length() - 1] != *CR)
-			return false;
-		chunkSize = std::stoul(chunkSizeStr.substr(0, chunkSizeStr.find(";\t")), 0, 16);
+		this->_contentLength += chunkSize;
+		this->_body += chunkData;
+	} else {
+		entityHeaders = "";
+		for (std::getline(bodySection, headerLine); !headerLine.empty();std::getline(bodySection, headerLine))
+			entityHeaders += headerLine;
+		this->_parseHeaders(std::stringstream(entityHeaders));
+		this->_chunked = false;
+		this->_parsed = true;
 	}
-	// entity header ?
-	this->_contentLength = length;
-	this->_chunked = 0;
 	return true;
 }
 
+// private methods
 std::string	Request::_decodeURI(const std::string &uri) {
 	std::string	hexStr;
 	std::string	_uri;

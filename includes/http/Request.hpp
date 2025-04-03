@@ -6,7 +6,7 @@
 /*   By: ivalimak <ivalimak@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/20 16:46:50 by ivalimak          #+#    #+#             */
-/*   Updated: 2025/04/03 15:29:36 by ivalimak         ###   ########.fr       */
+/*   Updated: 2025/04/03 16:23:28 by ivalimak         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -46,9 +46,9 @@ class Request
 		bool	_chunked;
 		bool	_parsed;
 
+		// private methods
 		std::string	_decodeURI(const std::string &uri);
 
-		bool	_processChunkedBody(std::stringstream bodySection);
 		bool	_parseRequestLine(std::stringstream line);
 		bool	_parseHeaders(std::stringstream rawHeaders);
 		bool	_parseBody(const std::string &rawBody);
@@ -57,6 +57,9 @@ class Request
 		Request(void) = delete;
 		Request(const std::string &rawRequest);
 		~Request(void);
+
+		// public methods
+		bool	processChunkedBody(std::stringstream bodySection);
 
 		// public getters
 		const headerlist_t	&getHeaderList(void) const;
