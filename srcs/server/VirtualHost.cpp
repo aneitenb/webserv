@@ -21,6 +21,43 @@
 #include <cstring> //memset
 #include <iostream>
 
+int VirtualHost::getAddrInfo(void){
+    struct addrinfo hints;
+    int status;
+
+    hints.ai_family = AF_INET; //IPv4
+    hints.ai_socktype = SOCK_STREAM; //TCP
+    hints.ai_flags = AI_PASSIVE; //for binding (listening) maybe not needed if we always provide an IP or hostname
+    if ((status = (getaddrinfo(_IP, _port, &hints, &_result))) != 0){
+        std::cerr << "Error: getaddrinfo() failed: ";
+        if (status == EAI_SYSTEM)
+            std::cerr << strerror(errno) << "\n";
+        else
+            std::cerr << gai_strerror(status) << "\n";
+        return (-1);
+    }
+    if (_result->ai_family != AF_INET){
+        std::cerr << "Error: getaddrinfo failed but unclear why.\n";
+        return (-1);
+    }
+}
+
+void VirtualHost::ftMemset(void *dest, std::size_t count){
+    unsigned char *p = (unsigned char*)dest;
+    for (std::size_t i = 0; i < count; i++){
+        p[i] = 0;
+    }
+}
+
+VirtualHost::VirtualHost(const ServerBlocks &info, std::string port){
+    _sockfd = nullptr;
+    *_info = info;
+    _port = port.c_str();
+    _IP = (info.getHost()).c_str();
+    ftMemset(&_result, sizeof(_result));
+}
+
+/*after this for listening sockets and clients*/
 
 VirtualHost::VirtualHost(int list_sock_fd){
     std::cout << "Creating client server//New connection from a client accepted\n";
@@ -46,22 +83,22 @@ VirtualHost::VirtualHost(int list_sock_fd){
 }
 
 VirtualHost::VirtualHost(){ //arg is going to change
-    std::cout << "Creating listening socket\n";
-    _type = LISTENING;
-    _sockfd = -1;
-    memset(&_address, 0, sizeof(_address)); //clear out just in case; do we need the 2nd memset then?
-    _address.sin_port = htons(PORT);
-    _address.sin_family = AF_INET;
-    memset(&(_address.sin_zero), '\0', 8); //zero the rest of the struct
-    _addr_size = sizeof(_address);
+    // std::cout << "Creating listening socket\n";
+    // _type = LISTENING;
+    // _sockfd = -1;
+    // memset(&_address, 0, sizeof(_address)); //clear out just in case; do we need the 2nd memset then?
+    // _address.sin_port = htons(PORT);
+    // _address.sin_family = AF_INET;
+    // memset(&(_address.sin_zero), '\0', 8); //zero the rest of the struct
+    // _addr_size = sizeof(_address);
     //get the IP address; IP is std::string   NOT ALLOWED?
 
     
-    if (inet_pton(AF_INET, IP, &(_address.sin_addr.s_addr)) <= 0){
-        std::cerr << "Error: inet_pton() failed\n";
-        std::cerr << strerror(errno) << "\n";
-        return (-1);
-    }
+    // if (inet_pton(AF_INET, IP, &(_address.sin_addr.s_addr)) <= 0){
+    //     std::cerr << "Error: inet_pton() failed\n";
+    //     std::cerr << strerror(errno) << "\n";
+    //     return (-1);
+    // }
 
     if (this->setup_fd() == -1)
         this->~VirtualHost(); //can I do this?

@@ -37,6 +37,7 @@ class	WebServer{
 private:
 	std::vector<Listener>       _listeners;
 	std::vector<VirtualHost>	_virtualHosts;
+	std::vector<int>			_fds;
 	EventLoop					_eventLoop;
 	WebServer obj(const WebServer& other) = delete;
 	WebServer& operator=(const WebServer& other) = delete;

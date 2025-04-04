@@ -6,7 +6,7 @@
 /*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/20 16:26:51 by mspasic           #+#    #+#             */
-/*   Updated: 2025/04/03 15:55:12 by mspasic          ###   ########.fr       */
+/*   Updated: 2025/04/04 18:25:50 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,6 +16,7 @@
 #include <arpa/inet.h> //uints, sockaddr_in
 #include <string> //std::string
 #include <sys/epoll.h> //struct epoll_event
+#include <ConfigFile.hpp> //to become serverblock
 
 #define PORT 8080
 #define IP "127.0.0.1"
@@ -26,23 +27,28 @@
 
 class VirtualHost {
     private:
-        uint16_t            _port; /*or is all this going to stay parsend in the conif class and we just point at it here?*/
-        uint32_t            _IP;
-        std::string         _serv_name;
-        int                 _sockfd;
-        struct sockaddr_in  _address;
-        socklen_t           _addr_size;
+        ServerBlocks        *_info;
+        struct addrinfo*    _result; //needs to be freed freeaddrinfo
+        const char*         _port; /*or is all this going to stay parsend in the conif class and we just point at it here?*/
+        const char*         _IP;
+        const char*         _serv_name;
+        int                 *_sockfd;
+        // struct sockaddr_in  _address;
+        // socklen_t           _addr_size;
         int                 _sock_err;
-        int                 _type;
+        // int                 _type;
         struct epoll_event  _event;
         //locations oor a config file?
         VirtualHost() = default;
     public:
+        VirtualHost(const ServerBlocks &info, std::string port); 
         VirtualHost(int list_sock_fd); //for clients
         VirtualHost(); // for listening sockets
         ~VirtualHost();
         int setup_fd(void);
         int get_type();
+        void ftMemset(void *dest, std::size_t count);
+        int getAddrInfo(void);
 };
 
 // struct addrinfo {
