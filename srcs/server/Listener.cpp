@@ -6,16 +6,14 @@
 /*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/04/04 15:10:44 by mspasic           #+#    #+#             */
-/*   Updated: 2025/04/06 22:24:52 by mspasic          ###   ########.fr       */
+/*   Updated: 2025/04/06 22:41:50 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Listener.hpp"
 #include <unistd.h>
 
-Listener::Listener(){
-    _sockFd = -1;
-}
+Listener::Listener(std::string port, std::string host) : _port(port), _host(host), _sockFd(-1){}
 
 Listener::Listener(Listener&& obj){
     this->setSocketFd(&obj._sockFd);

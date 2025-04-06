@@ -6,7 +6,7 @@
 /*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/20 16:26:51 by mspasic           #+#    #+#             */
-/*   Updated: 2025/04/06 21:37:44 by mspasic          ###   ########.fr       */
+/*   Updated: 2025/04/06 23:18:58 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -35,7 +35,7 @@ class VirtualHost {
         int                 *_sockfd;
         // struct sockaddr_in  _address;
         // socklen_t           _addr_size;
-        int                 _sock_err;
+        int                 _sock_err; //not needed?
         // int                 _type;
         struct epoll_event  _event;
         //locations oor a config file?
@@ -48,9 +48,10 @@ class VirtualHost {
         VirtualHost(int list_sock_fd); //for clients
         ~VirtualHost();
         int setup_fd(void);
-        int get_type();
-        void ftMemset(void *dest, std::size_t count);
-        int getAddrInfo(void);
+        // int get_type() const;
+        struct sockaddr* getAddress() const;
+        socklen_t getAddressLength() const;
+        int addressInfo(void);
 };
 
 // struct addrinfo {
