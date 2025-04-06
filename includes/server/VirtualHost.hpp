@@ -6,7 +6,7 @@
 /*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/20 16:26:51 by mspasic           #+#    #+#             */
-/*   Updated: 2025/04/04 18:25:50 by mspasic          ###   ########.fr       */
+/*   Updated: 2025/04/06 21:37:44 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -27,7 +27,7 @@
 
 class VirtualHost {
     private:
-        ServerBlocks        *_info;
+        ServerBlock        _info;
         struct addrinfo*    _result; //needs to be freed freeaddrinfo
         const char*         _port; /*or is all this going to stay parsend in the conif class and we just point at it here?*/
         const char*         _IP;
@@ -41,9 +41,11 @@ class VirtualHost {
         //locations oor a config file?
         VirtualHost() = default;
     public:
-        VirtualHost(const ServerBlocks &info, std::string port); 
-        VirtualHost(int list_sock_fd); //for clients
+        VirtualHost(const ServerBlock &info, std::string port); 
+        //move constructor
+        VirtualHost(VirtualHost&& other) noexcept;
         VirtualHost(); // for listening sockets
+        VirtualHost(int list_sock_fd); //for clients
         ~VirtualHost();
         int setup_fd(void);
         int get_type();

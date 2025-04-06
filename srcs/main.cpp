@@ -6,7 +6,7 @@
 /*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/20 12:50:45 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/04/03 15:56:59 by mspasic          ###   ########.fr       */
+/*   Updated: 2025/04/06 19:17:49 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -39,7 +39,7 @@ int main(int argc, char **argv)
 		std::cout << "Configuration initialized successfully!" << std::endl;
 		
 		// Get configuration data
-		const std::vector<ServerBlocks>& servers = config.getServers();
+		const std::vector<ServerBlock>& servers = config.getServers();
 		const std::vector<size_t>& ports = config.getPorts();
 
 		std::cout << "\nConfiguration Summary:" << std::endl;

@@ -6,26 +6,39 @@
 /*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/04/04 15:10:44 by mspasic           #+#    #+#             */
-/*   Updated: 2025/04/04 15:32:15 by mspasic          ###   ########.fr       */
+/*   Updated: 2025/04/06 22:24:52 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Listener.hpp"
+#include <unistd.h>
 
 Listener::Listener(){
-    _sockFd = nullptr;
+    _sockFd = -1;
+}
+
+Listener::Listener(Listener&& obj){
+    this->setSocketFd(&obj._sockFd);
+    _port = std::move(obj._port);
+    _host = std::move(obj._host);
 }
 
 Listener::~Listener(){
-    _sockFd = nullptr;
+    if (_sockFd != -1){
+        close(_sockFd);
+        _sockFd = -1;
+    }
 }
 
 const int Listener::getSocketFd(void){
-    return(*_sockFd);
+    return(_sockFd);
 }
 
-void Listener::setSocketFd(int &fd){
-    *_sockFd = fd;
+int Listener::setSocketFd(int *fd){
+    _sockFd = dup(*fd);
+    close(*fd);
+    *fd = -1;
+    return (_sockFd);
 }
 
 

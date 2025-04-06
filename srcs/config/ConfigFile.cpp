@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   ConfigFile.cpp                                     :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: aneitenb <aneitenb@student.hive.fi>        +#+  +:+       +#+        */
+/*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/28 09:56:54 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/02/12 16:21:00 by aneitenb         ###   ########.fr       */
+/*   Updated: 2025/04/06 19:17:49 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -50,7 +50,7 @@ int ConfigurationFile::_readFile(void) {
 
 int ConfigurationFile::_parseConfigFile(void) {
 	std::string line;
-	ServerBlocks currentServer;
+	ServerBlock currentServer;
 	bool inServerBlock;
 	bool inLocationBlock;
 	std::string currentLocation;
@@ -245,7 +245,7 @@ std::string ConfigurationFile::_trimWhitespace(const std::string& str) const {
 	return str.substr(start, end - start + 1);
 }
 
-bool ConfigurationFile::_validateServerBlock(const ServerBlocks& directives) const {
+bool ConfigurationFile::_validateServerBlock(const ServerBlock& directives) const {
 	// Check required directives
 	const std::string requiredDirectives[] = {"listen", "host", "root"};
 	
@@ -255,7 +255,7 @@ bool ConfigurationFile::_validateServerBlock(const ServerBlocks& directives) con
 		}
 	}
 	// Validate each directive
-	for (ServerBlocks::const_iterator it = directives.begin(); it != directives.end(); ++it) {
+	for (ServerBlock::const_iterator it = directives.begin(); it != directives.end(); ++it) {
 		std::string directive = it->first;
 		std::string value = it->second;
 		
@@ -293,7 +293,7 @@ bool ConfigurationFile::_validateServerBlock(const ServerBlocks& directives) con
 }
 
 void ConfigurationFile::_setupDefaultServer(void) {
-	ServerBlocks	defaultServer;
+	ServerBlock	defaultServer;
 	
 	defaultServer["listen"] = "8080";
 	defaultServer["host"] = "127.0.0.1";
@@ -385,8 +385,8 @@ bool ConfigurationFile::_isAutoindexValid(const std::string& value) const{
 	return false;
 }
 
-std::string ConfigurationFile::_getValue(const ServerBlocks& directives, const std::string& key) const {
-	ServerBlocks::const_iterator it;
+std::string ConfigurationFile::_getValue(const ServerBlock& directives, const std::string& key) const {
+	ServerBlock::const_iterator it;
 	
 	it = directives.find(key);
 	if (it != directives.end())	//If find() can't find the key, it returns this end() position
@@ -395,12 +395,12 @@ std::string ConfigurationFile::_getValue(const ServerBlocks& directives, const s
 		return "";	//return empty string if key word isn't found
 }
 
-void ConfigurationFile::_setValue(ServerBlocks& directives, const std::string& key, const std::string& value) {
+void ConfigurationFile::_setValue(ServerBlock& directives, const std::string& key, const std::string& value) {
 	directives[key] = value;
 }
 
-bool ConfigurationFile::_hasValue(const ServerBlocks& directives, const std::string& key) const{
-	ServerBlocks::const_iterator it = directives.find(key);
+bool ConfigurationFile::_hasValue(const ServerBlock& directives, const std::string& key) const{
+	ServerBlock::const_iterator it = directives.find(key);
 	
 	if (it != directives.end())
 		return true;	//key was found
@@ -408,7 +408,7 @@ bool ConfigurationFile::_hasValue(const ServerBlocks& directives, const std::str
 		return false;
 }
 
-const std::vector<ServerBlocks>& ConfigurationFile::getServers(void) const {
+const std::vector<ServerBlock>& ConfigurationFile::getServers(void) const {
 	return _servers;
 }
 

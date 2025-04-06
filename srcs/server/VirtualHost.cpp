@@ -48,14 +48,37 @@ void VirtualHost::ftMemset(void *dest, std::size_t count){
         p[i] = 0;
     }
 }
-
-VirtualHost::VirtualHost(const ServerBlocks &info, std::string port){
+//check if you have copy constructors everywhere since you use vectors; push_back() copies/moves objects
+VirtualHost::VirtualHost(const ServerBlock &info, std::string port){
     _sockfd = nullptr;
-    *_info = info;
+    _sock_err = 0; //do I leave it like this?
+    _info = info;
     _port = port.c_str();
     _IP = (info.getHost()).c_str();
     ftMemset(&_result, sizeof(_result));
+    ftMemset(&_event, sizeof(_event)); //do I leave this like this?
 }
+
+VirtualHost::VirtualHost(VirtualHost&& other) noexcept {
+    _info = other._info;
+    _result = std::move(other._result);
+    _port = std::move(other._port);
+    _IP = std::move(other._IP);
+    _serv_name = std::move(other._serv_name);
+    _sockfd = std::move(other._sockfd);
+    _sock_err = std::move(other._sock_err);
+    _event = std::move(other._event);
+}
+
+VirtualHost::~VirtualHost(){
+    if (_result)
+        freeaddrinfo(_result);
+    if (*_sockfd != -1){
+        close(*_sockfd);
+        *_sockfd = -1;
+    }
+}
+
 
 /*after this for listening sockets and clients*/
 
@@ -111,9 +134,7 @@ VirtualHost::VirtualHost(){ //arg is going to change
 
 VirtualHost::~VirtualHost(){
     std::cout << "Virtual server destroyed\n";
-    if (_sockfd)
-        close(_sockfd);
-    _sockfd = 0;
+
 }
 
 int VirtualHost::setup_fd(void){

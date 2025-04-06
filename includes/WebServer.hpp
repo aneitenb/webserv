@@ -31,7 +31,7 @@
 #include "EventLoop.hpp"
 #include "Listener.hpp"
 #include "VirtualHost.hpp"
-#include "config/ConfigFile.hpp"
+#include "config/ServerBlock.hpp"
 
 class	WebServer{
 private:
@@ -45,6 +45,6 @@ public:
 	WebServer();
 	~WebServer();
 
-	void	initialize(std::vector<ServerBlocks> serBlocks); //create listening and virtual hosts, set them
+	void	initialize(std::vector<ServerBlock> serBlocks); //create listening and virtual hosts, set them
 	void	run(void); //epoll + accepting connections + event handling
 };
