@@ -6,7 +6,7 @@
 /*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/04/03 15:33:58 by mspasic           #+#    #+#             */
-/*   Updated: 2025/04/07 18:20:10 by mspasic          ###   ########.fr       */
+/*   Updated: 2025/04/07 21:52:30 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,14 +21,14 @@ class Listener{
         std::string _port;
         std::string _host;
         Listener() = default;
-        Listener(const Listener& other) = delete;
-        Listener& operator=(const Listener& other) = delete;
     public:
         Listener(std::string _port, std::string _host);
         ~Listener();
+        Listener(const Listener& other);
+        Listener& operator=(const Listener& other);
         //move constructor and move assignment operator
-        Listener(Listener&& obj) noexcept;
-        Listener& operator=(Listener&& obj) noexcept;
+        // Listener(Listener&& obj) noexcept;
+        // Listener& operator=(Listener&& obj) noexcept;
 
         void    acceptClient(void);
 

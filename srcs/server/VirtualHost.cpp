@@ -45,37 +45,37 @@ int VirtualHost::addressInfo(void){
 }
 
 //check if you have copy constructors everywhere since you use vectors; push_back() copies/moves objects
-VirtualHost::VirtualHost(const ServerBlock &info, std::string port){
+VirtualHost::VirtualHost(ServerBlock *info, std::string port): _info(info), _port(port.c_str()), _IP(info->getHost().c_str()), _serv_name(info->getServerName().c_str()){
     _sockfd = nullptr;
     _sock_err = 0; //do I leave it like this?
-    _info = info;
-    _port = port.c_str();
-    _IP = (info.getHost()).c_str();
+    std::cout << "is it here ? " << info->getHost() << std::endl;
+    std::cout << "or here " << _IP << std::endl;
     ftMemset(&_result, sizeof(_result));
-    ftMemset(&_event, sizeof(_event)); //do I leave this like this?
+    // ftMemset(&_event, sizeof(_event)); //do I leave this like this?
 }
 
-VirtualHost::VirtualHost(VirtualHost&& other) noexcept {
+VirtualHost::VirtualHost(const VirtualHost& other) {
     _info = other._info;
-    _result = std::move(other._result);
-    _port = std::move(other._port);
-    _IP = std::move(other._IP);
-    _serv_name = std::move(other._serv_name);
-    _sockfd = std::move(other._sockfd);
-    _sock_err = std::move(other._sock_err);
-    _event = std::move(other._event);
+    _result = other._result;
+    _port = other._port;
+    _IP = other._IP;
+    _serv_name = other._serv_name;
+    _sockfd = other._sockfd;
+    _sock_err = other._sock_err;
+    // _event = other._event;
 }
 
-VirtualHost& VirtualHost::operator=(VirtualHost&& other) noexcept {
+VirtualHost& VirtualHost::operator=(const VirtualHost& other) {
     if (this != &other){
         _info = other._info;
-        _result = std::move(other._result);
-        _port = std::move(other._port);
-        _IP = std::move(other._IP);
-        _serv_name = std::move(other._serv_name);
-        _sockfd = std::move(other._sockfd);
-        _sock_err = std::move(other._sock_err);
-        _event = std::move(other._event);}
+        _result = other._result;
+        _port = other._port;
+        _IP = other._IP;
+        _serv_name = other._serv_name;
+        _sockfd = other._sockfd;
+        _sock_err = other._sock_err;
+        // _event = other._event;
+    }
     return (*this);
 }
 
@@ -95,6 +95,19 @@ struct sockaddr* VirtualHost::getAddress() const{
 socklen_t VirtualHost::getAddressLength() const{
     return(_result->ai_addrlen);
 }
+
+const char* VirtualHost::getIP(void) const{
+    return (_IP);
+}
+
+const char* VirtualHost::getPort(void) const{
+    return (_port);
+}
+
+const char* VirtualHost::getServName(void) const{
+    return (_serv_name);
+}
+
 /*after this for listening sockets and clients*/
 
 // VirtualHost::VirtualHost(int list_sock_fd){

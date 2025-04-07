@@ -38,7 +38,7 @@ private:
 	std::vector<Listener>       _listeners;
 	std::vector<VirtualHost>	_virtualHosts;
 	std::vector<int>			_fds;
-	EventLoop					_eventLoop;
+	// EventLoop					_eventLoop;
 	WebServer obj(const WebServer& other) = delete;
 	WebServer& operator=(const WebServer& other) = delete;
 public:
@@ -49,4 +49,4 @@ public:
 	// void	run(void); //epoll + accepting connections + event handling
 };
 
-void ftMemset(void *dest, std::size_t count);
+// void ftMemset(void *dest, std::size_t count);
