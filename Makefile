@@ -3,10 +3,10 @@
 #                                                         :::      ::::::::    #
 #    Makefile                                           :+:      :+:    :+:    #
 #                                                     +:+ +:+         +:+      #
-#    By: aneitenb <aneitenb@student.hive.fi>        +#+  +:+       +#+         #
+#    By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2025/01/20 12:43:09 by aneitenb          #+#    #+#              #
-#    Updated: 2025/03/20 16:21:47 by ivalimak         ###   ########.fr        #
+#    Updated: 2025/04/07 15:28:58 by mspasic          ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -29,13 +29,19 @@ INCDIR	=	includes
 CONFIGDIR	=	config
 SERVERDIR	=	server
 
-CONFIGFILES	=	ConfigErrors.cpp \
-				ConfigFile.cpp
+CONFIGFILES	=	ServerBlock.cpp
+# ConfigErrors.cpp 
+# 				ConfigFile.cpp
 
-SERVERFILES	=	EventLoop.cpp \
-				Server.cpp
+SERVERFILES	=	Listener.cpp \
+				VirtualHost.cpp \
+				WebServer.cpp 
+
+# EventLoop.cpp 
+# 				Server.cpp
 
 FILES	=	main.cpp \
+			CommonFunctions.cpp \
 			$(addprefix $(CONFIGDIR)/, $(CONFIGFILES)) \
 			$(addprefix $(SERVERDIR)/, $(SERVERFILES))
 

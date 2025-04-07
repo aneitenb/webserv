@@ -6,14 +6,16 @@
 /*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/31 12:48:30 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/04/06 21:39:02 by mspasic          ###   ########.fr       */
+/*   Updated: 2025/04/07 15:32:44 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #pragma once
 
-#include "WebServer.hpp"
+// #include "WebServer.hpp"
 // #include "LocationBlock.hpp"
+#include <string>
+#include <vector>
 
 #define MAX_SERVER_NAME_LENGTH 50
 #define MAX_PATH_LENGTH 50

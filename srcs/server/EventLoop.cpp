@@ -6,11 +6,11 @@
 /*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/24 19:32:39 by mspasic           #+#    #+#             */
-/*   Updated: 2025/04/03 16:43:37 by mspasic          ###   ########.fr       */
+/*   Updated: 2025/04/07 15:44:44 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "../server/EventLoop.hpp"
+#include "server/EventLoop.hpp"
 #include <string.h>
 #include <iostream> //cerr
 #include <unistd.h> //close

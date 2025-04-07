@@ -6,7 +6,7 @@
 /*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/04/03 15:33:58 by mspasic           #+#    #+#             */
-/*   Updated: 2025/04/06 22:42:08 by mspasic          ###   ########.fr       */
+/*   Updated: 2025/04/07 15:42:19 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -28,10 +28,10 @@ class Listener{
         void    acceptClient(void);
 
         //getters and setters
-        const int getSocketFd(void);
+        int getSocketFd(void) const;
         int    setSocketFd(int* fd); //dup?
-        const std::string& getPort(void); 
+        const std::string& getPort(void) const; 
         void setPort(const std::string& port);
-        const std::string& getHost(void); 
+        const std::string& getHost(void) const; 
         void setHost(const std::string& host);
     };

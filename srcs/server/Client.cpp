@@ -6,11 +6,11 @@
 /*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/04/06 23:04:40 by mspasic           #+#    #+#             */
-/*   Updated: 2025/04/06 23:49:32 by mspasic          ###   ########.fr       */
+/*   Updated: 2025/04/07 15:44:54 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "Client.hpp"
+#include "server/Client.hpp"
 #include "CommonFunctions.hpp"
 #include <unistd.h>
 #include <sys/socket.h>

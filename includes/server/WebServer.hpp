@@ -45,8 +45,8 @@ public:
 	WebServer();
 	~WebServer();
 
-	int	initialize(std::vector<ServerBlock> serBlocks); //create listening and virtual hosts, set them
-	void	run(void); //epoll + accepting connections + event handling
+	int	initialize(std::vector<ServerBlock> *serBlocks); //create listening and virtual hosts, set them
+	// void	run(void); //epoll + accepting connections + event handling
 };
 
 void ftMemset(void *dest, std::size_t count);

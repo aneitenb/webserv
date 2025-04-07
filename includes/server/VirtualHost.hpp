@@ -6,7 +6,7 @@
 /*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/20 16:26:51 by mspasic           #+#    #+#             */
-/*   Updated: 2025/04/06 23:18:58 by mspasic          ###   ########.fr       */
+/*   Updated: 2025/04/07 15:42:07 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,7 +16,8 @@
 #include <arpa/inet.h> //uints, sockaddr_in
 #include <string> //std::string
 #include <sys/epoll.h> //struct epoll_event
-#include <ConfigFile.hpp> //to become serverblock
+#include <config/ServerBlock.hpp> //to become serverblock
+#include <utility> //for std::move
 
 #define PORT 8080
 #define IP "127.0.0.1"
@@ -44,10 +45,10 @@ class VirtualHost {
         VirtualHost(const ServerBlock &info, std::string port); 
         //move constructor
         VirtualHost(VirtualHost&& other) noexcept;
-        VirtualHost(); // for listening sockets
-        VirtualHost(int list_sock_fd); //for clients
+        // VirtualHost(); // for listening sockets
+        // VirtualHost(int list_sock_fd); //for clients
         ~VirtualHost();
-        int setup_fd(void);
+        // int setup_fd(void);
         // int get_type() const;
         struct sockaddr* getAddress() const;
         socklen_t getAddressLength() const;

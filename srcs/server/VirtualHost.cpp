@@ -10,12 +10,12 @@
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "VirtualHost.hpp"
+#include "server/VirtualHost.hpp"
 #include "CommonFunctions.hpp"
 
 // #include <sys/socket.h>
 // #include <netinet/in.h>
-// #include <unistd.h> //close
+#include <unistd.h> //close
 #include <fcntl.h> //fcntl
 #include <netdb.h> //getaddrinfo
 // #include <poll.h>
@@ -41,6 +41,7 @@ int VirtualHost::addressInfo(void){
         std::cerr << "Error: getaddrinfo failed but unclear why.\n";
         return (-1);
     }
+    return (0);
 }
 
 //check if you have copy constructors everywhere since you use vectors; push_back() copies/moves objects

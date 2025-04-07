@@ -6,14 +6,14 @@
 /*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/04/04 15:10:44 by mspasic           #+#    #+#             */
-/*   Updated: 2025/04/06 22:41:50 by mspasic          ###   ########.fr       */
+/*   Updated: 2025/04/07 15:43:58 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "Listener.hpp"
+#include "server/Listener.hpp"
 #include <unistd.h>
 
-Listener::Listener(std::string port, std::string host) : _port(port), _host(host), _sockFd(-1){}
+Listener::Listener(std::string port, std::string host) : _sockFd(-1), _port(port), _host(host) {}
 
 Listener::Listener(Listener&& obj){
     this->setSocketFd(&obj._sockFd);
@@ -28,7 +28,7 @@ Listener::~Listener(){
     }
 }
 
-const int Listener::getSocketFd(void){
+int Listener::getSocketFd(void) const{
     return(_sockFd);
 }
 
@@ -40,7 +40,7 @@ int Listener::setSocketFd(int *fd){
 }
 
 
-const std::string& Listener::getPort(void){
+const std::string& Listener::getPort(void) const{
     return (_port);
 }
 
@@ -50,7 +50,7 @@ void Listener::setPort(const std::string& port){
 }
 
         
-const std::string& Listener::getHost(void){
+const std::string& Listener::getHost(void) const{
     return (_host);
 }
 

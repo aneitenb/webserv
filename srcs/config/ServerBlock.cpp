@@ -6,11 +6,13 @@
 /*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/31 12:48:34 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/04/06 21:39:16 by mspasic          ###   ########.fr       */
+/*   Updated: 2025/04/07 15:40:50 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "config/ServerBlock.hpp"
+#include <stdexcept>
+#include <algorithm>
 
 ServerBlock::ServerBlock() :
 	_listen(),
@@ -95,19 +97,19 @@ void ServerBlock::clear() {
 // 	}
 // }
 
-// void ServerBlock::addErrorPage(int status, const std::string& path) {
-// 	if (path.length() > MAX_PATH_LENGTH) {
-// 		throw std::runtime_error("Error page path too long (max " + std::to_string(MAX_PATH_LENGTH) + " characters)");
-// 	}
-// 	// Check if we already have an error page for this status
-// 	for (size_t i = 0; i < _errorPages.size(); i++) {
-// 		if (_errorPages[i].first == status) {
-// 			throw std::runtime_error("Duplicate error page for status code: " + std::to_string(status));
-// 		}
-// 	}
-// 	_errorPages.push_back(std::make_pair(status, path));
-// 	_hasCustomErrorPages = true;
-// }
+void ServerBlock::addErrorPage(int status, const std::string& path) {
+	if (path.length() > MAX_PATH_LENGTH) {
+		throw std::runtime_error("Error page path too long (max " + std::to_string(MAX_PATH_LENGTH) + " characters)");
+	}
+	// Check if we already have an error page for this status
+	for (size_t i = 0; i < _errorPages.size(); i++) {
+		if (_errorPages[i].first == status) {
+			throw std::runtime_error("Duplicate error page for status code: " + std::to_string(status));
+		}
+	}
+	_errorPages.push_back(std::make_pair(status, path));
+	_hasCustomErrorPages = true;
+}
 
 bool ServerBlock::hasErrorPage(int status) const {
 	for (size_t i = 0; i < _errorPages.size(); i++) {
@@ -118,18 +120,18 @@ bool ServerBlock::hasErrorPage(int status) const {
 	return false;
 }
 
-// std::string ServerBlock::getErrorPage(int status) const {
-// 	if (_hasCustomErrorPages) {
-// 		for (const auto& page : _errorPages) {
-// 			if (page.first == status) {
-// 				return page.second;
-// 			}
-// 		}
-// 	}
-// 	//use default if no custom page
-// 	std::string defaultPath = _defaultErrorDir + "/" + std::to_string(status) + ".html";
-// 	return defaultPath;
-// }
+std::string ServerBlock::getErrorPage(int status) const {
+	if (_hasCustomErrorPages) {
+		for (const auto& page : _errorPages) {
+			if (page.first == status) {
+				return page.second;
+			}
+		}
+	}
+	//use default if no custom page
+	std::string defaultPath = _defaultErrorDir + "/" + std::to_string(status) + ".html";
+	return defaultPath;
+}
 
 std::vector<std::pair<int, std::string>> ServerBlock::getErrorPages() const {
 	return _errorPages;
