@@ -6,7 +6,7 @@
 /*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/20 16:26:51 by mspasic           #+#    #+#             */
-/*   Updated: 2025/04/07 15:42:07 by mspasic          ###   ########.fr       */
+/*   Updated: 2025/04/07 18:20:47 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -41,10 +41,14 @@ class VirtualHost {
         struct epoll_event  _event;
         //locations oor a config file?
         VirtualHost() = default;
+        VirtualHost(const VirtualHost& other) = delete;
+        VirtualHost& operator=(const VirtualHost& other) = delete;
     public:
         VirtualHost(const ServerBlock &info, std::string port); 
         //move constructor
         VirtualHost(VirtualHost&& other) noexcept;
+        VirtualHost& operator=(VirtualHost&& other) noexcept;
+
         // VirtualHost(); // for listening sockets
         // VirtualHost(int list_sock_fd); //for clients
         ~VirtualHost();

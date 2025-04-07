@@ -66,6 +66,19 @@ VirtualHost::VirtualHost(VirtualHost&& other) noexcept {
     _event = std::move(other._event);
 }
 
+VirtualHost& VirtualHost::operator=(VirtualHost&& other) noexcept {
+    if (this != &other){
+        _info = other._info;
+        _result = std::move(other._result);
+        _port = std::move(other._port);
+        _IP = std::move(other._IP);
+        _serv_name = std::move(other._serv_name);
+        _sockfd = std::move(other._sockfd);
+        _sock_err = std::move(other._sock_err);
+        _event = std::move(other._event);}
+    return (*this);
+}
+
 VirtualHost::~VirtualHost(){
     if (_result)
         freeaddrinfo(_result);

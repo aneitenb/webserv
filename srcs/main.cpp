@@ -6,7 +6,7 @@
 /*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/20 12:50:45 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/04/07 15:38:58 by mspasic          ###   ########.fr       */
+/*   Updated: 2025/04/07 18:04:58 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -95,6 +95,7 @@ int main()
 		test.setRoot("/");
 		test.setServerName("shlorpian");
 		testingServ.push_back(test2);
+		std::cout << "Servers initialised\n";
 
 		instance.initialize(&testingServ);
 
