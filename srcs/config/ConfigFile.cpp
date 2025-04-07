@@ -6,31 +6,34 @@
 /*   By: aneitenb <aneitenb@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/28 09:56:54 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/04/02 17:43:27 by aneitenb         ###   ########.fr       */
+/*   Updated: 2025/04/07 16:48:41 by aneitenb         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "config/ConfigFile.hpp"
 #include "config/ConfigErrors.hpp"
 
-const std::set<std::string> ConfigurationFile::_validDirectives = {
-	// Server level directives
+const std::set<std::string> ConfigurationFile::_serverOnlyDirectives = {
 	"listen",
 	"host",
-	"root",
 	"server_name",
 	"client_max_body_size",
-	"error_page",
-	"index",
-	
-	// Location level directives
+	"error_page"
+};
+
+const std::set<std::string> ConfigurationFile::_locationOnlyDirectives = {
 	"return",
 	"autoindex",
 	"cgi_pass",
 	"cgi_param",
-	"allowed_methods",
 	"upload_store",
 	"alias"
+};
+
+const std::set<std::string> ConfigurationFile::_commonDirectives = {
+	"root",
+	"index",
+	"allowed_methods"
 };
 
 ConfigurationFile::ConfigurationFile(void) {
@@ -67,10 +70,12 @@ int ConfigurationFile::_readFile(void) {
 int ConfigurationFile::_parseConfigFile(void) {
 	std::string line;
 	ServerBlock currentServer;
+	LocationBlock currentLocationBlock;
 	bool inServerBlock = false;
 	bool inLocationBlock = false;
 	std::string currentLocation;
 	int bracketCount = 0;
+	std::map<std::string, bool> locationBlocksStarted;
 
 	std::istringstream iss(_configContent);
 
@@ -109,11 +114,17 @@ int ConfigurationFile::_parseConfigFile(void) {
 			currentLocation = _trimWhitespace(line.substr(pathStart, pathEnd - pathStart));
 			if (currentLocation.empty())
 				throw ErrorInvalidConfig("Empty location path: " + line);
-				
-			// check path length limits
 			if (currentLocation.length() > MAX_ROOT_PATH_LENGTH)
 				throw ErrorInvalidConfig("Location path too long (max " + std::to_string(MAX_ROOT_PATH_LENGTH) + " characters)");
-
+			
+			//check if this location has already been defined in this server block
+			if (locationBlocksStarted.find(currentLocation) != locationBlocksStarted.end()) {
+				throw ErrorInvalidConfig("Duplicater location block for path: " + currentLocation);
+			}
+			
+			//mark location as started
+			locationBlocksStarted[currentLocation] = true;
+			currentLocationBlock = LocationBlock();
 			bracketCount++;
 			continue;
 		}
@@ -126,7 +137,8 @@ int ConfigurationFile::_parseConfigFile(void) {
 			bracketCount--;
 			
 			if (inLocationBlock && bracketCount == 1) {
-				//end of location block
+				//end of location block, add complete block
+				currentServer.addLocationBlock(currentLocation, currentLocationBlock);
 				inLocationBlock = false;
 				currentLocation.clear();
 			}
@@ -135,6 +147,7 @@ int ConfigurationFile::_parseConfigFile(void) {
 				if (_validateServerBlock(currentServer)) {
 					_servers.push_back(currentServer);
 				inServerBlock = false;
+					locationBlocksStarted.clear();
 				}
 			}
 			continue;
@@ -158,7 +171,7 @@ int ConfigurationFile::_parseConfigFile(void) {
 				value = _trimWhitespace(value.substr(0, value.length() - 1));
 
 				if (inLocationBlock) {
-					_parseLocationDirective(currentServer, currentLocation, key, value);
+					_parseLocationDirective(currentServer, currentLocationBlock, key, value);
 				} else {
 					_parseServerDirective(currentServer, key, value);
 				}
@@ -178,11 +191,41 @@ int ConfigurationFile::_parseConfigFile(void) {
 	if (_servers.empty())
 		throw ErrorInvalidConfig("No valid server blocks found");
 
+	_checkForDuplicateServers();
 	return 0;
 }
 
+bool ConfigurationFile::_checkForDuplicateServers() const {
+	for (size_t i = 0; i < _servers.size(); ++i) {
+		const ServerBlock& serverA = _servers[i];
+		
+		for (size_t j = i + 1; j < _servers.size(); ++j) {
+			const ServerBlock& serverB = _servers[j];
+			
+			if (serverA.getServerName() != serverB.getServerName())
+				continue;
+			if (serverA.getHost() != serverB.getHost())
+				continue;
+				
+			const std::vector<std::string>& portsA = serverA.getListen();
+			const std::vector<std::string>& portsB = serverB.getListen();
+			
+			for (size_t portIndexA = 0; portIndexA < portsA.size(); ++portIndexA) {
+				for (size_t portIndexB = 0; portIndexB < portsB.size(); ++portIndexB) {
+					if (portsA[portIndexA] == portsB[portIndexB]) {
+						throw ErrorInvalidConfig("Duplicate server configuration: same host (" + 
+							serverA.getHost() + "), port (" + portsA[portIndexA] + 
+							"), and server_name (" + serverA.getServerName() + ")");
+					}
+				}
+			}
+		}
+	}	
+	return true;
+}
+
 void ConfigurationFile::_parseServerDirective(ServerBlock& server, const std::string& key, const std::string& value) {
-	if (!_isValidDirective(key))
+	if (!_isValidServerDirective(key))
 		throw ErrorInvalidConfig("Unknown directive: " + key);
 		
 	if (key == "listen") {
@@ -193,11 +236,15 @@ void ConfigurationFile::_parseServerDirective(ServerBlock& server, const std::st
 		server.addListen(value);
 	}
 	else if (key == "host") {
+		if (server.hasHost())
+			throw ErrorInvalidConfig("Duplicate 'host' directive in server block");
 		if (!_isValidIP(value))
 			throw ErrorInvalidIP("Invalid IP address: " + value);
 		server.setHost(value);
 	}
 	else if (key == "root") {
+		if (server.hasRoot())
+			throw ErrorInvalidConfig("Duplicate 'root' directive in server block");
 		if (!_isValidPath(value))
 			throw ErrorInvalidConfig("Invalid root path: " + value);
 		if (!_checkPermissions(value, true))
@@ -207,6 +254,8 @@ void ConfigurationFile::_parseServerDirective(ServerBlock& server, const std::st
 		server.setRoot(value);
 	}
 	else if (key == "server_name") {
+		if (server.hasServerName())
+			throw ErrorInvalidConfig("Duplicate 'server_name' directive in server block");
 		if (value.length() > MAX_SERVER_NAME_LENGTH)
 			throw ErrorInvalidConfig("Server name too long (max " + std::to_string(MAX_SERVER_NAME_LENGTH) + " characters)");
 		if (!_isValidHostname(value))
@@ -214,6 +263,8 @@ void ConfigurationFile::_parseServerDirective(ServerBlock& server, const std::st
 		server.setServerName(value);
 	}
 	else if (key == "client_max_body_size") {
+		if (server.hasClientMaxBodySize())
+			throw ErrorInvalidConfig("Duplicate 'client_max_body_size' directive in server block");
 		size_t size;
 		try {
 			size = std::stoull(value);
@@ -245,6 +296,8 @@ void ConfigurationFile::_parseServerDirective(ServerBlock& server, const std::st
 		server.addErrorPage(status, path);
 	}
 	else if (key == "index") {
+		if (server.hasIndex())
+			throw ErrorInvalidConfig("Duplicate 'index' directive in server block");
 		if (value.length() > MAX_ROOT_PATH_LENGTH)
 			throw ErrorInvalidConfig("Index path too long (max " + std::to_string(MAX_ROOT_PATH_LENGTH) + " characters)");
 		//check if index file exists in server's root
@@ -255,49 +308,65 @@ void ConfigurationFile::_parseServerDirective(ServerBlock& server, const std::st
 			throw ErrorInvalidConfig("Insufficient permissions for index file: " + fullPath);
 		server.setIndex(value);
 	}
+	else if (key == "allowed_methods") {
+		if (server.hasAllowedMethods())
+			throw ErrorInvalidConfig("Duplicate 'allowed_methods' directive in server block");
+		uint8_t methods = _parseHttpMethods(value);
+		if (methods == 0)
+			throw ErrorInvalidConfig("No valid HTTP methods specified: " + value);
+		server.setAllowedMethods(methods);
+	}
 }
 
-void ConfigurationFile::_parseLocationDirective(ServerBlock& server, const std::string& location, 
-											   const std::string& key, const std::string& value) {
-	if (!_isValidDirective(key))
+void ConfigurationFile::_parseLocationDirective(ServerBlock& server, LocationBlock& locBlock, 
+												const std::string& key, const std::string& value) {
+	if (!_isValidLocationDirective(key))
 		throw ErrorInvalidConfig("Unknown directive: " + key);
 	
-	// Get location block or create a new one if it doesn't exist
-	LocationBlock locBlock;
-	if (server.hasLocationBlock(location)) {
-		locBlock = server.getLocationBlock(location);
-	}
-	
 	if (key == "return") {
+		if (locBlock.hasRedirect())
+			throw ErrorInvalidConfig("Duplicate 'return' directive in location block");
 		// Format: return 301 http://example.com;
 		std::istringstream ress(value);
 		int status;
 		std::string url;
 		
-		if (!(ress >> status >> url) || status < 100 || status > 599)
+		if (!(ress >> status >> url) || status < 300 || status > 399)
 			throw ErrorInvalidConfig("Invalid return format: " + value);
+		if (url.length() > MAX_PATH_LENGTH) {
+			throw ErrorInvalidConfig("Redirect URL too long (max " + 
+				std::to_string(MAX_PATH_LENGTH) + " characters)");
+		}
 			
 		locBlock.setRedirect(std::make_pair(status, url));
 	}
 	else if (key == "autoindex") {
+		if (locBlock.hasAutoindex())
+			throw ErrorInvalidConfig("Duplicate 'autoindex' directive in location block");
 		if (value != "on" && value != "off")
 			throw ErrorInvalidConfig("autoindex must be 'on' or 'off': " + value);
 			
 		locBlock.setAutoindex(value == "on");
 	}
 	else if (key == "cgi_pass") {
+		if (locBlock.hasCgiPass())
+			throw ErrorInvalidConfig("Duplicate 'cgi_pass' directive in location block");
 		// Check if CGI executable exists and is executable
 		if (!_isValidPath(value))
 			throw ErrorInvalidConfig("Invalid CGI executable path: " + value);
+		struct stat buffer;
+		if (stat(value.c_str(), &buffer) == 0 && S_ISDIR(buffer.st_mode))
+			throw ErrorInvalidConfig("CGI path cannot be a directory: " + value);
 		if (!_checkPermissions(value, false))
 			throw ErrorInvalidConfig("Insufficient permissions for CGI executable: " + value);
-		
 		if (value.length() > MAX_ROOT_PATH_LENGTH)
 			throw ErrorInvalidConfig("CGI path too long (max " + std::to_string(MAX_ROOT_PATH_LENGTH) + " characters)");
 			
 		locBlock.setCgiPass(value);
 	}
 	else if (key == "cgi_param") {
+		if (locBlock.hasCgiParam(value))
+			throw ErrorInvalidConfig("Duplicate 'cgi_param' directive in location block");
 		// Format: cgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
 		size_t paramDelim = value.find(' ');
 		if (paramDelim == std::string::npos)
@@ -306,40 +375,112 @@ void ConfigurationFile::_parseLocationDirective(ServerBlock& server, const std::
 		std::string paramName = value.substr(0, paramDelim);
 		std::string paramValue = _trimWhitespace(value.substr(paramDelim + 1));
 		
-		locBlock.addCgiParam(paramName, paramValue);
+		locBlock.setCgiParam(paramName, paramValue);
 	}
 	else if (key == "allowed_methods") {
+		if (locBlock.hasAllowedMethods())
+			throw ErrorInvalidConfig("Duplicate 'allowed_methods' directive in location block");
 		uint8_t methods = _parseHttpMethods(value);
 		if (methods == 0)
 			throw ErrorInvalidConfig("No valid HTTP methods specified: " + value);
 			
 		locBlock.setAllowedMethods(methods);
 	}
+	// else if (key == "upload_store") {
+	// 	if (locBlock.hasUploadStore())
+	// 		throw ErrorInvalidConfig("Duplicate 'upload_store' directive in location block");
+		
+	// 	// Check if directory exists or create it
+	// 	if (!_isValidPath(value)) {
+	// 		// Directory doesn't exist, check if we can create it
+	// 		if (mkdir(value.c_str(), 0755) != 0) {
+	// 			throw ErrorInvalidConfig("Cannot create upload directory: " + value);
+	// 		}
+	// 	}
+		
+	// 	// Check if path is a directory
+	// 	struct stat st;
+	// 	if (stat(value.c_str(), &st) == 0 && !S_ISDIR(st.st_mode)) {
+	// 		throw ErrorInvalidConfig("Upload store path is not a directory: " + value);
+	// 	}
+		
+	// 	if (value.length() > MAX_ROOT_PATH_LENGTH)
+	// 		throw ErrorInvalidConfig("Upload store path too long (max " + std::to_string(MAX_ROOT_PATH_LENGTH) + " characters)");
+	// 	if (!_checkPermissions(value, true))
+	// 		throw ErrorInvalidConfig("Insufficient permissions for upload directory: " + value);
+	// 	locBlock.setUploadStore(value);
+	// }
 	else if (key == "upload_store") {
-		// Check if directory exists or create it
-		if (!_isValidPath(value)) {
-			// Directory doesn't exist, check if we can create it
-			if (mkdir(value.c_str(), 0755) != 0) {
-				throw ErrorInvalidConfig("Cannot create upload directory: " + value);
+		if (locBlock.hasUploadStore())
+			throw ErrorInvalidConfig("Duplicate 'upload_store' directive in location block");
+		
+		std::string uploadPath = value;
+		std::string fullPath;
+		
+		// If it's an absolute path
+		if (value[0] == '/') {
+			fullPath = value;
+		} else {
+			// It's a relative path, make it relative to server root
+			fullPath = server.getRoot() + "/" + value;
+		}
+		
+		std::cerr << "Trying to use upload directory: " << fullPath << std::endl;
+		
+		// Check if directory exists
+		struct stat st;
+		if (stat(fullPath.c_str(), &st) == 0) {
+			// Directory exists, check if it's actually a directory
+			if (!S_ISDIR(st.st_mode)) {
+				throw ErrorInvalidConfig("Upload store path exists but is not a directory: " + fullPath);
+			}
+			
+			// Try to chmod the directory to ensure we have write permissions
+			std::cerr << "Directory exists, attempting to set permissions to 0755" << std::endl;
+			if (chmod(fullPath.c_str(), 0755) != 0) {
+				std::cerr << "Warning: Could not change permissions on " << fullPath 
+						 << " (Error: " << std::endl;
+			}
+		} else {
+			// Directory doesn't exist, check parent directory
+			std::string parentDir = fullPath.substr(0, fullPath.find_last_of('/'));
+			if (parentDir.empty() && fullPath[0] == '/') parentDir = "/";
+			
+			std::cerr << "Directory doesn't exist. Checking parent directory: " << parentDir << std::endl;
+			
+			// Check if parent directory exists
+			if (stat(parentDir.c_str(), &st) == 0) {
+				// Parent exists, try to chmod it to ensure we have write permissions
+				std::cerr << "Parent directory exists, attempting to set permissions to 0755" << std::endl;
+				if (chmod(parentDir.c_str(), 0755) != 0) {
+					std::cerr << "Warning: Could not change permissions on " << parentDir 
+							 << " (Error: " << std::endl;
+				}
+				
+				// Try to create the directory
+				if (mkdir(fullPath.c_str(), 0755) != 0) {
+					throw ErrorInvalidConfig("Cannot create upload directory: " + fullPath + 
+										  " (Error: ");
+				}
+			} else {
+				// Parent doesn't exist
+				throw ErrorInvalidConfig("Parent directory doesn't exist: " + parentDir);
 			}
 		}
 		
-		// Check if path is a directory
-		struct stat st;
-		if (stat(value.c_str(), &st) == 0 && !S_ISDIR(st.st_mode)) {
-			throw ErrorInvalidConfig("Upload store path is not a directory: " + value);
+		// Final check to ensure we have the required permissions
+		if (access(fullPath.c_str(), R_OK | W_OK | X_OK) != 0) {
+			std::cerr << "Warning: Directory exists but we don't have full RWX permissions: " 
+					 << std::endl;
+			
+			// We'll continue anyway since we've made a best effort to set permissions
 		}
 		
-		// Check permissions
-		if (!_checkPermissions(value, true))
-			throw ErrorInvalidConfig("Insufficient permissions for upload directory: " + value);
-			
-		if (value.length() > MAX_ROOT_PATH_LENGTH)
-			throw ErrorInvalidConfig("Upload store path too long (max " + std::to_string(MAX_ROOT_PATH_LENGTH) + " characters)");
-			
-		locBlock.setUploadStore(value);
+		locBlock.setUploadStore(uploadPath); // Store the original path as specified in config
 	}
 	else if (key == "alias") {
+		if (locBlock.hasAlias())
+			throw ErrorInvalidConfig("Duplicate 'alias' directive in location block");
 		// Check if alias path exists
 		if (!_isValidPath(value))
 			throw ErrorInvalidConfig("Invalid alias path: " + value);
@@ -351,7 +492,20 @@ void ConfigurationFile::_parseLocationDirective(ServerBlock& server, const std::
 			
 		locBlock.setAlias(value);
 	}
+	else if (key == "root") {
+		if (locBlock.hasRoot())
+			throw ErrorInvalidConfig("Duplicate 'root' directive in location block");
+		if (!_isValidPath(value))
+			throw ErrorInvalidConfig("Invalid root path: " + value);
+		if (!_checkPermissions(value, true))
+			throw ErrorInvalidConfig("Insufficient permissions for root path: " + value);
+		if (value.length() > MAX_ROOT_PATH_LENGTH)
+			throw ErrorInvalidConfig("Root path too long (max " + std::to_string(MAX_ROOT_PATH_LENGTH) + " characters)");
+		locBlock.setRoot(value);
+	}
 	else if (key == "index") {
+		if (locBlock.hasIndex())
+			throw ErrorInvalidConfig("Duplicate 'index' directive in location block");
 		if (value.length() > MAX_ROOT_PATH_LENGTH)
 			throw ErrorInvalidConfig("Index path too long (max " + std::to_string(MAX_ROOT_PATH_LENGTH) + " characters)");
 		//check if index file exists in server's root
@@ -362,9 +516,6 @@ void ConfigurationFile::_parseLocationDirective(ServerBlock& server, const std::
 			throw ErrorInvalidConfig("Insufficient permissions for index file: " + fullPath);
 		locBlock.setIndex(value);
 	}
-	
-	// Add or update the location block in server
-	server.addLocationBlock(location, locBlock);
 }
 
 bool ConfigurationFile::_validateServerBlock(const ServerBlock& server) const {
@@ -375,10 +526,6 @@ bool ConfigurationFile::_validateServerBlock(const ServerBlock& server) const {
 	if (server.getRoot().empty())
 		throw ErrorInvalidConfig("Missing 'root' directive");
 
-	if (!_isValidPath(server.getRoot()))
-		throw ErrorInvalidConfig("Invalid root path: " + server.getRoot());
-	if (!_checkPermissions(server.getRoot(), true))
-		throw ErrorInvalidConfig("Insufficient permissions for root path: " + server.getRoot());
 	
 	if (!server.getIndex().empty()) {
 		std::string fullIndexPath = server.getRoot() + "/" + server.getIndex();
@@ -388,6 +535,28 @@ bool ConfigurationFile::_validateServerBlock(const ServerBlock& server) const {
 			throw ErrorInvalidConfig("Insufficient read permissions for index file: " + fullIndexPath);
 	}
 		
+	if (!server.hasCustomErrorPages()) {
+		std::string defaultErrorDir = server.getRoot() + server.getDefaultErrorDir();
+		if (!_isValidPath(defaultErrorDir)) {
+			throw ErrorInvalidConfig("Default error directory not found: " + defaultErrorDir);
+		}
+		if (!_checkPermissions(defaultErrorDir, false)) {
+			throw ErrorInvalidConfig("Insufficient permissions for default error directory: " + defaultErrorDir);
+		}
+		
+		//checks that specific default error pages exist
+		std::vector<int> requiredErrorCodes = {400, 403, 404, 500, 503};
+		for (int code : requiredErrorCodes) {
+			std::string errorPage = defaultErrorDir + "/" + std::to_string(code) + ".html";
+			if (!_isValidPath(errorPage)) {
+				throw ErrorInvalidConfig("Required default error page not found: " + errorPage);
+			}
+			if (!_checkPermissions(errorPage, false)) {
+				throw ErrorInvalidConfig("Insufficient permissions for default error page: " + errorPage);
+			}
+		}
+	}
+	
 	const std::map<std::string, LocationBlock>& locationBlocks = server.getLocationBlocks();
 	for (std::map<std::string, LocationBlock>::const_iterator it = locationBlocks.begin(); 
 		 it != locationBlocks.end(); ++it) {
@@ -398,25 +567,14 @@ bool ConfigurationFile::_validateServerBlock(const ServerBlock& server) const {
 	return true;
 }
 
-bool ConfigurationFile::_validateLocationBlock(const std::string&, const LocationBlock& block) const {
-	if (block.hasRedirect()) {
-		int status = block.getRedirect().first;
-		if (status < 300 || status > 399)
-			throw ErrorInvalidConfig("Invalid redirect status code: " + std::to_string(status));
-	}
+bool ConfigurationFile::_validateLocationBlock(const std::string& path, const LocationBlock& block) const {
 	if (block.hasCgiPass()) {
-		if (!_isValidPath(block.getCgiPass()))
-			throw ErrorInvalidConfig("Invalid CGI executable path: " + block.getCgiPass());
-		if (access(block.getCgiPass().c_str(), X_OK) != 0)
-			throw ErrorInvalidConfig("CGI executable is not executable: " + block.getCgiPass());
+		if (!block.hasCgiParam("SCRIPT_FILENAME")) {
+			throw ErrorInvalidConfig("CGI_PASS requires SCRIPT_FILENAME parameter for location: " + path);
+		}
 	}
-	if (block.hasUploadStore()) {
-		if (!_isValidPath(block.getUploadStore()))
-			throw ErrorInvalidConfig("Invalid upload directory: " + block.getUploadStore());
-	}
-	if (block.hasAlias()) {
-		if (!_isValidPath(block.getAlias()))
-			throw ErrorInvalidConfig("Invalid alias path: " + block.getAlias());
+	if (block.hasRoot() && block.hasAlias()) {
+		throw ErrorInvalidConfig("Cannot use both root and alias directives in the same location: " + path);
 	}
 	return true;
 }
@@ -503,8 +661,14 @@ bool ConfigurationFile::_checkPermissions(const std::string& path, bool writeAcc
 	return true;
 }
 
-bool ConfigurationFile::_isValidDirective(const std::string& directive) const {
-	return _validDirectives.find(directive) != _validDirectives.end();
+bool ConfigurationFile::_isValidServerDirective(const std::string& directive) const {
+	return _serverOnlyDirectives.find(directive) != _serverOnlyDirectives.end() ||
+			_commonDirectives.find(directive) != _commonDirectives.end();
+}
+
+bool ConfigurationFile::_isValidLocationDirective(const std::string& directive) const {
+	return _locationOnlyDirectives.find(directive) != _locationOnlyDirectives.end() ||
+			_commonDirectives.find(directive) != _commonDirectives.end();
 }
 
 uint8_t ConfigurationFile::_parseHttpMethods(const std::string& methods) {

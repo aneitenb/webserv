@@ -6,7 +6,7 @@
 /*   By: aneitenb <aneitenb@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/31 12:48:34 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/04/02 17:48:57 by aneitenb         ###   ########.fr       */
+/*   Updated: 2025/04/07 15:33:53 by aneitenb         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -35,7 +35,7 @@ void ServerBlock::clear() {
 	_locationBlocks.clear();
 	_index = "index.html";
 	_hasCustomErrorPages = false;
-    _defaultErrorDir = "/errors";
+	_defaultErrorDir = "/errors";
 }
 
 bool ServerBlock::hasLocationBlock(const std::string& path) const {
@@ -47,31 +47,41 @@ LocationBlock ServerBlock::getLocationBlock(const std::string& path) const {
 	if (it != _locationBlocks.end()) {
 		return it->second;
 	}
-	//properly initiailze empty block
+	//properly initialize empty block
 	LocationBlock emptyBlock;
 	emptyBlock.clear();
 	return emptyBlock;
 }
 
+LocationBlock& ServerBlock::getLocationBlockRef(const std::string& path) {
+    std::map<std::string, LocationBlock>::iterator it = _locationBlocks.find(path);
+    if (it == _locationBlocks.end()) {
+        // If the location block doesn't exist, create a new one
+        LocationBlock newBlock;
+        _locationBlocks[path] = newBlock;
+    }
+    // Return a reference to the location block
+    return _locationBlocks[path];
+}
+
 void ServerBlock::addLocationBlock(const std::string& path, const LocationBlock& block) {
 	if (path.length() > MAX_PATH_LENGTH) {
-		throw std::runtime_error("Location path too long (max " + std::to_string(MAX_PATH_LENGTH) + " characters)");
+		throw ErrorInvalidConfig("Location path too long (max " + std::to_string(MAX_PATH_LENGTH) + " characters)");
 	}
 	if (hasLocationBlock(path)) {
-		throw std::runtime_error("Duplicate location block for path: " + path);
+		throw ErrorInvalidConfig("Duplicate location block for path: " + path);
 	}
 	_locationBlocks[path] = block;
-	}
 }
 
 void ServerBlock::addErrorPage(int status, const std::string& path) {
 	if (path.length() > MAX_PATH_LENGTH) {
-		throw std::runtime_error("Error page path too long (max " + std::to_string(MAX_PATH_LENGTH) + " characters)");
+		throw ErrorInvalidConfig("Error page path too long (max " + std::to_string(MAX_PATH_LENGTH) + " characters)");
 	}
 	// Check if we already have an error page for this status
 	for (size_t i = 0; i < _errorPages.size(); i++) {
 		if (_errorPages[i].first == status) {
-			throw std::runtime_error("Duplicate error page for status code: " + std::to_string(status));
+			throw ErrorInvalidConfig("Duplicate error page for status code: " + std::to_string(status));
 		}
 	}
 	_errorPages.push_back(std::make_pair(status, path));
@@ -100,6 +110,18 @@ std::string ServerBlock::getErrorPage(int status) const {
 	return defaultPath;
 }
 
+bool ServerBlock::hasAllowedMethods() const {
+	return _allowedMethods != 0;
+}
+
+uint8_t ServerBlock::getAllowedMethods() const {
+	return _allowedMethods;
+}
+
+void ServerBlock::setAllowedMethods(uint8_t methods) {
+	this->_allowedMethods = methods;
+}
+
 std::vector<std::pair<int, std::string>> ServerBlock::getErrorPages() const {
 	return _errorPages;
 }
@@ -124,12 +146,20 @@ bool ServerBlock::hasPort(const std::string& port)const {
 	return std::find(_listen.begin(), _listen.end(), port) != _listen.end();
 }
 
+bool ServerBlock::hasHost() const {
+	return !_host.empty();
+}
+
 std::string ServerBlock::getHost() const {
 	return _host;
 }
 
 void ServerBlock::setHost(const std::string& host) {
 	this->_host = host;
+}
+
+bool ServerBlock::hasServerName() const {
+	return !_serverName.empty();
 }
 
 std::string ServerBlock::getServerName() const {
@@ -140,6 +170,10 @@ void ServerBlock::setServerName(const std::string& serverName) {
 	this->_serverName = serverName;
 }
 
+bool ServerBlock::hasRoot() const {
+	return !_root.empty();
+}
+
 std::string ServerBlock::getRoot() const {
 	return _root;
 }
@@ -148,12 +182,20 @@ void ServerBlock::setRoot(const std::string& root) {
 	this->_root = root;
 }
 
+bool ServerBlock::hasClientMaxBodySize() const {
+	return _clientMaxBodySize > 0;
+}
+
 size_t ServerBlock::getClientMaxBodySize() const {
 	return _clientMaxBodySize;
 }
 
 void ServerBlock::setClientMaxBodySize(size_t size) {
 	this->_clientMaxBodySize = size;
+}
+
+bool ServerBlock::hasIndex() const {
+	return !_index.empty();
 }
 
 std::string ServerBlock::getIndex() const {

@@ -6,7 +6,7 @@
 /*   By: aneitenb <aneitenb@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/20 12:47:33 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/04/02 17:32:26 by aneitenb         ###   ########.fr       */
+/*   Updated: 2025/04/07 15:48:58 by aneitenb         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -24,7 +24,9 @@ private:
 
 	std::vector<ServerBlock> _servers;
 
-	static const std::set<std::string> _validDirectives;
+	static const std::set<std::string> _serverOnlyDirectives;
+	static const std::set<std::string> _locationOnlyDirectives;
+	static const std::set<std::string> _commonDirectives;
 
 	int _readFile(void);
 	int _parseConfigFile(void);
@@ -34,15 +36,17 @@ private:
 	bool _isValidPort(const std::string& port) const;
 	bool _isValidPath(const std::string& path) const;
 	bool _checkPermissions(const std::string& path, bool writeAccess) const;
-	bool _isValidDirective(const std::string& directive) const;
+	bool _isValidServerDirective(const std::string& directive) const;
+	bool _isValidLocationDirective(const std::string& directive) const;
 	bool _isValidHostname(const std::string& hostname) const;
 	
 	void _parseServerDirective(ServerBlock& server, const std::string& key, const std::string& value);
-	void _parseLocationDirective(ServerBlock& server, const std::string& location, 
+	void _parseLocationDirective(ServerBlock& server, LocationBlock& locBlock, 
 			const std::string& key, const std::string& value);
 
 	bool _validateServerBlock(const ServerBlock& server) const;
-	bool _validateLocationBlock(const std::string&, const LocationBlock& block) const;
+	bool _validateLocationBlock(const std::string& path, const LocationBlock& block) const;
+	bool _checkForDuplicateServers() const;
 
 	uint8_t _parseHttpMethods(const std::string& methods);
 

@@ -6,7 +6,7 @@
 /*   By: aneitenb <aneitenb@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/20 12:50:45 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/04/02 17:06:24 by aneitenb         ###   ########.fr       */
+/*   Updated: 2025/04/03 13:40:57 by aneitenb         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -100,13 +100,11 @@ void displayServerInfo(const ConfigurationFile& config)
 			for (const auto& loc : locations) {
 				std::cout << "  Location: " << loc.first << std::endl;
 				
-				// Display location details
 				if (loc.second.hasRedirect()) {
 					std::cout << "    Redirect: " << loc.second.getRedirect().first 
 							  << " -> " << loc.second.getRedirect().second << std::endl;
 				}
 				
-				// Access autoindex directly since there's no hasAutoindex method
 				std::cout << "    Autoindex: " << (loc.second.getAutoindex() ? "on" : "off") << std::endl;
 				
 				if (loc.second.hasCgiPass()) {
@@ -121,7 +119,6 @@ void displayServerInfo(const ConfigurationFile& config)
 					std::cout << "    Alias: " << loc.second.getAlias() << std::endl;
 				}
 				
-				// Show allowed methods using your allowedMethodsToString method
 				std::cout << "    Allowed Methods: " << loc.second.allowedMethodsToString() << std::endl;
 			}
 		}

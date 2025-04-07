@@ -6,13 +6,9 @@
 /*   By: aneitenb <aneitenb@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/24 13:13:30 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/03/31 12:54:17 by aneitenb         ###   ########.fr       */
+/*   Updated: 2025/04/07 15:35:56 by aneitenb         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
-
-#pragma once
-
-#include "../Webserv.hpp"
 
 #pragma once
 #include "Webserv.hpp"
@@ -28,51 +24,52 @@ class LocationBlock {
 private:
 	std::pair<int, std::string> redirect;
 	bool autoindex;
+	bool autoindexSet;
 	std::string cgi_pass;
 	std::map<std::string, std::string> cgi_param;
 	uint8_t allowed_methods;
 	std::string upload_store;
 	std::string alias;
 	std::string index;
+	std::string root;
 
 public:
 	LocationBlock();
 	LocationBlock(const LocationBlock& other);
 	~LocationBlock();
 
-	void setAllowedMethods(uint8_t methods);
+	void clear();
+	
 	bool isMethodAllowed(HttpMethod method) const;
-	void addAllowedMethod(HttpMethod method);
-	void removeAllowedMethod(HttpMethod method);
+	void setAllowedMethods(uint8_t methods);
 	std::string allowedMethodsToString() const;
+	uint8_t getAllowedMethods() const;
 
 	bool hasRedirect() const;
 	bool hasCgiPass() const;
 	bool hasUploadStore() const;
 	bool hasAlias() const;
-
-	void clear();
-
-	std::pair<int, std::string> getRedirect() const { return redirect; }
-	void setRedirect(const std::pair<int, std::string>& redirect) { this->redirect = redirect; }
+	bool hasIndex() const;
+	bool hasRoot() const;
+	bool hasAutoindex() const;
+	bool hasAllowedMethods() const;
+	bool hasCgiParam(const std::string& paramName) const;
 	
-	bool getAutoindex() const { return autoindex; }
-	void setAutoindex(bool autoindex) { this->autoindex = autoindex; }
+	const std::pair<int, std::string>& getRedirect() const;
+	void setRedirect(const std::pair<int, std::string>& redirect);
 	
-	std::string getCgiPass() const { return cgi_pass; }
-	void setCgiPass(const std::string& cgi_pass) { this->cgi_pass = cgi_pass; }
-	
-	std::map<std::string, std::string> getCgiParams() const { return cgi_param; }
-	void addCgiParam(const std::string& name, const std::string& value) { cgi_param[name] = value; }
-	
-	uint8_t getAllowedMethods() const { return allowed_methods; }
-	
-	std::string getUploadStore() const { return upload_store; }
-	void setUploadStore(const std::string& upload_store) { this->upload_store = upload_store; }
-	
-	std::string getAlias() const { return alias; }
-	void setAlias(const std::string& alias) { this->alias = alias; }
-	
-	std::string getIndex() const { return index; }
-	void setIndex(const std::string& index) { this->index = index; }
+	std::string getRoot() const;
+	void setRoot(const std::string& rootValue);
+	bool getAutoindex() const;
+	void setAutoindex(bool autoindex);
+	std::string getCgiPass() const;
+	void setCgiPass(const std::string& cgi_pass);
+	const std::map<std::string, std::string>& getCgiParams() const;
+	void setCgiParam(const std::string& name, const std::string& value);
+	std::string getUploadStore() const;
+	void setUploadStore(const std::string& upload_store);
+	std::string getAlias() const;
+	void setAlias(const std::string& alias);
+	std::string getIndex() const;
+	void setIndex(const std::string& index);
 };
