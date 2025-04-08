@@ -6,7 +6,7 @@
 /*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/20 12:50:45 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/04/07 21:58:12 by mspasic          ###   ########.fr       */
+/*   Updated: 2025/04/08 19:38:30 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -97,7 +97,8 @@ int main()
 		testingServ.push_back(test2);
 		std::cout << "Servers initialised\n";
 
-		instance.initialize(&testingServ);
+		instance.initialize(testingServ);
+		instance.freeStuff();
 
 		return (0);
 	}

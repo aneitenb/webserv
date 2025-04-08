@@ -6,7 +6,7 @@
 /*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/20 16:26:51 by mspasic           #+#    #+#             */
-/*   Updated: 2025/04/07 23:48:00 by mspasic          ###   ########.fr       */
+/*   Updated: 2025/04/08 19:37:22 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -28,11 +28,11 @@
 
 class VirtualHost {
     private:
-        ServerBlock        *_info;
-        const char*         _port; /*or is all this going to stay parsend in the conif class and we just point at it here?*/
-        const char*         _IP;
-        const char*         _serv_name;
-        int                 *_sockfd;
+        ServerBlock         _info;
+        std::string         _port; /*or is all this going to stay parsend in the conif class and we just point at it here?*/
+        std::string         _IP;
+        std::string         _serv_name;
+        int*                 _sockfd;
         // struct sockaddr_in  _address;
         // socklen_t           _addr_size;
         int                 _sock_err; //not needed?
@@ -42,7 +42,7 @@ class VirtualHost {
         //locations oor a config file?
         VirtualHost() = default;
     public:
-        VirtualHost(ServerBlock *info, std::string port); 
+        VirtualHost(const ServerBlock& info, const std::string& port); 
         VirtualHost(const VirtualHost& other);
         VirtualHost& operator=(const VirtualHost& other);
         //move constructor
@@ -54,11 +54,12 @@ class VirtualHost {
         ~VirtualHost();
         // int setup_fd(void);
         // int get_type() const;
+        struct addrinfo* getRes() const;
         struct sockaddr* getAddress() const;
         socklen_t getAddressLength() const;
-        const char* getIP(void) const;
-        const char* getPort(void) const;
-        const char* getServName(void) const;
+        std::string getIP(void) const;
+        std::string getPort(void) const;
+        std::string getServName(void) const;
         // void setIP(const char* IntPro) ;
         // void setPort(const char* port) ;
         // void setServName(const char* servName) ;

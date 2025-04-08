@@ -26,10 +26,11 @@ int VirtualHost::addressInfo(void){
     struct addrinfo hints;
     int status;
 
+    ftMemset(&hints, sizeof(hints));
     hints.ai_family = AF_INET; //IPv4
     hints.ai_socktype = SOCK_STREAM; //TCP
     hints.ai_flags = AI_PASSIVE; //for binding (listening) maybe not needed if we always provide an IP or hostname
-    if ((status = (getaddrinfo(_IP, _port, &hints, &_result))) != 0){
+    if ((status = getaddrinfo(_IP.c_str(), _port.c_str(), &hints, &_result)) != 0){
         std::cerr << "Error: getaddrinfo() failed: ";
         if (status == EAI_SYSTEM)
             std::cerr << strerror(errno) << "\n";
@@ -45,10 +46,14 @@ int VirtualHost::addressInfo(void){
 }
 
 //check if you have copy constructors everywhere since you use vectors; push_back() copies/moves objects
-VirtualHost::VirtualHost(ServerBlock *info, std::string port): _info(info), _port(port.c_str()), _IP(info->getHost().c_str()), _serv_name(info->getServerName().c_str()){
+VirtualHost::VirtualHost(const ServerBlock& info, const std::string& port){
+    _info = info;
+    _port = port;
+    _IP = info.getHost();
+    _serv_name = info.getServerName();
     _sockfd = nullptr;
     _sock_err = 0; //do I leave it like this?
-    std::cout << "is it here ? " << info->getHost() << std::endl;
+    std::cout << "is it here ? " << info.getHost() << std::endl;
     std::cout << "or here " << _IP << std::endl;
     ftMemset(&_result, sizeof(_result));
     // ftMemset(&_event, sizeof(_event)); //do I leave this like this?
@@ -60,7 +65,7 @@ VirtualHost::VirtualHost(const VirtualHost& other) {
     _port = other._port;
     _IP = other._IP;
     _serv_name = other._serv_name;
-    _sockfd = other._sockfd;
+    _sockfd = other._sockfd; //issues?
     _sock_err = other._sock_err;
     // _event = other._event;
 }
@@ -72,7 +77,7 @@ VirtualHost& VirtualHost::operator=(const VirtualHost& other) {
         _port = other._port;
         _IP = other._IP;
         _serv_name = other._serv_name;
-        _sockfd = other._sockfd;
+        _sockfd = other._sockfd; //issues?
         _sock_err = other._sock_err;
         // _event = other._event;
     }
@@ -80,12 +85,14 @@ VirtualHost& VirtualHost::operator=(const VirtualHost& other) {
 }
 
 VirtualHost::~VirtualHost(){
-    if (_result)
-        freeaddrinfo(_result);
     if (_sockfd && *_sockfd != -1){
         close(*_sockfd);
         *_sockfd = -1;
     }
+}
+
+struct addrinfo* VirtualHost::getRes() const{
+    return(_result);
 }
 
 struct sockaddr* VirtualHost::getAddress() const{
@@ -96,15 +103,15 @@ socklen_t VirtualHost::getAddressLength() const{
     return(_result->ai_addrlen);
 }
 
-const char* VirtualHost::getIP(void) const{
+std::string VirtualHost::getIP(void) const{
     return (_IP);
 }
 
-const char* VirtualHost::getPort(void) const{
+std::string VirtualHost::getPort(void) const{
     return (_port);
 }
 
-const char* VirtualHost::getServName(void) const{
+std::string VirtualHost::getServName(void) const{
     return (_serv_name);
 }
 

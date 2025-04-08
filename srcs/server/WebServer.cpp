@@ -6,13 +6,14 @@
 /*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/04/03 16:21:54 by mspasic           #+#    #+#             */
-/*   Updated: 2025/04/08 00:14:38 by mspasic          ###   ########.fr       */
+/*   Updated: 2025/04/08 19:38:09 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "server/WebServer.hpp"
 #include <string.h>
 #include <fcntl.h>
+#include <netdb.h> //getaddrinfo
 
 WebServer::WebServer(){}
 WebServer::~WebServer(){}
@@ -37,15 +38,15 @@ int setuping(int *fd){
     return (0);
 }
 
-int bind_listen(VirtualHost* cur, int* fd){
+int bind_listen(VirtualHost* cur, int& fd){
     //for the listening socket bind and listen
     std::cout << "cehcking: " << cur->getIP() << std::endl;
-    if ((bind(*fd, cur->getAddress(), sizeof(struct sockaddr)) == -1)){
+    if ((bind(fd, cur->getAddress(), sizeof(struct sockaddr)) == -1)){
         std::cerr << "Error: bind() failed\n";
         std::cerr << strerror(errno) << "\n";
         return (-1);        
     }
-    if ((listen(*fd, 20) == -1)){
+    if ((listen(fd, 20) == -1)){
         std::cerr << "Error: listen() failed\n";
         std::cerr << strerror(errno) << "\n";
         return (-1);   
@@ -53,7 +54,7 @@ int bind_listen(VirtualHost* cur, int* fd){
     return (0);
 }
 
-int WebServer::initialize(std::vector<ServerBlock> *_ServerBlock){
+int WebServer::initialize(std::vector<ServerBlock>& serBlocks){
     std::vector<std::string> curPorts;
     std::size_t counter;
     std::size_t theCounter = 0;
@@ -61,14 +62,20 @@ int WebServer::initialize(std::vector<ServerBlock> *_ServerBlock){
     int curSockFd = -1;
     
 
-    for (std::size_t i = 0; i < _ServerBlock->size(); i++){
-        curPorts = _ServerBlock->at(i).getListen();
+    for (std::size_t i = 0; i < serBlocks.size(); i++){
+        curPorts = serBlocks.at(i).getListen();
         counter = curPorts.size();
-        std::cout << "udh " << counter << std::endl;
+        std::cout << "counter " << counter << std::endl;
+        std::cout << "size oof serv vector " << serBlocks.size() << std::endl;
+        std::cout << "random test " << serBlocks.at(i).getHost() << std::endl;
+        std::cout << "randomer test " << curPorts.size() << std::endl;
         theCounter += counter;
+        std::cout << "the big counter for the  " << theCounter << std::endl;
         for (std::size_t j = 0; j < counter; j++)
         {
-            VirtualHost curVH(&(_ServerBlock->at(i)), curPorts.at(j));
+            VirtualHost curVH(serBlocks.at(i), curPorts.at(j));
+            if (curVH.addressInfo() == -1)
+                return (-1);
             std::cout << "testing: " << curVH.getIP() << std::endl;
             _virtualHosts.push_back(curVH); //check if move works properly    
             if ((curSockFd = socket(PF_INET, SOCK_STREAM, 0)) == -1){
@@ -76,13 +83,13 @@ int WebServer::initialize(std::vector<ServerBlock> *_ServerBlock){
                 std::cerr << strerror(errno) << "\n";
                 return (-1);
             }
-            std::cout << "testing: " << curVH.getIP() << std::endl;
-            std::cout << "testing: " << _virtualHosts.at(0).getIP() << std::endl;
-            if ((bind_listen(&_virtualHosts.at(theCounter - counter), &curSockFd)) == -1)
+            std::cout << "dsocketfd " << curSockFd << std::endl;
+            if ((bind_listen(&_virtualHosts.at(theCounter - counter + j), curSockFd)) == -1)
                 return(-1);
-            Listener curL(curPorts.at(j), _ServerBlock->at(i).getHost());
+            Listener curL(curPorts.at(j), serBlocks.at(i).getHost());
             curL.setSocketFd(&curSockFd);
             _listeners.push_back(curL);
+            std::cout << "listener testing: " << _listeners.at(0).getPort() << std::endl;
         }
     }
     //go through the info from the server blocks add socket_fd
@@ -93,3 +100,9 @@ int WebServer::initialize(std::vector<ServerBlock> *_ServerBlock){
     return (0);
 }
 
+
+void WebServer::freeStuff(void){
+    for (std::size_t i = 0; i < _virtualHosts.size(); i++){
+        freeaddrinfo(_virtualHosts.at(i).getRes());
+    }
+}
