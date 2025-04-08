@@ -6,12 +6,13 @@
 /*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/20 12:50:45 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/04/08 19:38:30 by mspasic          ###   ########.fr       */
+/*   Updated: 2025/04/08 20:14:11 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "../includes/server/WebServer.hpp"
 #include "../includes/config/ServerBlock.hpp"
+#include "CommonFunctions.hpp"
 
 int main()
 {
@@ -78,28 +79,33 @@ int main()
 		test.setServerName("dorian");
 		testingServ.push_back(test);
 		ServerBlock test1;
-		test.addErrorPage(2, "/example/path");
-		test.addListen("8181");
-		test.setClientMaxBodySize(30);
-		test.setHost("127.0.0.1");
-		test.setIndex("dunno");
-		test.setRoot("/");
-		test.setServerName("dorian");
+		test1.addErrorPage(2, "/example/path");
+		test1.addListen("8181");
+		test1.setClientMaxBodySize(30);
+		test1.setHost("127.0.0.1");
+		test1.setIndex("dunno");
+		test1.setRoot("/");
+		test1.setServerName("dorian");
 		testingServ.push_back(test1);
 		ServerBlock test2;
-		test.addErrorPage(3, "/example/path");
-		test.addListen("8080");
-		test.setClientMaxBodySize(30);
-		test.setHost("127.0.0.2");
-		test.setIndex("dunno");
-		test.setRoot("/");
-		test.setServerName("shlorpian");
+		test2.addErrorPage(3, "/example/path");
+		test2.addListen("8080");
+		test2.setClientMaxBodySize(30);
+		test2.setHost("127.0.0.2");
+		test2.setIndex("dunno");
+		test2.setRoot("/");
+		test2.setServerName("shlorpian");
 		testingServ.push_back(test2);
 		std::cout << "Servers initialised\n";
+
+		for (std::size_t i = 0; i < testingServ.size(); i++){
+			std::cout << "server set up check " << testingServ.at(i).getServerName() << std::endl;
+		}
 
 		instance.initialize(testingServ);
 		instance.freeStuff();
 
+		check_fds();	
 		return (0);
 	}
 	catch (const std::exception& e)

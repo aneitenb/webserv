@@ -53,9 +53,8 @@ VirtualHost::VirtualHost(const ServerBlock& info, const std::string& port){
     _serv_name = info.getServerName();
     _sockfd = nullptr;
     _sock_err = 0; //do I leave it like this?
-    std::cout << "is it here ? " << info.getHost() << std::endl;
-    std::cout << "or here " << _IP << std::endl;
-    ftMemset(&_result, sizeof(_result));
+    ftMemset(_result, sizeof(struct addrinfo));
+    // memset(_result, 0, sizeof(struct addrinfo));
     // ftMemset(&_event, sizeof(_event)); //do I leave this like this?
 }
 
@@ -113,6 +112,10 @@ std::string VirtualHost::getPort(void) const{
 
 std::string VirtualHost::getServName(void) const{
     return (_serv_name);
+}
+
+void    VirtualHost::setup_fd(int* fd){
+    _sockfd = fd;
 }
 
 /*after this for listening sockets and clients*/

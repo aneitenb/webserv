@@ -6,7 +6,7 @@
 /*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/04/03 16:21:54 by mspasic           #+#    #+#             */
-/*   Updated: 2025/04/08 19:38:09 by mspasic          ###   ########.fr       */
+/*   Updated: 2025/04/08 21:12:03 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,21 +20,22 @@ WebServer::~WebServer(){}
 
 
 int setuping(int *fd){
-    int sock_err = 0;
+    // int sock_err = 0;
     //setsockopt: manipulate options for the socket 
     //CONSIDER: SO_RCVBUF / SO_SNDBUF, SO_LINGER, SO_KEEPALIVE, TCP_NODELAY
     //get socket error
-    if ((setsockopt(*fd, SOL_SOCKET, SO_ERROR, &sock_err, sizeof(sock_err))) == -1){
-        std::cerr << "Error: setsockopt() failed: SO_ERROR: " << sock_err << "\n";
-        std::cerr << strerror(errno) << "\n";
-        return (-1);
-    }
+    // if ((setsockopt(*fd, SOL_SOCKET, SO_ERROR, &sock_err, sizeof(sock_err))) == -1){
+    //     std::cerr << "Error: setsockopt() failed: SO_ERROR: " << sock_err << "\n";
+    //     std::cerr << strerror(errno) << "\n";
+    //     return (-1);
+    // }
     //make it non-blocking
     if ((fcntl(*fd, F_SETFL, O_NONBLOCK)) == -1){
         std::cerr << "Error: fcntl() failed\n";
         std::cerr << strerror(errno) << "\n";
         return (-1);
-    }     
+    }
+    std::cout << "socketFD " << *fd << " has been successfully set up\n";     
     return (0);
 }
 
@@ -56,24 +57,24 @@ int bind_listen(VirtualHost* cur, int& fd){
 
 int WebServer::initialize(std::vector<ServerBlock>& serBlocks){
     std::vector<std::string> curPorts;
-    std::size_t counter;
-    std::size_t theCounter = 0;
+    std::size_t maxPorts;
+    std::size_t countVH = 0;
     // int fd = -1;
     int curSockFd = -1;
     
+    
 
-    for (std::size_t i = 0; i < serBlocks.size(); i++){
-        curPorts = serBlocks.at(i).getListen();
-        counter = curPorts.size();
-        std::cout << "counter " << counter << std::endl;
+    for (std::size_t countS = 0; countS < serBlocks.size(); countS++){
+        std::cout << "serverNamesCheck " << serBlocks.at(countS).getServerName() << std::endl;
+        curPorts = serBlocks.at(countS).getListen();
+        maxPorts = curPorts.size();
+        std::cout << "counter " << maxPorts << std::endl;
         std::cout << "size oof serv vector " << serBlocks.size() << std::endl;
-        std::cout << "random test " << serBlocks.at(i).getHost() << std::endl;
-        std::cout << "randomer test " << curPorts.size() << std::endl;
-        theCounter += counter;
-        std::cout << "the big counter for the  " << theCounter << std::endl;
-        for (std::size_t j = 0; j < counter; j++)
+        std::cout << "i is " << countS << std::endl;
+        for (std::size_t countP = 0; countP < maxPorts; countP++)
         {
-            VirtualHost curVH(serBlocks.at(i), curPorts.at(j));
+            std::cout << "checking with 1 port\n";
+            VirtualHost curVH(serBlocks.at(countS), curPorts.at(countP));
             if (curVH.addressInfo() == -1)
                 return (-1);
             std::cout << "testing: " << curVH.getIP() << std::endl;
@@ -83,13 +84,20 @@ int WebServer::initialize(std::vector<ServerBlock>& serBlocks){
                 std::cerr << strerror(errno) << "\n";
                 return (-1);
             }
+            if ((setuping(&curSockFd)) == -1)
+                return (-1);
             std::cout << "dsocketfd " << curSockFd << std::endl;
-            if ((bind_listen(&_virtualHosts.at(theCounter - counter + j), curSockFd)) == -1)
+            if ((bind_listen(&_virtualHosts.at(countVH), curSockFd)) == -1)
                 return(-1);
-            Listener curL(curPorts.at(j), serBlocks.at(i).getHost());
-            curL.setSocketFd(&curSockFd);
+            Listener curL(curPorts.at(countP), serBlocks.at(countS).getHost());
+            if (curL.setSocketFd(curSockFd) == -1)
+                return (-1);
+            close (curSockFd);
+            curSockFd = -1;
+            _virtualHosts.at(countVH).setup_fd(curL.getSocketFd()); 
             _listeners.push_back(curL);
-            std::cout << "listener testing: " << _listeners.at(0).getPort() << std::endl;
+            std::cout << "listener testing: " << _listeners.at(countVH).getPort() << std::endl;
+            countVH++;
         }
     }
     //go through the info from the server blocks add socket_fd

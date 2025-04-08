@@ -6,7 +6,7 @@
 /*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/04/03 15:33:58 by mspasic           #+#    #+#             */
-/*   Updated: 2025/04/07 21:52:30 by mspasic          ###   ########.fr       */
+/*   Updated: 2025/04/08 20:54:19 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,10 +14,11 @@
 
 #include <map>
 #include <iostream>
+#include "VirtualHost.hpp"
 
 class Listener{
     private:
-        int         _sockFd;
+        int         _sockFd; //before every use check?
         std::string _port;
         std::string _host;
         Listener() = default;
@@ -33,8 +34,8 @@ class Listener{
         void    acceptClient(void);
 
         //getters and setters
-        int getSocketFd(void) const;
-        int    setSocketFd(int* fd); //dup?
+        int* getSocketFd(void);
+        int    setSocketFd(const int& fd); //dup?
         const std::string& getPort(void) const; 
         void setPort(const std::string& port);
         const std::string& getHost(void) const; 

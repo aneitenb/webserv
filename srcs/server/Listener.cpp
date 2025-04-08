@@ -6,7 +6,7 @@
 /*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/04/04 15:10:44 by mspasic           #+#    #+#             */
-/*   Updated: 2025/04/07 21:54:59 by mspasic          ###   ########.fr       */
+/*   Updated: 2025/04/08 20:54:12 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,14 +16,14 @@
 Listener::Listener(std::string port, std::string host) : _sockFd(-1), _port(port), _host(host) {}
 
 Listener::Listener(const Listener& obj){
-    this->setSocketFd((int*)&obj._sockFd);
+    this->setSocketFd(obj._sockFd);
     _port = obj._port;
     _host = obj._host;
 }
 
 Listener& Listener::operator=(const Listener& obj) {
     if (this != &obj){
-        this->setSocketFd((int*)&obj._sockFd);
+        this->setSocketFd(obj._sockFd);
         _port = obj._port;
         _host = obj._host;
     }
@@ -37,14 +37,18 @@ Listener::~Listener(){
     }
 }
 
-int Listener::getSocketFd(void) const{
-    return(_sockFd);
+int* Listener::getSocketFd(void){
+    return(&_sockFd);
 }
 
-int Listener::setSocketFd(int *fd){
-    _sockFd = dup(*fd);
-    close(*fd);
-    *fd = -1;
+int Listener::setSocketFd(const int& fd){
+    if (_sockFd != -1){
+        close(_sockFd);
+        _sockFd = -1;}
+    _sockFd = dup(fd);
+    if (_sockFd == -1)
+        std::cout << "Error: dup() failed\n";
+    // close(fd);
     return (_sockFd);
 }
 
