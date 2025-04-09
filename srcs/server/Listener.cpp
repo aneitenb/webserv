@@ -6,7 +6,7 @@
 /*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/04/04 15:10:44 by mspasic           #+#    #+#             */
-/*   Updated: 2025/04/09 17:53:23 by mspasic          ###   ########.fr       */
+/*   Updated: 2025/04/09 18:27:13 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -37,7 +37,7 @@ Listener::~Listener(){
     if (_sockFd != -1){
         close(_sockFd);
         _sockFd = -1;
-        std::cout << "closed fd\n";
+        // std::cout << "closed fd\n";
     }
 }
 

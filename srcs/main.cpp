@@ -6,7 +6,7 @@
 /*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/20 12:50:45 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/04/09 17:41:01 by mspasic          ###   ########.fr       */
+/*   Updated: 2025/04/09 18:22:27 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -90,6 +90,7 @@ int main()
 		ServerBlock test2;
 		test2.addErrorPage(3, "/example/path");
 		test2.addListen("8080");
+		test2.addListen("8181");
 		test2.setClientMaxBodySize(30);
 		test2.setHost("127.0.0.2");
 		test2.setIndex("dunno");
@@ -103,6 +104,9 @@ int main()
 		}
 
 		instance.initialize(testingServ);
+		for (std::size_t i = 0; i < instance.getListeners().size(); i++){
+			std::cout << "Current Listener's port: " << instance.getListeners().at(i).getPort() << std::endl;
+		}
 		instance.freeStuff();
 
 		return (0);

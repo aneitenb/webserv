@@ -6,7 +6,7 @@
 #    By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2025/01/20 12:43:09 by aneitenb          #+#    #+#              #
-#    Updated: 2025/04/09 17:41:32 by mspasic          ###   ########.fr        #
+#    Updated: 2025/04/09 18:35:37 by mspasic          ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -35,9 +35,9 @@ CONFIGFILES	=	ServerBlock.cpp
 
 SERVERFILES	=	Listener.cpp \
 				VirtualHost.cpp \
-				WebServer.cpp 
+				WebServer.cpp \
+				EventLoop.cpp
 
-# EventLoop.cpp 
 # 				Server.cpp
 
 FILES	=	main.cpp \

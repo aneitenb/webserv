@@ -59,30 +59,30 @@ VirtualHost::VirtualHost(const ServerBlock& info, const std::string& port){
     // ftMemset(&_event, sizeof(_event)); //do I leave this like this?
 }
 
-// VirtualHost::VirtualHost(const VirtualHost& other) {
-//     _info = other._info;
-//     _result = other._result;
-//     _port = other._port;
-//     _IP = other._IP;
-//     _serv_name = other._serv_name;
-//     _sockfd = other._sockfd; //issues?
-//     _sock_err = other._sock_err;
-//     // _event = other._event;
-// }
+VirtualHost::VirtualHost(const VirtualHost& other) {
+    _info = other._info;
+    _result = other._result;
+    _port = other._port;
+    _IP = other._IP;
+    _serv_name = other._serv_name;
+    _sockfd = other._sockfd; //issues?
+    _sock_err = other._sock_err;
+    // _event = other._event;
+}
 
-// VirtualHost& VirtualHost::operator=(const VirtualHost& other) {
-//     if (this != &other){
-//         _info = other._info;
-//         _result = other._result;
-//         _port = other._port;
-//         _IP = other._IP;
-//         _serv_name = other._serv_name;
-//         _sockfd = other._sockfd; //issues?
-//         _sock_err = other._sock_err;
-//         // _event = other._event;
-//     }
-//     return (*this);
-// }
+VirtualHost& VirtualHost::operator=(const VirtualHost& other) {
+    if (this != &other){
+        _info = other._info;
+        _result = other._result;
+        _port = other._port;
+        _IP = other._IP;
+        _serv_name = other._serv_name;
+        _sockfd = other._sockfd; //issues?
+        _sock_err = other._sock_err;
+        // _event = other._event;
+    }
+    return (*this);
+}
 
 
 VirtualHost::VirtualHost(VirtualHost&& other) noexcept : _info(other._info), \

@@ -48,6 +48,9 @@ public:
 	int	initialize(std::vector<ServerBlock>& serBlocks); //create listening and virtual hosts, set them
 	// void	run(void); //epoll + accepting connections + event handling
 	void freeStuff(void);
+
+	std::vector<Listener> getListeners(void) const;
+	std::vector<VirtualHost> getVHosts(void) const;
 };
 
 // void ftMemset(void *dest, std::size_t count);

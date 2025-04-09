@@ -6,7 +6,7 @@
 /*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/04/03 16:21:54 by mspasic           #+#    #+#             */
-/*   Updated: 2025/04/09 17:45:42 by mspasic          ###   ########.fr       */
+/*   Updated: 2025/04/09 18:22:07 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -61,7 +61,7 @@ int WebServer::initialize(std::vector<ServerBlock>& serBlocks){
     std::size_t countVH = 0;
     // int fd = -1;
     int curSockFd = -1;
-    
+
     for (std::size_t countS = 0; countS < serBlocks.size(); countS++){
         std::cout << "serverNamesCheck " << serBlocks.at(countS).getServerName() << std::endl;
         curPorts = serBlocks.at(countS).getListen();
@@ -71,7 +71,7 @@ int WebServer::initialize(std::vector<ServerBlock>& serBlocks){
         std::cout << "i is " << countS << std::endl;
         for (std::size_t countP = 0; countP < maxPorts; countP++)
         {
-            std::cout << "checking with 1 port\n";
+            // std::cout << "checking with 1 port\n";
             VirtualHost curVH(serBlocks.at(countS), curPorts.at(countP));
             if (curVH.addressInfo() == -1)
                 return (-1);
@@ -111,4 +111,12 @@ void WebServer::freeStuff(void){
     for (std::size_t i = 0; i < _virtualHosts.size(); i++){
         freeaddrinfo(_virtualHosts.at(i).getRes());
     }
+}
+
+std::vector<Listener> WebServer::getListeners(void) const{
+    return (_listeners);
+}
+
+std::vector<VirtualHost> WebServer::getVHosts(void) const{
+    return (_virtualHosts);
 }

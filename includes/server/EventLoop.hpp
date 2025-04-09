@@ -6,7 +6,7 @@
 /*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/20 14:51:49 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/04/03 16:43:18 by mspasic          ###   ########.fr       */
+/*   Updated: 2025/04/09 18:58:10 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -23,6 +23,8 @@
 // struct epoll_event {
 //     uint32_t      events;  /* Epoll events */
 //     epoll_data_t  data;    /* User data variable */
+//      or? 
+//     void* data.ptr /*can be a ptr to a connection class*/
 // };
 
 // union epoll_data {
@@ -45,8 +47,8 @@ public:
     EventLoop(int maxEvents);
     EventLoop();
     ~EventLoop();
-    int     addToEpoll (int fd, uint32_t events);
-    int     modifyEpoll();
-    int     delEpoll();
-    void    run(); //epoll_wait + resolve events: accept/send/recv
+    int addToEpoll (int& fd, uint32_t events);
+    int modifyEpoll();
+    int delEpoll();
+    int run(); //epoll_wait + resolve events: accept/send/recv
 };

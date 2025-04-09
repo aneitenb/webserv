@@ -6,7 +6,7 @@
 /*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/24 19:32:39 by mspasic           #+#    #+#             */
-/*   Updated: 2025/04/07 15:44:44 by mspasic          ###   ########.fr       */
+/*   Updated: 2025/04/09 19:00:13 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,23 +21,25 @@ EventLoop::EventLoop(int maxEvents){
     //clean up just in case
     _events.clear();
     _epollFd = -1;
-    //set up
-    if ((_epollFd = epoll_create1(0)) == -1){
-        std::cerr << "Error: Could not create epoll instance\n";
-        strerror(errno);
-        exit (EXIT_FAILURE); //won't clean up the other things:/
-    }
+
 }
 
 EventLoop::~EventLoop(){
     close (_epollFd);
 }
 
-int EventLoop::addToEpoll(int fd, uint32_t events){
+int EventLoop::addToEpoll(int& fd, uint32_t events){
 
 }
 
-void EventLoop::run(){
+int EventLoop::run(){
+    //set up
+    if ((_epollFd = epoll_create1(0)) == -1){
+        std::cerr << "Error: Could not create epoll instance\n";
+        strerror(errno);
+        return (-1); //won't clean up the other things:/
+    }
+
     while(1){
         //wait
         //check if wait failed
