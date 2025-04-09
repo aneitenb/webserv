@@ -6,7 +6,7 @@
 /*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/04/03 16:21:54 by mspasic           #+#    #+#             */
-/*   Updated: 2025/04/09 17:06:02 by mspasic          ###   ########.fr       */
+/*   Updated: 2025/04/09 17:45:42 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -62,8 +62,6 @@ int WebServer::initialize(std::vector<ServerBlock>& serBlocks){
     // int fd = -1;
     int curSockFd = -1;
     
-    
-
     for (std::size_t countS = 0; countS < serBlocks.size(); countS++){
         std::cout << "serverNamesCheck " << serBlocks.at(countS).getServerName() << std::endl;
         curPorts = serBlocks.at(countS).getListen();

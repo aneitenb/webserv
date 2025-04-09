@@ -116,12 +116,7 @@ VirtualHost& VirtualHost::operator=(VirtualHost&& other) noexcept {
     return (*this);
 }
 
-VirtualHost::~VirtualHost(){
-    if (_sockfd && *_sockfd != -1){
-        close(*_sockfd);
-        *_sockfd = -1;
-    }
-}
+VirtualHost::~VirtualHost(){}
 
 struct addrinfo* VirtualHost::getRes() const{
     return(_result);

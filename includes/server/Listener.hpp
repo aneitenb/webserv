@@ -6,7 +6,7 @@
 /*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/04/03 15:33:58 by mspasic           #+#    #+#             */
-/*   Updated: 2025/04/08 20:54:19 by mspasic          ###   ########.fr       */
+/*   Updated: 2025/04/09 17:52:29 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,7 +21,7 @@ class Listener{
         int         _sockFd; //before every use check?
         std::string _port;
         std::string _host;
-        Listener() = default;
+        Listener()  = default;
     public:
         Listener(std::string _port, std::string _host);
         ~Listener();

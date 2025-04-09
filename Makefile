@@ -6,7 +6,7 @@
 #    By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2025/01/20 12:43:09 by aneitenb          #+#    #+#              #
-#    Updated: 2025/04/07 21:59:41 by mspasic          ###   ########.fr        #
+#    Updated: 2025/04/09 17:41:32 by mspasic          ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -15,7 +15,7 @@ NAME	=	webserv
 BUILD	=	normal
 
 CC				=	c++
-cflags.common	=	-Wall -Wextra -Werror -std=c++17 -g -fsanitize=address
+cflags.common	=	-Wall -Wextra -Werror -std=c++17 -g 
 cflags.debug	=	-g
 cflags.fsan		=	$(cflags.debug) -fsanitize=address,undefined
 cflags.normal	=	-O3
