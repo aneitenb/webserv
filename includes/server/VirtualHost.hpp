@@ -6,7 +6,7 @@
 /*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/20 16:26:51 by mspasic           #+#    #+#             */
-/*   Updated: 2025/04/08 20:56:14 by mspasic          ###   ########.fr       */
+/*   Updated: 2025/04/09 17:01:46 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -44,11 +44,11 @@ class VirtualHost {
         VirtualHost() = default;
     public:
         VirtualHost(const ServerBlock& info, const std::string& port); 
-        VirtualHost(const VirtualHost& other);
-        VirtualHost& operator=(const VirtualHost& other);
+        VirtualHost(const VirtualHost& other) = delete;
+        VirtualHost& operator=(const VirtualHost& other) = delete;
         //move constructor
-        // VirtualHost(VirtualHost&& other) noexcept;
-        // VirtualHost& operator=(VirtualHost&& other) noexcept;
+        VirtualHost(VirtualHost&& other) noexcept;
+        VirtualHost& operator=(VirtualHost&& other) noexcept;
 
         // VirtualHost(); // for listening sockets
         // VirtualHost(int list_sock_fd); //for clients

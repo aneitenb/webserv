@@ -53,8 +53,8 @@ VirtualHost::VirtualHost(const ServerBlock& info, const std::string& port){
     _serv_name = info.getServerName();
     _sockfd = nullptr;
     _sock_err = 0; //do I leave it like this?
-    ftMemset(_result, sizeof(struct addrinfo));
-    // _result = nullptr;
+    // ftMemset(&_result, sizeof(struct addrinfo));
+    _result = nullptr;
     // memset(_result, 0, sizeof(struct addrinfo));
     // ftMemset(&_event, sizeof(_event)); //do I leave this like this?
 }
@@ -85,28 +85,31 @@ VirtualHost::VirtualHost(const ServerBlock& info, const std::string& port){
 // }
 
 
-VirtualHost::VirtualHost(VirtualHost&& other) : _info(other._info), \
+VirtualHost::VirtualHost(VirtualHost&& other) noexcept : _info(other._info), \
     _port(other._port), _IP(other._IP), _serv_name(other._serv_name), \
-    _sock_err(other._sock_err), _sockfd(other._sockfd), _result(other._result){
+    _sockfd(other._sockfd), _sock_err(other._sock_err), _result(other._result){
     other._result = nullptr;
     other._sockfd = nullptr;
     // _event = other._event;
 }
 
-VirtualHost& VirtualHost::operator=(VirtualHost&& other) {
+VirtualHost& VirtualHost::operator=(VirtualHost&& other) noexcept {
     if (this != &other){
         if (_result)
             freeaddrinfo(_result);
         _result = other._result;
         other._result = nullptr;
+        if (*_sockfd){
+            close(*_sockfd);
+            *_sockfd = -1;
+        }
+        _sockfd = other._sockfd;
+        other._sockfd = nullptr;
 
-        //continue here
         _info = other._info;
-        _result = other._result;
         _port = other._port;
         _IP = other._IP;
         _serv_name = other._serv_name;
-        _sockfd = other._sockfd; //issues?
         _sock_err = other._sock_err;
         // _event = other._event;
     }

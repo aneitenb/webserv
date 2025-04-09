@@ -6,7 +6,7 @@
 /*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/04/03 16:21:54 by mspasic           #+#    #+#             */
-/*   Updated: 2025/04/08 21:12:03 by mspasic          ###   ########.fr       */
+/*   Updated: 2025/04/09 17:06:02 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -78,7 +78,7 @@ int WebServer::initialize(std::vector<ServerBlock>& serBlocks){
             if (curVH.addressInfo() == -1)
                 return (-1);
             std::cout << "testing: " << curVH.getIP() << std::endl;
-            _virtualHosts.push_back(curVH); //check if move works properly    
+            _virtualHosts.push_back(std::move(curVH)); //check if move works properly    
             if ((curSockFd = socket(PF_INET, SOCK_STREAM, 0)) == -1){
                 std::cerr << "Error: socket() failed\n";
                 std::cerr << strerror(errno) << "\n";
