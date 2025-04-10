@@ -6,7 +6,7 @@
 /*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/24 19:32:39 by mspasic           #+#    #+#             */
-/*   Updated: 2025/04/09 19:00:13 by mspasic          ###   ########.fr       */
+/*   Updated: 2025/04/10 19:23:23 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -28,18 +28,31 @@ EventLoop::~EventLoop(){
     close (_epollFd);
 }
 
-int EventLoop::addToEpoll(int& fd, uint32_t events){
-
+void EventLoop::addListenerFds(std::vector<Listener>& listFds){
+    for (std::size_t i = 0; i < listFds.size(); i++){
+        _fds.emplace_back(listFds.at(i).getSocketFd());
+    }
 }
 
-int EventLoop::run(){
+
+// int EventLoop::addToEpoll(int& fd, uint32_t events){
+
+// }
+
+int EventLoop::startRun(void){
     //set up
     if ((_epollFd = epoll_create1(0)) == -1){
         std::cerr << "Error: Could not create epoll instance\n";
         strerror(errno);
         return (-1); //won't clean up the other things:/
     }
+    return (0);
+}
 
+int EventLoop::run(std::vector<Listener>& listFds){
+
+    this->addListenerFds(listFds);
+    this->startRun();
     while(1){
         //wait
         //check if wait failed

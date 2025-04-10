@@ -6,7 +6,7 @@
 /*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/20 16:26:51 by mspasic           #+#    #+#             */
-/*   Updated: 2025/04/09 18:23:22 by mspasic          ###   ########.fr       */
+/*   Updated: 2025/04/10 20:30:21 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -41,8 +41,8 @@ class VirtualHost {
         struct addrinfo*    _result; //needs to be freed freeaddrinfo() but be careful because when copying, pointing to the same address
         // struct epoll_event  _event;
         //locations oor a config file?
-        VirtualHost() = default;
     public:
+        VirtualHost();
         VirtualHost(const ServerBlock& info, const std::string& port); 
         VirtualHost(const VirtualHost& other);
         VirtualHost& operator=(const VirtualHost& other);

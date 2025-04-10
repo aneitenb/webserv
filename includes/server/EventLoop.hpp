@@ -6,7 +6,7 @@
 /*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/20 14:51:49 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/04/09 18:58:10 by mspasic          ###   ########.fr       */
+/*   Updated: 2025/04/10 19:11:46 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -40,15 +40,17 @@
 class   EventLoop{
 private:
     int                         _epollFd; //for epoll_create1
-    std::vector<int>            _socketFds;
+    std::vector<int *>            _fds;
     std::vector<epoll_event>    _events; //for resolving events?
     // int _maxEvents = MAX_EVENTS;
 public:
     EventLoop(int maxEvents);
     EventLoop();
     ~EventLoop();
+    void addListenerFds(std::vector<Listener>& listFds);
     int addToEpoll (int& fd, uint32_t events);
     int modifyEpoll();
     int delEpoll();
-    int run(); //epoll_wait + resolve events: accept/send/recv
+    int startRun();
+    int run(std::vector<Listener>& listFds); //epoll_wait + resolve events: accept/send/recv
 };

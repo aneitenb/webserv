@@ -45,6 +45,8 @@ int VirtualHost::addressInfo(void){
     return (0);
 }
 
+VirtualHost::VirtualHost() : _sockfd(nullptr), _result(nullptr){}
+
 //check if you have copy constructors everywhere since you use vectors; push_back() copies/moves objects
 VirtualHost::VirtualHost(const ServerBlock& info, const std::string& port){
     _info = info;

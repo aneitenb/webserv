@@ -6,7 +6,7 @@
 /*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/04/03 15:33:58 by mspasic           #+#    #+#             */
-/*   Updated: 2025/04/09 17:52:29 by mspasic          ###   ########.fr       */
+/*   Updated: 2025/04/10 22:08:49 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,15 +14,17 @@
 
 #include <map>
 #include <iostream>
+#include <vector>
 #include "VirtualHost.hpp"
 
 class Listener{
     private:
         int         _sockFd; //before every use check?
+        std::vector<VirtualHost> _knownVHs;
         std::string _port;
         std::string _host;
-        Listener()  = default;
     public:
+        Listener();
         Listener(std::string _port, std::string _host);
         ~Listener();
         Listener(const Listener& other);
@@ -35,7 +37,10 @@ class Listener{
 
         //getters and setters
         int* getSocketFd(void);
-        int    setSocketFd(const int& fd); //dup?
+        int    setSocketFd(void); 
+        int copySocketFd(const int& fd);//dup?
+        std::vector<VirtualHost> getHosts(void) const;
+        void addHost(VirtualHost& cur);
         const std::string& getPort(void) const; 
         void setPort(const std::string& port);
         const std::string& getHost(void) const; 
