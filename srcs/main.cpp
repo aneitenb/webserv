@@ -6,7 +6,7 @@
 /*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/20 12:50:45 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/04/09 18:22:27 by mspasic          ###   ########.fr       */
+/*   Updated: 2025/04/11 01:09:46 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -87,6 +87,15 @@ int main()
 		test1.setRoot("/");
 		test1.setServerName("dorian");
 		testingServ.push_back(test1);
+		ServerBlock test4;
+		test4.addErrorPage(2, "/example/path");
+		test4.addListen("8181");
+		test4.setClientMaxBodySize(30);
+		test4.setHost("127.0.0.1");
+		test4.setIndex("dunno");
+		test4.setRoot("/");
+		test4.setServerName("dormian");
+		testingServ.push_back(test4);
 		ServerBlock test2;
 		test2.addErrorPage(3, "/example/path");
 		test2.addListen("8080");
