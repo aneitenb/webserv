@@ -42,6 +42,7 @@ int VirtualHost::addressInfo(void){
         std::cerr << "Error: getaddrinfo failed but unclear why.\n";
         return (-1);
     }
+    std::cout << "Virtual Host address set up!\n";
     return (0);
 }
 
@@ -148,6 +149,13 @@ void    VirtualHost::setup_fd(int* fd){
     _sockfd = fd;
 }
 
+int VirtualHost::getFD(void) const{
+    return (*_sockfd);
+}
+
+void VirtualHost::freeAddress(void){
+    freeaddrinfo(_result);
+}
 /*after this for listening sockets and clients*/
 
 // VirtualHost::VirtualHost(int list_sock_fd){

@@ -6,7 +6,7 @@
 #    By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2025/01/20 12:43:09 by aneitenb          #+#    #+#              #
-#    Updated: 2025/04/09 18:35:37 by mspasic          ###   ########.fr        #
+#    Updated: 2025/04/10 23:26:08 by mspasic          ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -15,7 +15,7 @@ NAME	=	webserv
 BUILD	=	normal
 
 CC				=	c++
-cflags.common	=	-Wall -Wextra -Werror -std=c++17 -g 
+cflags.common	=	-Wall -Wextra -Werror -std=c++17 -g -fsanitize=address
 cflags.debug	=	-g
 cflags.fsan		=	$(cflags.debug) -fsanitize=address,undefined
 cflags.normal	=	-O3
@@ -35,8 +35,8 @@ CONFIGFILES	=	ServerBlock.cpp
 
 SERVERFILES	=	Listener.cpp \
 				VirtualHost.cpp \
-				WebServer.cpp \
-				EventLoop.cpp
+				WebServer.cpp 
+				# EventLoop.cpp
 
 # 				Server.cpp
 

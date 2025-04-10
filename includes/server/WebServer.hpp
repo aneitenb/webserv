@@ -29,7 +29,7 @@
 
 #include <exception>
 
-#include "EventLoop.hpp"
+// #include "EventLoop.hpp"
 #include "Listener.hpp"
 #include "VirtualHost.hpp"
 #include "config/ServerBlock.hpp"
@@ -59,7 +59,7 @@ class	WebServer{
 		std::vector<VirtualHost> getVHosts(void) const;
 		bool doesExist(std::string port, std::string host);
 		bool doesExistPort(std::string port);
-		std::size_t resolveListener(std::string port, std::string host);
+		int resolveListener(std::string port, std::string host);
 };
 
 // void ftMemset(void *dest, std::size_t count);

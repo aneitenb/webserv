@@ -6,7 +6,7 @@
 /*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/04/03 15:33:58 by mspasic           #+#    #+#             */
-/*   Updated: 2025/04/10 22:08:49 by mspasic          ###   ########.fr       */
+/*   Updated: 2025/04/10 23:38:36 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -45,4 +45,5 @@ class Listener{
         void setPort(const std::string& port);
         const std::string& getHost(void) const; 
         void setHost(const std::string& host);
+        void closeFD(void);
     };

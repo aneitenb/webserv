@@ -6,7 +6,7 @@
 /*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/04/04 15:10:44 by mspasic           #+#    #+#             */
-/*   Updated: 2025/04/10 22:09:00 by mspasic          ###   ########.fr       */
+/*   Updated: 2025/04/10 23:40:31 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -24,15 +24,15 @@ Listener::Listener(std::string port, std::string host) : _sockFd(-1), _port(port
 Listener::Listener(const Listener& obj){
     _sockFd = -1;
     this->copySocketFd(obj._sockFd);
-    // _port = obj._port;
-    // _host = obj._host;
+    _port = obj._port;
+    _host = obj._host;
 }
 
 Listener& Listener::operator=(const Listener& obj) {
     if (this != &obj){
         this->copySocketFd(obj._sockFd);
-        // _port = obj._port;
-        // _host = obj._host;
+        _port = obj._port;
+        _host = obj._host;
     }
     return (*this);
 }
@@ -120,6 +120,14 @@ const std::string& Listener::getHost(void) const{
 void Listener::setHost(const std::string& host){
     _host = host;
 }
+
+void Listener::closeFD(void){
+    if (_sockFd != -1){
+        close(_sockFd);
+        _sockFd = -1;
+    }
+}
+
 
 void Listener::acceptClient(void){
     //code

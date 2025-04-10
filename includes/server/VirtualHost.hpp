@@ -6,7 +6,7 @@
 /*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/20 16:26:51 by mspasic           #+#    #+#             */
-/*   Updated: 2025/04/10 20:30:21 by mspasic          ###   ########.fr       */
+/*   Updated: 2025/04/10 23:31:04 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,7 +18,7 @@
 #include <sys/epoll.h> //struct epoll_event
 #include <config/ServerBlock.hpp> //to become serverblock
 #include <utility> //for std::move
-#include "Listener.hpp"
+// #include "Listener.hpp"
 
 #define PORT 8080
 #define IP "127.0.0.1"
@@ -61,10 +61,12 @@ class VirtualHost {
         std::string getIP(void) const;
         std::string getPort(void) const;
         std::string getServName(void) const;
+        int getFD(void) const;
         // void setIP(const char* IntPro) ;
         // void setPort(const char* port) ;
         // void setServName(const char* servName) ;
         int addressInfo(void);
+        void freeAddress(void);
 };
 
 // struct addrinfo {
