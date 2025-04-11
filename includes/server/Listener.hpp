@@ -6,7 +6,7 @@
 /*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/04/03 15:33:58 by mspasic           #+#    #+#             */
-/*   Updated: 2025/04/10 23:38:36 by mspasic          ###   ########.fr       */
+/*   Updated: 2025/04/11 22:47:47 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,13 +16,16 @@
 #include <iostream>
 #include <vector>
 #include "VirtualHost.hpp"
+#include "EventHandler.hpp"
+#include "EventLoop.hpp"
 
-class Listener{
+class Listener : public EventHandler {
     private:
         int         _sockFd; //before every use check?
         std::vector<VirtualHost> _knownVHs;
         std::string _port;
         std::string _host;
+        EventLoop* _loop;
     public:
         Listener();
         Listener(std::string _port, std::string _host);
@@ -46,4 +49,7 @@ class Listener{
         const std::string& getHost(void) const; 
         void setHost(const std::string& host);
         void closeFD(void);
+        void setLoop(EventLoop& curLoop);
+        EventLoop& getLoop(void);
+        //handler
     };

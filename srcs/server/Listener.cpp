@@ -6,7 +6,7 @@
 /*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/04/04 15:10:44 by mspasic           #+#    #+#             */
-/*   Updated: 2025/04/10 23:40:31 by mspasic          ###   ########.fr       */
+/*   Updated: 2025/04/11 22:47:49 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -27,7 +27,7 @@ Listener::Listener(const Listener& obj){
     _port = obj._port;
     _host = obj._host;
 }
-
+//remember to close the previous fd
 Listener& Listener::operator=(const Listener& obj) {
     if (this != &obj){
         this->copySocketFd(obj._sockFd);
@@ -128,6 +128,13 @@ void Listener::closeFD(void){
     }
 }
 
+void Listener::setLoop(EventLoop& curLoop){
+    _loop = &curLoop;
+}
+
+EventLoop& Listener::getLoop(void){
+    return (*_loop);
+}
 
 void Listener::acceptClient(void){
     //code

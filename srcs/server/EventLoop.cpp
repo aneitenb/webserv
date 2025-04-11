@@ -6,38 +6,41 @@
 /*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/24 19:32:39 by mspasic           #+#    #+#             */
-/*   Updated: 2025/04/10 19:23:23 by mspasic          ###   ########.fr       */
+/*   Updated: 2025/04/11 22:49:06 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "server/EventLoop.hpp"
+#include "EventHandler.hpp"
 #include <string.h>
 #include <iostream> //cerr
 #include <unistd.h> //close
 
-EventLoop::EventLoop(){};
-
-EventLoop::EventLoop(int maxEvents){
-    //clean up just in case
-    _events.clear();
-    _epollFd = -1;
-
-}
+EventLoop::EventLoop() : _epollFd(-1){}
 
 EventLoop::~EventLoop(){
-    close (_epollFd);
-}
-
-void EventLoop::addListenerFds(std::vector<Listener>& listFds){
-    for (std::size_t i = 0; i < listFds.size(); i++){
-        _fds.emplace_back(listFds.at(i).getSocketFd());
+    if (_epollFd != -1){
+        (_epollFd);
+        _epollFd = -1;
     }
 }
 
+int EventLoop::addListeners(std::vector<Listener>& listFds){
+    for (std::size_t i = 0; i < listFds.size(); i++){
+        struct epoll_event curE;
+        curE.events = EPOLLIN | EPOLLONESHOT;
+        curE.data.fd = *listFds.at(i).getSocketFd();
+        curE.data.ptr = static_cast<void*>(&listFds.at(i));
 
-// int EventLoop::addToEpoll(int& fd, uint32_t events){
-
-// }
+        if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, *listFds.at(i).getSocketFd(), &curE) == -1){
+            std::cerr << "Error: Could not add the file descriptor to the epoll instance\n";
+            strerror(errno);
+            return (-1);
+        }
+        listFds.at(i).setLoop(*this);
+    }
+    return (0);
+}
 
 int EventLoop::startRun(void){
     //set up
@@ -51,30 +54,17 @@ int EventLoop::startRun(void){
 
 int EventLoop::run(std::vector<Listener>& listFds){
 
-    this->addListenerFds(listFds);
-    this->startRun();
+    if (this->startRun() == -1)
+        return (-1);
+    if (this->addListeners(listFds) == -1)
+        return (-1);
     while(1){
-        //wait
-        //check if wait failed
-            //if errno == EINTR continue look this up
-            //error handling
-        //process events; wait returns the number of events that need to be resolved
-            //if there is something to be resolved with one of the listening sockets
-            //means a new connection can be accepted
-                //accept, check the clientfd, set to nonblock, addto epoll with ein and elet
-                //new Connection class object
-            //otherwise
-                //look through the connections for the correct fd to resolve
-                    //check for errors or disconnect //epollerr | epollhup
-                    //remove from epoll
-                    //delete connection object
-                    //vector.erase(currentfd)
-                    //close(currentfd)
-                    //continue
-                //if its epollin and not a listening socket, means that it can be read
-                    //figure it out
-                //if its epollout and not a listening socket, means that it can be written into
-                    //figure it out
-//*needs a map/dictionary to connect fds and connections?
+        int events2Resolve = epoll_wait(_epollFd, _events, MAX_EVENTS, -1);
+        for (int i = 0; i < events2Resolve; i++){
+            EventHandler* curE = static_cast<EventHandler*>(_events[i].data.ptr);
+            if (curE->handleEvent(_events[i].events) == -1)
+                return (-1); //cleanup
+        }
     }   
 }
+
