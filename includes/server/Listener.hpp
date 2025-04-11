@@ -6,7 +6,7 @@
 /*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/04/03 15:33:58 by mspasic           #+#    #+#             */
-/*   Updated: 2025/04/11 22:47:47 by mspasic          ###   ########.fr       */
+/*   Updated: 2025/04/12 00:20:30 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -25,7 +25,7 @@ class Listener : public EventHandler {
         std::vector<VirtualHost> _knownVHs;
         std::string _port;
         std::string _host;
-        EventLoop* _loop;
+        std::vector<Client> _activeClients;
     public:
         Listener();
         Listener(std::string _port, std::string _host);
@@ -36,20 +36,20 @@ class Listener : public EventHandler {
         // Listener(Listener&& obj) noexcept;
         // Listener& operator=(Listener&& obj) noexcept;
 
-        void    acceptClient(void);
-
         //getters and setters
         int* getSocketFd(void);
-        int    setSocketFd(void); 
-        int copySocketFd(const int& fd);//dup?
+        int    setSocketFd(void);
         std::vector<VirtualHost> getHosts(void) const;
         void addHost(VirtualHost& cur);
         const std::string& getPort(void) const; 
         void setPort(const std::string& port);
         const std::string& getHost(void) const; 
         void setHost(const std::string& host);
+
+        int copySocketFd(const int& fd);//dup?
         void closeFD(void);
-        void setLoop(EventLoop& curLoop);
-        EventLoop& getLoop(void);
-        //handler
+        int handleEvent(uint32_t ev) override;
+        void addClient(Client& cur);
+        std::vector<Client> getClients(void) const;
+        void delClient(Client cur);
     };

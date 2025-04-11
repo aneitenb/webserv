@@ -6,11 +6,12 @@
 /*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/04/04 15:10:44 by mspasic           #+#    #+#             */
-/*   Updated: 2025/04/11 22:47:49 by mspasic          ###   ########.fr       */
+/*   Updated: 2025/04/12 00:46:08 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "server/Listener.hpp"
+#include "Client.hpp"
 #include <unistd.h>
 #include <string.h>
 #include <fcntl.h>
@@ -128,14 +129,54 @@ void Listener::closeFD(void){
     }
 }
 
-void Listener::setLoop(EventLoop& curLoop){
-    _loop = &curLoop;
+int Listener::handleEvent(uint32_t ev){
+    if (ev & EPOLLERR || ev & EPOLLHUP){
+        //rare but it could happen
+        //in the case of err, socket is unusable
+        //in the case of hup, socket is hanging
+        std::cerr << "Fatal error occurred with the socket. Shutting down.\n";
+        return (-1); //cleanup
+    }
+    if (ev & EPOLLIN){ //accept incoming clients while there are clients to be accepted
+        while (1){
+            Client curC;
+            int curFd = -1;
+            curFd = accept(_sockFd, nullptr, nullptr); //think about taking in the client info for security reasons maybe
+            if (curFd == -1){
+                if (errno == EAGAIN || errno == EWOULDBLOCK)
+                    return (0); //means there are no more clients that wait to be accepted, but can we use errno??
+                std::cerr << "Error: accept() failed\n";
+                std::cerr << strerror(errno) << "\n";
+                return (-1);
+            }
+            if (setuping(&curFd) == -1) //set as nonblocking
+                return (-1);
+            if (curC.copySocketFd(&curFd) == -1) //pass the socket into Client
+                return (-1);
+            EventLoop* curEL = &(this->getLoop()); //get the EventLoop
+            curC.setLoop(*curEL); //set the EventLoop for the client
+            if (curEL->addToEpoll(curC.getClFd(), EPOLLIN | EPOLLONESHOT, &curC) == -1)
+                return (-1); //add the client fd to the epoll
+            _activeClients.push_back(std::move(curC));
+            curEL->addClient(&(_activeClients.at(_activeClients.size() - 1)));
+        }
+    }
+    return (0);
 }
 
-EventLoop& Listener::getLoop(void){
-    return (*_loop);
+
+void Listener::addClient(Client& cur){
+    _activeClients.push_back(cur);
 }
 
-void Listener::acceptClient(void){
-    //code
+std::vector<Client> Listener::getClients(void) const{
+    return (_activeClients);
+}
+
+void Listener::delClient(Client cur){
+    for (std::size_t i = 0; i < _activeClients.size(); i++){
+        if (_activeClients.at(i) == cur){
+            _activeClients.erase(_activeClients.begin() + i);
+            return ;}
+    }
 }

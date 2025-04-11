@@ -6,7 +6,7 @@
 /*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/20 14:51:49 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/04/11 22:32:46 by mspasic          ###   ########.fr       */
+/*   Updated: 2025/04/12 00:12:19 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,6 +16,7 @@
 #include "VirtualHost.hpp"
 #include <sys/epoll.h>
 #include "Listener.hpp"
+#include "Client.hpp"
 
 #define MAX_EVENTS 1024
 
@@ -44,18 +45,22 @@ private:
     // std::vector<int *>            _fds;
     struct epoll_event    _events[MAX_EVENTS]; //result array for epoll_wait()
     // int _maxEvents = MAX_EVENTS;
+    std::vector<Client*> _activeClients;
     EventLoop(const EventLoop& other) = delete;
     const EventLoop& operator=(const EventLoop& other) = delete;
 public:
     EventLoop();
     ~EventLoop();
     // void addListenerFds(std::vector<Listener>& listFds);
-    int addToEpoll (int& fd, uint32_t event);
-    int modifyEpoll(int& fd, uint32_t event);
-    int delEpoll(int& fd);
+    int addToEpoll (int* fd, uint32_t event, EventHandler* object);
+    int modifyEpoll(int* fd, uint32_t event, EventHandler* object);
+    int delEpoll(int* fd, EventHandler* object);
     int startRun();
     int addListeners(std::vector<Listener>& listFds);
     int run(std::vector<Listener>& listFds); //epoll_wait + resolve events: accept/send/recv
+    void addClient(Client* cur);
+    std::vector<Client*> getClients(void) const;
+    void delClient(Client* cur);
 };
 
 /*epoll only cares about
