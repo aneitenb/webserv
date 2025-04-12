@@ -6,7 +6,7 @@
 /*   By: aneitenb <aneitenb@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/20 12:47:33 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/04/07 15:48:58 by aneitenb         ###   ########.fr       */
+/*   Updated: 2025/04/12 16:21:17 by aneitenb         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -34,8 +34,9 @@ private:
 	std::string _trimWhitespace(const std::string& str) const;
 	bool _isValidIP(const std::string& ip) const;
 	bool _isValidPort(const std::string& port) const;
-	bool _isValidPath(const std::string& path) const;
-	bool _checkPermissions(const std::string& path, bool writeAccess) const;
+	bool _isValidPathFormat(const std::string& path) const;
+	bool _isValidLocationPath(const std::string& path) const;
+	bool _isValidFilenameFormat(const std::string& filename) const;
 	bool _isValidServerDirective(const std::string& directive) const;
 	bool _isValidLocationDirective(const std::string& directive) const;
 	bool _isValidHostname(const std::string& hostname) const;

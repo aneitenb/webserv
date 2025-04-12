@@ -6,7 +6,7 @@
 /*   By: aneitenb <aneitenb@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/20 12:50:45 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/04/03 13:40:57 by aneitenb         ###   ########.fr       */
+/*   Updated: 2025/04/12 15:49:21 by aneitenb         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -110,6 +110,16 @@ void displayServerInfo(const ConfigurationFile& config)
 				if (loc.second.hasCgiPass()) {
 					std::cout << "    CGI Pass: " << loc.second.getCgiPass() << std::endl;
 				}
+				
+				const std::map<std::string, std::string>& cgiParams = loc.second.getCgiParams();
+					if (!cgiParams.empty()) {
+						std::cout << "    CGI Parameters:" << std::endl;
+						for (std::map<std::string, std::string>::const_iterator param = cgiParams.begin(); 
+							 param != cgiParams.end(); ++param) {
+							std::cout << "      " << param->first << ": " << param->second << std::endl;
+						}
+					}
+				
 				
 				if (loc.second.hasUploadStore()) {
 					std::cout << "    Upload Store: " << loc.second.getUploadStore() << std::endl;

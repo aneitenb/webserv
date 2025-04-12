@@ -6,7 +6,7 @@
 /*   By: aneitenb <aneitenb@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/24 15:09:18 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/04/07 15:33:44 by aneitenb         ###   ########.fr       */
+/*   Updated: 2025/04/12 15:42:47 by aneitenb         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,6 +15,7 @@
 LocationBlock::LocationBlock() : 
 	redirect(std::make_pair(0, "")),
 	autoindex(false),
+	autoindexSet(false),
 	allowed_methods(0) {
 }
 
@@ -24,13 +25,31 @@ LocationBlock::~LocationBlock() {
 LocationBlock::LocationBlock(const LocationBlock& other) :
 	redirect(other.redirect),
 	autoindex(other.autoindex),
+	autoindexSet(other.autoindexSet),
 	cgi_pass(other.cgi_pass),
 	cgi_param(other.cgi_param),
 	allowed_methods(other.allowed_methods),
 	upload_store(other.upload_store),
 	alias(other.alias),
-	index(other.index) {
+	index(other.index),
+	root(other.root) {
+}
+
+LocationBlock& LocationBlock::operator=(const LocationBlock& other) {
+	if (this != &other) {
+		redirect = other.redirect;
+		autoindex = other.autoindex;
+		autoindexSet = other.autoindexSet;
+		cgi_pass = other.cgi_pass;
+		cgi_param = other.cgi_param;
+		allowed_methods = other.allowed_methods;
+		upload_store = other.upload_store;
+		alias = other.alias;
+		index = other.index;
+		root = other.root;
 	}
+	return *this;
+}
 
 void LocationBlock::clear() {
 	redirect = std::make_pair(0, "");
@@ -42,6 +61,7 @@ void LocationBlock::clear() {
 	upload_store = "";
 	alias = "";
 	index = "";
+	root = "";
 }
 	
 std::string LocationBlock::allowedMethodsToString() const {

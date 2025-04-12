@@ -6,7 +6,7 @@
 /*   By: aneitenb <aneitenb@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/24 13:13:30 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/04/07 15:35:56 by aneitenb         ###   ########.fr       */
+/*   Updated: 2025/04/12 15:39:27 by aneitenb         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -36,6 +36,7 @@ private:
 public:
 	LocationBlock();
 	LocationBlock(const LocationBlock& other);
+	LocationBlock& operator=(const LocationBlock& other); 
 	~LocationBlock();
 
 	void clear();
