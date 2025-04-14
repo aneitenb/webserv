@@ -6,7 +6,7 @@
 #    By: aneitenb <aneitenb@student.hive.fi>        +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2025/01/20 12:43:09 by aneitenb          #+#    #+#              #
-#    Updated: 2025/03/27 15:19:39 by ivalimak         ###   ########.fr        #
+#    Updated: 2025/04/14 16:14:25 by ivalimak         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -55,9 +55,7 @@ tests: httptests
 	@printf "\e[1;38;5;42mWEBSERV >\e[m All tests passed!\n"
 
 httptests: $(REQUEST_TEST)
-	@printf "\e[1;38;5;42mWEBSERV >\e[m Running Request test\n" $@
-	@./$(REQUEST_TEST)
-	@printf "\e[1;38;5;42mWEBSERV >\e[m Request test passed!\n" $@
+	@./run_test Request $(REQUEST_TEST)
 	@printf "\e[1;38;5;42mWEBSERV >\e[m All http tests passed!\n"
 
 $(REQUEST_TEST): $(SRCDIR)/$(HTTPDIR)/Request.cpp $(TESTDIR)/$(HTTPDIR)/Request.cpp
