@@ -6,11 +6,10 @@
 /*   By: ivalimak <ivalimak@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/20 17:06:20 by ivalimak          #+#    #+#             */
-/*   Updated: 2025/04/14 17:04:39 by ivalimak         ###   ########.fr       */
+/*   Updated: 2025/04/14 17:28:04 by ivalimak         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include <array>
 #include "http/Request.hpp"
 
 #define _find(c, x)	(std::find(c.cbegin(), c.cend(), x))

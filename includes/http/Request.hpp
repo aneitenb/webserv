@@ -6,7 +6,7 @@
 /*   By: ivalimak <ivalimak@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/20 16:46:50 by ivalimak          #+#    #+#             */
-/*   Updated: 2025/04/14 15:50:58 by ivalimak         ###   ########.fr       */
+/*   Updated: 2025/04/14 17:27:26 by ivalimak         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,16 +17,7 @@
 #include <map>
 #include <string>
 #include <sstream>
-#include <algorithm>
 #include <exception>
-
-#define CR	"\r"
-#define LF	"\n"
-#define SP	" "
-#define HT	"\t"
-
-#define CRLF CR LF
-#define LWS CRLF SP HT
 
 typedef std::map<std::string, std::string>	headerlist_t;
 
