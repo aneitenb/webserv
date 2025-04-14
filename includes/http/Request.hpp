@@ -6,7 +6,7 @@
 /*   By: ivalimak <ivalimak@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/20 16:46:50 by ivalimak          #+#    #+#             */
-/*   Updated: 2025/04/03 16:23:28 by ivalimak         ###   ########.fr       */
+/*   Updated: 2025/04/14 15:50:58 by ivalimak         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -92,6 +92,11 @@ class Request
 		};
 
 		class InvalidHeaderException: public std::exception {
+			public:
+				const char	*what(void) const noexcept;
+		};
+
+		class InvalidFieldException: public std::exception {
 			public:
 				const char	*what(void) const noexcept;
 		};

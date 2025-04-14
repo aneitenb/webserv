@@ -6,7 +6,7 @@
 /*   By: ivalimak <ivalimak@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/20 17:06:20 by ivalimak          #+#    #+#             */
-/*   Updated: 2025/04/03 16:57:26 by ivalimak         ###   ########.fr       */
+/*   Updated: 2025/04/14 15:54:26 by ivalimak         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -33,16 +33,19 @@ Request::Request(const std::string &rawRequest): _contentLength(0), _chunked(fal
 		throw Request::InvalidHeaderException();
 	try {
 		this->_chunked = this->getHeader("Transfer-Encoding") == "chunked";
-	} catch (std::exception) {}
+	} catch (std::exception &) {}
 	try {
 		std::string _clstr = this->getHeader("Content-Length");
 		this->_contentLength = std::stoul(_clstr);
-	} catch (std::exception) {} // separate catch for possible exception from stoul?
-	try {
-		this->_contentType = this->getHeader("Content-Type");
-	} catch (std::exception) {} // is missing Content-Type an error ?
+	} catch (Request::FieldNotFoundException &) {
+	} catch (std::exception &) { throw Request::InvalidFieldException(); }
 	bodySection = (rawRequest.length() > headerEnd + 4) ? rawRequest.substr(headerEnd + 4) : "";
 	if (!bodySection.empty()) {
+		try {
+			this->_contentType = this->getHeader("Content-Type");
+		} catch (std::exception &) {
+			this->_contentType = "application/octet-stream"; // 2616/7.2.1
+		}
 		bool _rv = (this->_chunked) ? this->processChunkedBody(std::stringstream(bodySection)) : this->_parseBody(bodySection);
 		if (!_rv)
 			throw Request::InvalidBodyException();
@@ -113,7 +116,7 @@ bool	Request::_parseHeaders(std::stringstream rawHeaders) {
 	size_t		sep;
 
 	while (std::getline(rawHeaders, line)) {
-		if (!line.empty() && line != "\r") {
+		if (!line.empty() && line != CR) {
 			if (line[line.length() - 1] == *CR)
 				line.erase(line.length() - 1);
 			sep = line.find(":");
@@ -173,5 +176,7 @@ const char	*Request::IncompleteHeaderException::what(void) const noexcept { retu
 const char	*Request::FieldNotFoundException::what(void) const noexcept { return "Header field not found"; }
 
 const char	*Request::InvalidHeaderException::what(void) const noexcept { return "Invalid header"; }
+
+const char	*Request::InvalidFieldException::what(void) const noexcept { return "Invalid header field"; }
 
 const char	*Request::InvalidBodyException::what(void) const noexcept { return "Invalid or incomplete body"; }
