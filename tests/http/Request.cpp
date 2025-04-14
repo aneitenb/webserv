@@ -34,6 +34,11 @@ i32	main(void) {
 		_printRequest(req4, 4);
 		err = true;
 	} catch (std::exception &e) { std::cerr << "Request 4: " << e.what() << "\n"; }
+	try {
+		Request	req5("GET datatracker.ietf.org/doc/html/rfc2616 HTTP/1.1\r\nContent-Length: seven\r\n\r\n");
+		_printRequest(req5, 5);
+		err = true;
+	} catch (std::exception &e) { std::cerr << "Request 5: " << e.what() << "\n"; }
 	return (!err) ? 0 : 1;
 }
 
@@ -52,7 +57,7 @@ static inline void	_printRequest(const Request &req, const size_t &n) {
 		std::cerr << "\tContentType: " << req.getContentType() << "\n";
 	std::cerr << "\tHeaders:\n";
 	for (auto field : req.getHeaderList())
-		std::cerr << "\t\t" << field.first << ":" << field.second << "\n";
+		std::cerr << "\t\t'" << field.first << ": " << field.second << "'\n";
 	if (!req.getBody().empty())
 		std::cerr << "\tBody {\n" << req.getBody() << "\n}\n";
 }

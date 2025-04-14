@@ -6,7 +6,7 @@
 /*   By: ivalimak <ivalimak@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/20 17:06:20 by ivalimak          #+#    #+#             */
-/*   Updated: 2025/04/14 15:54:26 by ivalimak         ###   ########.fr       */
+/*   Updated: 2025/04/14 17:04:39 by ivalimak         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -124,6 +124,7 @@ bool	Request::_parseHeaders(std::stringstream rawHeaders) {
 				return false;
 			key = line.substr(0, sep);
 			val = line.substr(sep + 1);
+			_trimLWS(key);
 			_trimLWS(val);
 			this->_headers[key] = val;
 		}
