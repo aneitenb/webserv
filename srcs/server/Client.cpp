@@ -6,7 +6,7 @@
 /*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/04/06 23:04:40 by mspasic           #+#    #+#             */
-/*   Updated: 2025/04/12 00:25:36 by mspasic          ###   ########.fr       */
+/*   Updated: 2025/04/14 17:18:32 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -84,6 +84,42 @@ void Client::setState(State newState){
     _cur = newState;
 }
 
+int Client::handleEvent(uint32_t ev){
+    if (ev & EPOLLERR || ev & EPOLLHUP){
+        //error and clear?
+    }
+    if (ev & EPOLLIN){
+        //data hads to be received, check if the whole thing was received
+        //if the whole thing was received, change what the epoll listens for to epollout
+    }
+    if (ev & EPOLLOUT){
+        //data to be sent
+        //if the whole thing was sent change what the epoll listens for to epollin | epolloneshot
+    }
+}
+
+
+int Client::sending_stuff(){
+    int len = send(_clFd, &_buffer, _buffer.size(), 0);
+    if (len == -1){
+        std::cerr << "Could not send data over the connected socket with the fd of " << _clFd << "\n";
+        std::cerr << strerror(errno) << "\n";
+        return (-1);
+    }
+    return (len);
+}
+
+
+int Client::receiving_stuff(){
+    int len = recv(_clFd, &_buffer, sizeof(_buffer) - 1, 0);
+    if (len == -1){
+        std::cerr << "Could not receive data over the connected socket with the fd of " << _clFd << "\n";
+        std::cerr << strerror(errno) << "\n";
+        return (-1);
+    }
+    return (len);
+}
+
 // int Client::settingUp(int* fd){
 //     socklen_t addr_size = sizeof(struct sockaddr*);
 //     //this should maybe be handled by a listener?
@@ -98,4 +134,27 @@ void Client::setState(State newState){
 //         return (-1);        
 //     }   
 //     return (0);
+// }
+
+
+
+
+//SIGNAL HANDLING???
+// static void sigint_handler(int signo)
+// {
+//   (void)close(tcp_server_fd);
+//   (void)close(tcp_client_fd);
+//   sleep(2);
+//   printf("Caught sigINT!\n");
+//   exit(EXIT_SUCCESS);
+// }
+
+// void register_signal_handler(
+// int signum,
+// void (*handler)(int))
+// {
+//   if (signal(signum, handler) == SIG_ERR) {
+//      printf("Cannot handle signal\n");
+//      exit(EXIT_FAILURE);
+//   }
 // }

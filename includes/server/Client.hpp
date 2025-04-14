@@ -6,7 +6,7 @@
 /*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/04/03 15:36:48 by mspasic           #+#    #+#             */
-/*   Updated: 2025/04/12 00:23:15 by mspasic          ###   ########.fr       */
+/*   Updated: 2025/04/14 17:14:38 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,13 +16,21 @@
 #include "EventHandler.hpp"
 #include "EventLoop.hpp"
 
+
+enum State {
+    WRITING,
+    READING,
+    CLOSE
+};
+
 class Client : public EventHandler {
     private:
         int*                _listfd; //do i need this
         int                 _clFd;
         struct sockaddr*    _result; //do i need this if when i accept i just take the fd?
         // struct epoll_event  _event;
-        State _cur;
+        State               _cur;
+        std::string         _buffer;
     public:
         Client();
         ~Client();
@@ -40,11 +48,7 @@ class Client : public EventHandler {
 
         int copySocketFd(int* fd);
         int handleEvent(uint32_t ev) override;
+        int sending_stuff();
+        int receiving_stuff();
         //timeout??
-};
-
-enum State {
-    WRITING,
-    READING,
-    CLOSE
 };

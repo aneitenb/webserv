@@ -6,7 +6,7 @@
 /*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/04/03 16:21:54 by mspasic           #+#    #+#             */
-/*   Updated: 2025/04/11 00:11:59 by mspasic          ###   ########.fr       */
+/*   Updated: 2025/04/14 17:39:14 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -87,7 +87,6 @@ int WebServer::initialize(std::vector<ServerBlock>& serBlocks){
         std::cout << "serverNamesCheck " << serBlocks.at(countS).getServerName() << std::endl;
         curPorts = serBlocks.at(countS).getListen();
         maxPorts = curPorts.size();
-        //tell Aida to set up the serv name as the host if there is no IP; default IP
         curHost = serBlocks.at(countS).getHost();
         for (std::size_t countP = 0; countP < maxPorts; countP++){
             if ((countL = this->resolveListener(curPorts.at(countP), curHost)) == -1)

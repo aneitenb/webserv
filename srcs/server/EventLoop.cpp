@@ -6,7 +6,7 @@
 /*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/24 19:32:39 by mspasic           #+#    #+#             */
-/*   Updated: 2025/04/12 00:13:18 by mspasic          ###   ########.fr       */
+/*   Updated: 2025/04/14 17:46:45 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -90,7 +90,7 @@ int EventLoop::modifyEpoll(int* fd, uint32_t event, EventHandler* object){
     curE.data.ptr = static_cast<void*>(object);
 
     if (epoll_ctl(_epollFd, EPOLL_CTL_MOD, *fd, &curE) == -1){
-        std::cerr << "Error: Could not modify the file descriptor to the epoll instance\n";
+        std::cerr << "Error: Could not modify the file descriptor in the epoll instance\n";
         strerror(errno);
         return (-1);
     }
@@ -99,7 +99,7 @@ int EventLoop::modifyEpoll(int* fd, uint32_t event, EventHandler* object){
 
 int EventLoop::delEpoll(int* fd, EventHandler* object){
     if (epoll_ctl(_epollFd, EPOLL_CTL_DEL, *fd, 0) == -1){
-        std::cerr << "Error: Could not delete the file descriptor to the epoll instance\n";
+        std::cerr << "Error: Could not delete the file descriptor from the epoll instance\n";
         strerror(errno);
         return (-1);
     }
