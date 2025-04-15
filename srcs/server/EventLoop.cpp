@@ -6,7 +6,7 @@
 /*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/24 19:32:39 by mspasic           #+#    #+#             */
-/*   Updated: 2025/04/14 17:46:45 by mspasic          ###   ########.fr       */
+/*   Updated: 2025/04/15 15:48:22 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -28,7 +28,7 @@ EventLoop::~EventLoop(){
 int EventLoop::addListeners(std::vector<Listener>& listFds){
     for (std::size_t i = 0; i < listFds.size(); i++){
         struct epoll_event curE;
-        curE.events = EPOLLIN | EPOLLONESHOT;
+        curE.events = EPOLLIN;
         curE.data.fd = *listFds.at(i).getSocketFd();
         curE.data.ptr = static_cast<void*>(&listFds.at(i));
 

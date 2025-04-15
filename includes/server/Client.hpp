@@ -6,7 +6,7 @@
 /*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/04/03 15:36:48 by mspasic           #+#    #+#             */
-/*   Updated: 2025/04/14 17:14:38 by mspasic          ###   ########.fr       */
+/*   Updated: 2025/04/15 16:06:47 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -48,7 +48,7 @@ class Client : public EventHandler {
 
         int copySocketFd(int* fd);
         int handleEvent(uint32_t ev) override;
-        int sending_stuff();
-        int receiving_stuff();
+        bool sending_stuff();
+        bool receiving_stuff();
         //timeout??
 };

@@ -6,7 +6,7 @@
 /*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/04/04 15:10:44 by mspasic           #+#    #+#             */
-/*   Updated: 2025/04/12 00:46:08 by mspasic          ###   ########.fr       */
+/*   Updated: 2025/04/15 15:48:33 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -155,7 +155,7 @@ int Listener::handleEvent(uint32_t ev){
                 return (-1);
             EventLoop* curEL = &(this->getLoop()); //get the EventLoop
             curC.setLoop(*curEL); //set the EventLoop for the client
-            if (curEL->addToEpoll(curC.getClFd(), EPOLLIN | EPOLLONESHOT, &curC) == -1)
+            if (curEL->addToEpoll(curC.getClFd(), EPOLLIN, &curC) == -1)
                 return (-1); //add the client fd to the epoll
             _activeClients.push_back(std::move(curC));
             curEL->addClient(&(_activeClients.at(_activeClients.size() - 1)));

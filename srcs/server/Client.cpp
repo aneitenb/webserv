@@ -6,7 +6,7 @@
 /*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/04/06 23:04:40 by mspasic           #+#    #+#             */
-/*   Updated: 2025/04/14 17:18:32 by mspasic          ###   ########.fr       */
+/*   Updated: 2025/04/15 16:59:55 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -94,30 +94,53 @@ int Client::handleEvent(uint32_t ev){
     }
     if (ev & EPOLLOUT){
         //data to be sent
-        //if the whole thing was sent change what the epoll listens for to epollin | epolloneshot
+        //if the whole thing was sent change what the epoll listens for to epollin 
     }
 }
 
 
-int Client::sending_stuff(){
-    int len = send(_clFd, &_buffer, _buffer.size(), 0);
+bool Client::sending_stuff(){
+    ssize_t len = send(_clFd, &_buffer, _buffer.size(), 0); //buffer + bytesSentSoFar, sizeof remaining bytes, 0
     if (len == -1){
         std::cerr << "Could not send data over the connected socket with the fd of " << _clFd << "\n";
         std::cerr << strerror(errno) << "\n";
-        return (-1);
+        return (false);
     }
-    return (len);
+    return (true);
 }
 
 
-int Client::receiving_stuff(){
-    int len = recv(_clFd, &_buffer, sizeof(_buffer) - 1, 0);
-    if (len == -1){
-        std::cerr << "Could not receive data over the connected socket with the fd of " << _clFd << "\n";
-        std::cerr << strerror(errno) << "\n";
-        return (-1);
+bool Client::receiving_stuff(){
+    ssize_t len = 0;
+    std::string temp_buff;
+    _buffer.clear();
+    temp_buff.clear(); //maybe I don't need this?
+
+    while(1){
+        len = recv(_clFd, &temp_buff, sizeof(temp_buff), 0); //sizeof(buffer) - 1?
+        if (len == -1){ //either means that there is no more data to read or error
+            if (errno == EAGAIN || errno == EWOULDBLOCK) //done reading
+                break;
+            std::cerr << "Could not receive data over the connected socket with the fd of " << _clFd << "\n";
+            std::cerr << strerror(errno) << "\n";
+            return (false); //actual error occurred
+        }
+        else if(len == 0) //means the client closed connection
+        {
+            // if ()
+            //cleanup? probably fd needs to be closed?
+            return (false);
+        }
+        else{ // means something was returned
+            if (temp_buff.size() <= _buffer.max_size() - _buffer.size())
+                _buffer.append(temp_buff); //append temp to buffer
+            temp_buff.clear();
+        }
+
     }
-    return (len);
+        //check if request is complete  
+        //if yes, return true
+        //if no, return false
 }
 
 // int Client::settingUp(int* fd){
