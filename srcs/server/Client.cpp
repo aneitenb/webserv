@@ -6,7 +6,7 @@
 /*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/04/06 23:04:40 by mspasic           #+#    #+#             */
-/*   Updated: 2025/04/15 16:59:55 by mspasic          ###   ########.fr       */
+/*   Updated: 2025/04/15 21:36:04 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,8 +17,9 @@
 #include <string.h>
 #include <fcntl.h>
 
-Client::Client():_listfd(nullptr), _clFd(-1), _cur(READING){
+Client::Client():_listfd(nullptr), _clFd(-1), _curR(EMPTY){
     ftMemset(&_result, sizeof(_result));
+    setState(READING);
     // ftMemset(&_event, sizeof(_event)); //do I leave this like this?
 }
 
@@ -53,7 +54,8 @@ Client::Client(Client&& other) noexcept {
     this->copySocketFd(&other._clFd);
     _result = other._result;
     other._result = nullptr;
-    _cur = other._cur;
+    _curR = other._curR;
+    this->setState(other.getState());
 }
 
 //this should never be used though
@@ -64,57 +66,86 @@ Client& Client::operator=(Client&& other) noexcept {
         this->copySocketFd(&other._clFd);
         _result = other._result;
         other._result = nullptr;
-        _cur = other._cur;
+        _curR = other._curR;
+        this->setState(other.getState());
     }
     return (*this);
 }
 
 bool Client::operator==(const Client& other){
     if (_listfd == other._listfd && _clFd == other._clFd \
-    && _result == other._result && _cur == other._cur)
+    && _result == other._result && this->getState() == other.getState() \ 
+    && _curR == other._curR)
         return (true);
     return (false);
 }
 
-State Client::getState(void) const{
-    return(_cur);
-}
+// State Client::getState(void) const{
+//     return(_curS);
+// }
 
-void Client::setState(State newState){
-    _cur = newState;
-}
+// void Client::setState(State newState){
+//     _curS = newState;
+// }
 
 int Client::handleEvent(uint32_t ev){
     if (ev & EPOLLERR || ev & EPOLLHUP){
         //error and clear?
+        this->setState(CLOSE);
     }
     if (ev & EPOLLIN){
-        //data hads to be received, check if the whole thing was received
-        //if the whole thing was received, change what the epoll listens for to epollout
+        receiving_stuff();
+        //is it complete, check and set
+        if (_curR == COMPLETE){
+            //respond
+            //EPOLLOUT //_curS = TOWRITE
+            this->setState(TOWRITE);
+        }
+        // else if(_curR == CLOSE)
+            ///handle here?
     }
     if (ev & EPOLLOUT){
+        sending_stuff();
+        // if (_responding.state == COMPLETE){
+            this->setState(TOREAD);
+        //if connection::keep-alive switch to epollout
+        //if connection::close close socket + cleanup
+        // }
         //data to be sent
         //if the whole thing was sent change what the epoll listens for to epollin 
     }
 }
+//timeout checks
 
 
-bool Client::sending_stuff(){
-    ssize_t len = send(_clFd, &_buffer, _buffer.size(), 0); //buffer + bytesSentSoFar, sizeof remaining bytes, 0
-    if (len == -1){
+int Client::sending_stuff(){
+    // response class that has totalBytesThatNeed2BSent + bytesSentSoFar
+    /*
+    ssize_t len = send(_clFd, &_buffer + bytesSentSoFar, total - sent, 0); //buffer + bytesSentSoFar, sizeof remaining bytes, 0
+    if ( len == EMSGSIZE)
+        the message is too long to pass atomically through the underlying protocol, the msg is not transmitted
+        return (-1);
+        if (len == -1){
+        if (errno == EAGAIN || errno == EWOULDBLOCK)
+            break ;
         std::cerr << "Could not send data over the connected socket with the fd of " << _clFd << "\n";
         std::cerr << strerror(errno) << "\n";
-        return (false);
+        return (-1);
     }
-    return (true);
+    if (totalSent == bytessentsofar)
+        switch to EPOLLIN //_curS = TOREAD
+        return (0);
+    return (1);
+    */
 }
 
 
-bool Client::receiving_stuff(){
+int Client::receiving_stuff(){
     ssize_t len = 0;
     std::string temp_buff;
-    _buffer.clear();
     temp_buff.clear(); //maybe I don't need this?
+    if (_curR == CLEAR)
+        _buffer.clear(); //maybe can't do this if the request is not complete
 
     while(1){
         len = recv(_clFd, &temp_buff, sizeof(temp_buff), 0); //sizeof(buffer) - 1?
@@ -123,24 +154,23 @@ bool Client::receiving_stuff(){
                 break;
             std::cerr << "Could not receive data over the connected socket with the fd of " << _clFd << "\n";
             std::cerr << strerror(errno) << "\n";
-            return (false); //actual error occurred
+            return (-1); //actual error occurred
         }
         else if(len == 0) //means the client closed connection
         {
-            // if ()
+            // isRequestComplete();
+            if (_curR == COMPLETE)
+                this->setState(CLOSE); //if the client is no longer connected then no need to respond, right?
             //cleanup? probably fd needs to be closed?
-            return (false);
+            return (1);
         }
         else{ // means something was returned
             if (temp_buff.size() <= _buffer.max_size() - _buffer.size())
                 _buffer.append(temp_buff); //append temp to buffer
             temp_buff.clear();
         }
-
     }
-        //check if request is complete  
-        //if yes, return true
-        //if no, return false
+    return (0);
 }
 
 // int Client::settingUp(int* fd){

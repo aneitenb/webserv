@@ -6,7 +6,7 @@
 /*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/24 19:32:39 by mspasic           #+#    #+#             */
-/*   Updated: 2025/04/15 15:48:22 by mspasic          ###   ########.fr       */
+/*   Updated: 2025/04/15 21:19:08 by mspasic          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -64,6 +64,7 @@ int EventLoop::run(std::vector<Listener>& listFds){
             EventHandler* curE = static_cast<EventHandler*>(_events[i].data.ptr);
             if (curE->handleEvent(_events[i].events) == -1)
                 return (-1); //cleanup
+            //get the state and change accordingly like if its towrite say its writing and switch it
         }
     }   
 }
