@@ -6,7 +6,7 @@
 /*   By: aneitenb <aneitenb@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/28 09:56:54 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/04/12 16:22:40 by aneitenb         ###   ########.fr       */
+/*   Updated: 2025/04/15 16:58:14 by aneitenb         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -25,7 +25,6 @@ const std::set<std::string> ConfigurationFile::_locationOnlyDirectives = {
 	"return",
 	"autoindex",
 	"cgi_pass",
-	"cgi_param",
 	"upload_store",
 	"alias"
 };
@@ -103,6 +102,8 @@ int ConfigurationFile::_parseConfigFile(void) {
 
 		//location block start
 		if (inServerBlock && line.substr(0, 9) == "location ") {
+			if (inLocationBlock) 
+				throw ErrorInvalidConfig("Nested location blocks are not allowed");
 			inLocationBlock = true;
 			
 			// get location path and validate format
@@ -275,17 +276,41 @@ void ConfigurationFile::_parseServerDirective(ServerBlock& server, const std::st
 	else if (key == "client_max_body_size") {
 		if (server.hasClientMaxBodySize())
 			throw ErrorInvalidConfig("Duplicate 'client_max_body_size' directive in server block");
+		
 		std::istringstream iss(value);
 		size_t size;
-		std::string extraChars;
-
-		//reading the value as a number
+		
 		if (!(iss >> size))
 			throw ErrorInvalidConfig("Invalid client_max_body_size value: " + value);
+
+		std::string suffix;
+		iss >> suffix;
+		if (!suffix.empty()) {
+			if (suffix.length() != 1)
+				throw ErrorInvalidConfig("Invalid unit in client_max_body_size: " + value);
+				
+			char unit = std::tolower(suffix[0]);
+			if (unit == 'k')
+				size *= 1024;
+			else if (unit == 'm')
+				size *= 1024 * 1024;
+			else if (unit == 'g')
+				size *= 1024 * 1024 * 1024;
+			else
+				throw ErrorInvalidConfig("Invalid unit in client_max_body_size: " + value);
+				
+			//check if overflow occurred during multiplication
+			if (size == 0)
+				throw ErrorInvalidConfig("client_max_body_size value is too large: " + value);
+		}
+
+		std::string extraChars;
 		if (iss >> extraChars)
 			throw ErrorInvalidConfig("Invalid characters in client_max_body_size: " + value);
+
 		if (size > MAX_BODY_SIZE)
 			throw ErrorInvalidConfig("client_max_body_size exceeds maximum allowed value");
+		
 		server.setClientMaxBodySize(size);
 	}
 	else if (key == "error_page") {
@@ -355,26 +380,12 @@ void ConfigurationFile::_parseLocationDirective(ServerBlock& server, LocationBlo
 	else if (key == "cgi_pass") {
 		if (locBlock.hasCgiPass())
 			throw ErrorInvalidConfig("Duplicate 'cgi_pass' directive in location block");
-		// Check if CGI executable exists and is executable
 		if (!_isValidPathFormat(value))
 			throw ErrorInvalidConfig("Invalid CGI executable path: " + value);
 		if (value.length() > MAX_ROOT_PATH_LENGTH)
 			throw ErrorInvalidConfig("CGI path too long (max " + std::to_string(MAX_ROOT_PATH_LENGTH) + " characters)");
 			
 		locBlock.setCgiPass(value);
-	}
-	else if (key == "cgi_param") {
-		if (locBlock.hasCgiParam(value))
-			throw ErrorInvalidConfig("Duplicate 'cgi_param' directive in location block");
-		// Format: cgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
-		size_t paramDelim = value.find(' ');
-		if (paramDelim == std::string::npos)
-			throw ErrorInvalidConfig("Invalid cgi_param format: " + value);
-			
-		std::string paramName = value.substr(0, paramDelim);
-		std::string paramValue = _trimWhitespace(value.substr(paramDelim + 1));
-		
-		locBlock.setCgiParam(paramName, paramValue);
 	}
 	else if (key == "allowed_methods") {
 		if (locBlock.hasAllowedMethods())
@@ -388,8 +399,7 @@ void ConfigurationFile::_parseLocationDirective(ServerBlock& server, LocationBlo
 	else if (key == "upload_store") {
 		if (locBlock.hasUploadStore())
 			throw ErrorInvalidConfig("Duplicate 'upload_store' directive in location block");
-		
-		// Validate the upload store path format
+
 		if (!_isValidPathFormat(value))
 			throw ErrorInvalidConfig("Invalid upload store path format: " + value);
 		
@@ -437,14 +447,18 @@ void ConfigurationFile::_parseLocationDirective(ServerBlock& server, LocationBlo
 	}
 }
 
-bool ConfigurationFile::_validateServerBlock(const ServerBlock& server) const {
+bool ConfigurationFile::_validateServerBlock(ServerBlock& server) const {
 	if (server.getListen().size() == 0)
 		throw ErrorInvalidConfig("Missing 'listen' directive");
-	if (server.getHost().empty())
-		throw ErrorInvalidConfig("Missing 'host' directive");
+	if (server.getHost().empty() && server.getServerName().empty())
+		throw ErrorInvalidConfig("Missing 'host' and 'server_name' directives");
+	if (server.getHost().empty() && !server.getServerName().empty())
+		server.setHost("0.0.0.0");
 	if (server.getRoot().empty())
 		throw ErrorInvalidConfig("Missing 'root' directive");
 	
+	if (server.getIndex().empty())
+		server.setIndex("index.html");
 	const std::map<std::string, LocationBlock>& locationBlocks = server.getLocationBlocks();
 	for (std::map<std::string, LocationBlock>::const_iterator it = locationBlocks.begin(); 
 		 it != locationBlocks.end(); ++it) {
@@ -456,11 +470,6 @@ bool ConfigurationFile::_validateServerBlock(const ServerBlock& server) const {
 }
 
 bool ConfigurationFile::_validateLocationBlock(const std::string& path, const LocationBlock& block) const {
-	if (block.hasCgiPass()) {
-		if (!block.hasCgiParam("SCRIPT_FILENAME")) {
-			throw ErrorInvalidConfig("CGI_PASS requires SCRIPT_FILENAME parameter for location: " + path);
-		}
-	}
 	if (block.hasRoot() && block.hasAlias()) {
 		throw ErrorInvalidConfig("Cannot use both root and alias directives in the same location: " + path);
 	}
@@ -527,7 +536,10 @@ bool ConfigurationFile::_isValidLocationPath(const std::string& path) const {
     if (path.empty() || path[0] == '~' || path[0] == '=') {
         return false;
     }
-
+	for (size_t i = 1; i < path.length(); ++i) {
+		if (path [i] == '/' && path[i - 1] =='/')
+			return false;
+	}
     std::regex pathRegex("^[a-zA-Z0-9._\\-\\/]+$");
     return std::regex_match(path, pathRegex);
 }
@@ -535,7 +547,11 @@ bool ConfigurationFile::_isValidLocationPath(const std::string& path) const {
 bool ConfigurationFile::_isValidPathFormat(const std::string& path) const {
 	if (path.empty())
 		return false;
-	
+	for (size_t i = 1; i < path.length(); ++i) {
+        if (path[i] == '/' && path[i-1] == '/') {
+            return false;
+        }
+    }
 	if (path[0] == '/') {
 		std::regex absolutePathRegex("^\\/[a-zA-Z0-9._\\-\\/]+$");
 		return std::regex_match(path, absolutePathRegex);

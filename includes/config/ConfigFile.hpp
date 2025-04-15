@@ -6,7 +6,7 @@
 /*   By: aneitenb <aneitenb@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/20 12:47:33 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/04/12 16:21:17 by aneitenb         ###   ########.fr       */
+/*   Updated: 2025/04/14 16:56:57 by aneitenb         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -45,7 +45,7 @@ private:
 	void _parseLocationDirective(ServerBlock& server, LocationBlock& locBlock, 
 			const std::string& key, const std::string& value);
 
-	bool _validateServerBlock(const ServerBlock& server) const;
+	bool _validateServerBlock(ServerBlock& server) const;
 	bool _validateLocationBlock(const std::string& path, const LocationBlock& block) const;
 	bool _checkForDuplicateServers() const;
 

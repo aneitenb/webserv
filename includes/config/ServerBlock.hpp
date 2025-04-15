@@ -6,7 +6,7 @@
 /*   By: aneitenb <aneitenb@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/31 12:48:30 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/04/07 15:36:28 by aneitenb         ###   ########.fr       */
+/*   Updated: 2025/04/14 19:15:09 by aneitenb         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -29,6 +29,7 @@ private:
 	std::string _root;
 	size_t _clientMaxBodySize;
 	std::vector<std::pair<int, std::string>> _errorPages;
+	std::vector<std::pair<int, std::string>> _defaultErrorPages;
 	std::string _index;
 	std::map<std::string, LocationBlock> _locationBlocks;
 	bool _hasCustomErrorPages;
@@ -52,6 +53,7 @@ public:
 	bool hasErrorPage(int status) const;
 	std::string getErrorPage(int status) const;
 	std::vector<std::pair<int, std::string>> getErrorPages() const;
+	const std::vector<std::pair<int, std::string>>& getDefaultErrorPages() const;
 	std::string getDefaultErrorDir() const;
 	bool hasCustomErrorPages() const;
 	
@@ -63,6 +65,8 @@ public:
 	bool hasAllowedMethods() const;
 	uint8_t getAllowedMethods() const;
 	void setAllowedMethods(uint8_t methods);
+	std::string allowedMethodsToString() const;
+	bool isMethodAllowed(HttpMethod method) const;
 	
 	bool hasHost() const;
 	std::string getHost() const;

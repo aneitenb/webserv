@@ -6,7 +6,7 @@
 /*   By: aneitenb <aneitenb@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/31 12:48:34 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/04/07 15:33:53 by aneitenb         ###   ########.fr       */
+/*   Updated: 2025/04/14 19:15:55 by aneitenb         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,10 +16,23 @@ ServerBlock::ServerBlock() :
 	_listen(),
 	_host(""),
 	_clientMaxBodySize(0),
-	_index("index.html"),
 	_hasCustomErrorPages(false),
-	_defaultErrorDir("/errors")
+	_defaultErrorDir("/default_errors")
 {
+	_defaultErrorPages.emplace_back(400, _defaultErrorDir + "/400.html");
+	_defaultErrorPages.emplace_back(403, _defaultErrorDir + "/403.html");
+	_defaultErrorPages.emplace_back(404, _defaultErrorDir + "/404.html");
+	_defaultErrorPages.emplace_back(405, _defaultErrorDir + "/405.html");
+	_defaultErrorPages.emplace_back(408, _defaultErrorDir + "/408.html");
+	_defaultErrorPages.emplace_back(409, _defaultErrorDir + "/409.html");
+	_defaultErrorPages.emplace_back(411, _defaultErrorDir + "/411.html");
+	_defaultErrorPages.emplace_back(413, _defaultErrorDir + "/413.html");
+	_defaultErrorPages.emplace_back(414, _defaultErrorDir + "/414.html");
+	_defaultErrorPages.emplace_back(431, _defaultErrorDir + "/431.html");
+	_defaultErrorPages.emplace_back(500, _defaultErrorDir + "/500.html");
+	_defaultErrorPages.emplace_back(501, _defaultErrorDir + "/501.html");
+	_defaultErrorPages.emplace_back(503, _defaultErrorDir + "/503.html");
+	_defaultErrorPages.emplace_back(505, _defaultErrorDir + "/505.html");
 }
 
 ServerBlock::~ServerBlock() {
@@ -33,9 +46,25 @@ void ServerBlock::clear() {
 	_clientMaxBodySize = 0;
 	_errorPages.clear();
 	_locationBlocks.clear();
-	_index = "index.html";
+	_index = "";
 	_hasCustomErrorPages = false;
-	_defaultErrorDir = "/errors";
+	_defaultErrorDir = "/default_errors";
+
+	_defaultErrorPages.clear();
+	_defaultErrorPages.emplace_back(400, _defaultErrorDir + "/400.html");
+	_defaultErrorPages.emplace_back(403, _defaultErrorDir + "/403.html");
+	_defaultErrorPages.emplace_back(404, _defaultErrorDir + "/404.html");
+	_defaultErrorPages.emplace_back(405, _defaultErrorDir + "/405.html");
+	_defaultErrorPages.emplace_back(408, _defaultErrorDir + "/408.html");
+	_defaultErrorPages.emplace_back(409, _defaultErrorDir + "/409.html");
+	_defaultErrorPages.emplace_back(411, _defaultErrorDir + "/411.html");
+	_defaultErrorPages.emplace_back(413, _defaultErrorDir + "/413.html");
+	_defaultErrorPages.emplace_back(414, _defaultErrorDir + "/414.html");
+	_defaultErrorPages.emplace_back(431, _defaultErrorDir + "/431.html");
+	_defaultErrorPages.emplace_back(500, _defaultErrorDir + "/500.html");
+	_defaultErrorPages.emplace_back(501, _defaultErrorDir + "/501.html");
+	_defaultErrorPages.emplace_back(503, _defaultErrorDir + "/503.html");
+	_defaultErrorPages.emplace_back(505, _defaultErrorDir + "/505.html");
 }
 
 bool ServerBlock::hasLocationBlock(const std::string& path) const {
@@ -54,14 +83,14 @@ LocationBlock ServerBlock::getLocationBlock(const std::string& path) const {
 }
 
 LocationBlock& ServerBlock::getLocationBlockRef(const std::string& path) {
-    std::map<std::string, LocationBlock>::iterator it = _locationBlocks.find(path);
-    if (it == _locationBlocks.end()) {
-        // If the location block doesn't exist, create a new one
-        LocationBlock newBlock;
-        _locationBlocks[path] = newBlock;
-    }
-    // Return a reference to the location block
-    return _locationBlocks[path];
+	std::map<std::string, LocationBlock>::iterator it = _locationBlocks.find(path);
+	if (it == _locationBlocks.end()) {
+		// If the location block doesn't exist, create a new one
+		LocationBlock newBlock;
+		_locationBlocks[path] = newBlock;
+	}
+	// Return a reference to the location block
+	return _locationBlocks[path];
 }
 
 void ServerBlock::addLocationBlock(const std::string& path, const LocationBlock& block) {
@@ -105,7 +134,12 @@ std::string ServerBlock::getErrorPage(int status) const {
 			}
 		}
 	}
-	//use default if no custom page
+	for (const auto& page : _defaultErrorPages) {
+		if (page.first == status) {
+			return page.second;
+		}
+	}
+	//use default if no custom or default page
 	std::string defaultPath = _defaultErrorDir + "/" + std::to_string(status) + ".html";
 	return defaultPath;
 }
@@ -122,8 +156,33 @@ void ServerBlock::setAllowedMethods(uint8_t methods) {
 	this->_allowedMethods = methods;
 }
 
+std::string ServerBlock::allowedMethodsToString() const {
+	std::stringstream ss;
+		
+	if (isMethodAllowed(GET))
+		ss << "GET ";
+	if (isMethodAllowed(POST))
+		ss << "POST ";
+	if (isMethodAllowed(DELETE))
+		ss << "DELETE ";
+	
+	std::string result = ss.str();
+	if (!result.empty() && result[result.length() - 1] == ' ')
+		result = result.substr(0, result.length() - 1);
+		
+	return result;
+}
+
+bool ServerBlock::isMethodAllowed(HttpMethod method) const {
+	return (_allowedMethods & method) != 0;
+}
+
 std::vector<std::pair<int, std::string>> ServerBlock::getErrorPages() const {
 	return _errorPages;
+}
+
+const std::vector<std::pair<int, std::string>>& ServerBlock::getDefaultErrorPages() const {
+	return _defaultErrorPages;
 }
 
 std::string ServerBlock::getDefaultErrorDir() const {

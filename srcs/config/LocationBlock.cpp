@@ -6,7 +6,7 @@
 /*   By: aneitenb <aneitenb@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/24 15:09:18 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/04/12 15:42:47 by aneitenb         ###   ########.fr       */
+/*   Updated: 2025/04/14 16:57:48 by aneitenb         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -27,7 +27,6 @@ LocationBlock::LocationBlock(const LocationBlock& other) :
 	autoindex(other.autoindex),
 	autoindexSet(other.autoindexSet),
 	cgi_pass(other.cgi_pass),
-	cgi_param(other.cgi_param),
 	allowed_methods(other.allowed_methods),
 	upload_store(other.upload_store),
 	alias(other.alias),
@@ -41,7 +40,6 @@ LocationBlock& LocationBlock::operator=(const LocationBlock& other) {
 		autoindex = other.autoindex;
 		autoindexSet = other.autoindexSet;
 		cgi_pass = other.cgi_pass;
-		cgi_param = other.cgi_param;
 		allowed_methods = other.allowed_methods;
 		upload_store = other.upload_store;
 		alias = other.alias;
@@ -56,7 +54,6 @@ void LocationBlock::clear() {
 	autoindex = false;
 	autoindexSet = false;
 	cgi_pass = "";
-	cgi_param.clear();
 	allowed_methods = 0;
 	upload_store = "";
 	alias = "";
@@ -131,18 +128,6 @@ std::string LocationBlock::getCgiPass() const {
 
 void LocationBlock::setCgiPass(const std::string& cgiPassValue) {
 	this->cgi_pass = cgiPassValue;
-}
-
-bool LocationBlock::hasCgiParam(const std::string& paramName) const {
-	return cgi_param.find(paramName) != cgi_param.end();
-}
-
-const std::map<std::string, std::string>& LocationBlock::getCgiParams() const {
-	return cgi_param;
-}
-
-void LocationBlock::setCgiParam(const std::string& key, const std::string& value) {
-	this->cgi_param[key] = value;
 }
 
 bool LocationBlock::hasUploadStore() const {

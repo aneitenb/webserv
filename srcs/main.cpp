@@ -6,7 +6,7 @@
 /*   By: aneitenb <aneitenb@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/20 12:50:45 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/04/12 15:49:21 by aneitenb         ###   ########.fr       */
+/*   Updated: 2025/04/14 19:12:46 by aneitenb         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -75,15 +75,20 @@ void displayServerInfo(const ConfigurationFile& config)
 		const std::vector<std::string>& ports = server.getListen();
 		for (size_t i = 0; i < ports.size(); ++i) {
    		 std::cout << ports[i];
-    		if (i < ports.size() - 1) {
-     		   std::cout << ", ";
-    		}
+			if (i < ports.size() - 1) {
+	 		   std::cout << ", ";
+			}
 		}
 		std::cout << std::endl;
 		std::cout << "Server Name: " << server.getServerName() << std::endl;
 		std::cout << "Root: " << server.getRoot() << std::endl;
 		std::cout << "Max Body Size: " << server.getClientMaxBodySize() << " bytes" << std::endl;
-		
+		std::cout << "Index: " << server.getIndex() << std::endl;
+		if (server.hasAllowedMethods()) {
+			std::cout << "Allowed Methods: " << server.allowedMethodsToString() << std::endl;
+		}
+
+		std::cout << std::endl;
 		// Display error pages
 		std::vector<std::pair<int, std::string>> errorPages = server.getErrorPages();
 		if (!errorPages.empty()) {
@@ -92,6 +97,13 @@ void displayServerInfo(const ConfigurationFile& config)
 				std::cout << "  " << page.first << ": " << page.second << std::endl;
 			}
 		}
+		//Default error pages
+		std::vector<std::pair<int, std::string>> defaultErrorPages = server.getDefaultErrorPages();
+		std::cout << "Default Error Pages:" << std::endl;
+			for (const auto& page : defaultErrorPages) {
+				std::cout << "  " << page.first << ": " << page.second << std::endl;
+			}
+		std::cout << std::endl;
 		
 		// Display location blocks
 		std::map<std::string, LocationBlock> locations = server.getLocationBlocks();
@@ -110,23 +122,17 @@ void displayServerInfo(const ConfigurationFile& config)
 				if (loc.second.hasCgiPass()) {
 					std::cout << "    CGI Pass: " << loc.second.getCgiPass() << std::endl;
 				}
-				
-				const std::map<std::string, std::string>& cgiParams = loc.second.getCgiParams();
-					if (!cgiParams.empty()) {
-						std::cout << "    CGI Parameters:" << std::endl;
-						for (std::map<std::string, std::string>::const_iterator param = cgiParams.begin(); 
-							 param != cgiParams.end(); ++param) {
-							std::cout << "      " << param->first << ": " << param->second << std::endl;
-						}
-					}
-				
-				
+
 				if (loc.second.hasUploadStore()) {
 					std::cout << "    Upload Store: " << loc.second.getUploadStore() << std::endl;
 				}
 				
 				if (loc.second.hasAlias()) {
 					std::cout << "    Alias: " << loc.second.getAlias() << std::endl;
+				}
+
+				if (loc.second.hasIndex()) {
+					std::cout << "    Index: " << loc.second.getIndex() << std::endl;
 				}
 				
 				std::cout << "    Allowed Methods: " << loc.second.allowedMethodsToString() << std::endl;

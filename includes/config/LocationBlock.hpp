@@ -6,7 +6,7 @@
 /*   By: aneitenb <aneitenb@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/24 13:13:30 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/04/12 15:39:27 by aneitenb         ###   ########.fr       */
+/*   Updated: 2025/04/14 16:22:54 by aneitenb         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -26,7 +26,6 @@ private:
 	bool autoindex;
 	bool autoindexSet;
 	std::string cgi_pass;
-	std::map<std::string, std::string> cgi_param;
 	uint8_t allowed_methods;
 	std::string upload_store;
 	std::string alias;
@@ -54,7 +53,6 @@ public:
 	bool hasRoot() const;
 	bool hasAutoindex() const;
 	bool hasAllowedMethods() const;
-	bool hasCgiParam(const std::string& paramName) const;
 	
 	const std::pair<int, std::string>& getRedirect() const;
 	void setRedirect(const std::pair<int, std::string>& redirect);
@@ -65,8 +63,6 @@ public:
 	void setAutoindex(bool autoindex);
 	std::string getCgiPass() const;
 	void setCgiPass(const std::string& cgi_pass);
-	const std::map<std::string, std::string>& getCgiParams() const;
-	void setCgiParam(const std::string& name, const std::string& value);
 	std::string getUploadStore() const;
 	void setUploadStore(const std::string& upload_store);
 	std::string getAlias() const;
