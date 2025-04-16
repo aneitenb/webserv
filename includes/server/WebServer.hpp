@@ -1,36 +1,20 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   WebServerer.hpp                                      :+:      :+:    :+:   */
+/*   WebServer.hpp                                      :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: mspasic <mspasic@student.hive.fi>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/20 12:47:42 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/04/03 15:55:50 by mspasic          ###   ########.fr       */
+/*   Updated: 2025/04/16 17:53:04 by ivalimak         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #pragma once
 
-//STREAM
-#include <iostream>
-#include <fstream>
-#include <sstream>
-#include <string>
-
-//OTHER
-#include <vector>
-#include <map>
-#include <unordered_map>
-#include <algorithm>
-#include <sys/stat.h>
-#include <set>
-#include <unistd.h>
-
-#include <exception>
-
 // #include "EventLoop.hpp"
-#include "Listener.hpp"
+#include "CommonFunctions.hpp"
+#include "server/Listener.hpp"
 #include "VirtualHost.hpp"
 #include "config/ServerBlock.hpp"
 
