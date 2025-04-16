@@ -6,14 +6,12 @@
 /*   By: aneitenb <aneitenb@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/20 12:50:45 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/04/14 19:12:46 by aneitenb         ###   ########.fr       */
+/*   Updated: 2025/04/16 16:25:30 by ivalimak         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "../includes/Webserv.hpp"
-#include "../includes/config/ConfigFile.hpp"
-#include "../includes/config/ConfigErrors.hpp"
-//#include "server/Server.hpp"
+#include "config/ConfigFile.hpp"
+#include "config/ConfigErrors.hpp"
 
 void displayServerInfo(const ConfigurationFile& config);
 

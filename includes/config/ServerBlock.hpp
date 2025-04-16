@@ -6,15 +6,14 @@
 /*   By: aneitenb <aneitenb@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/31 12:48:30 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/04/14 19:15:09 by aneitenb         ###   ########.fr       */
+/*   Updated: 2025/04/16 16:33:03 by ivalimak         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #pragma once
 
-#include "Webserv.hpp"
-#include "LocationBlock.hpp"
-#include "ConfigErrors.hpp"
+#include "config/ConfigErrors.hpp"
+#include "config/LocationBlock.hpp"
 
 #define MAX_SERVER_NAME_LENGTH 50
 #define MAX_PATH_LENGTH 50

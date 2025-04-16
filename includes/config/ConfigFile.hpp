@@ -6,14 +6,14 @@
 /*   By: aneitenb <aneitenb@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/20 12:47:33 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/04/14 16:56:57 by aneitenb         ###   ########.fr       */
+/*   Updated: 2025/04/16 16:33:16 by ivalimak         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #pragma once
-#include "Webserv.hpp"
-#include "LocationBlock.hpp"
-#include "ServerBlock.hpp"
+
+#include "config/LocationBlock.hpp"
+#include "config/ServerBlock.hpp"
 
 class ConfigError;
 

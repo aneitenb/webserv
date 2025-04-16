@@ -6,13 +6,13 @@
 /*   By: aneitenb <aneitenb@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/29 15:43:47 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/04/02 17:21:34 by aneitenb         ###   ########.fr       */
+/*   Updated: 2025/04/16 16:32:27 by ivalimak         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #pragma once
 
-#include "../Webserv.hpp"
+#include "Webserv.hpp"
 
 // base class for all configuration errors
 class ConfigError : public std::exception {
