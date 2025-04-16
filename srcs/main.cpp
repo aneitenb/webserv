@@ -9,8 +9,8 @@
 
 #include "config/ConfigFile.hpp"
 #include "config/ConfigErrors.hpp"
-#include "WebServer.hpp"
-#include "EventLoop.hpp"
+#include "server/WebServer.hpp"
+#include "server/EventLoop.hpp"
 
 void displayServerInfo(const ConfigurationFile& config);
 
