@@ -6,7 +6,7 @@
 #    By: aneitenb <aneitenb@student.42.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2025/01/20 12:43:09 by aneitenb          #+#    #+#              #
-#    Updated: 2025/04/16 16:14:14 by ivalimak         ###   ########.fr        #
+#    Updated: 2025/04/16 16:41:37 by ivalimak         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -29,7 +29,6 @@ INCDIR	=	includes
 
 HTTPDIR		=	http
 CONFIGDIR	=	config
-SERVERDIR	=	server
 
 HTTPFILES	=	Request.cpp
 
@@ -38,13 +37,9 @@ CONFIGFILES	=	ConfigErrors.cpp \
 				LocationBlock.cpp \
 				ServerBlock.cpp
 
-SERVERFILES	=	EventLoop.cpp \
-				Server.cpp
-
 FILES	=	main.cpp \
 			$(addprefix $(HTTPDIR)/, $(HTTPFILES)) \
 			$(addprefix $(CONFIGDIR)/, $(CONFIGFILES)) \
-			$(addprefix $(SERVERDIR)/, $(SERVERFILES))
 
 SRCS	=	$(addprefix $(SRCDIR)/, $(FILES))
 OBJS	=	$(patsubst $(SRCDIR)/%.cpp, $(OBJDIR)/%.o, $(SRCS))
@@ -73,7 +68,6 @@ $(OBJDIR):
 	@printf "\e[1;38;5;42mWEBSERV >\e[m Creating objdir\n"
 	@mkdir -p $(OBJDIR)/$(HTTPDIR)
 	@mkdir -p $(OBJDIR)/$(CONFIGDIR)
-	@mkdir -p $(OBJDIR)/$(SERVERDIR)
 
 $(OBJDIR)/%.o: $(SRCDIR)/%.cpp
 	@printf "\e[1;38;5;42mWEBSERV >\e[m Compiling %s\n" $@
