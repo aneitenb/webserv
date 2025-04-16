@@ -34,7 +34,7 @@ class Listener : public EventHandler {
         // Listener& operator=(Listener&& obj) noexcept;
 
         //getters and setters
-        int* getSocketFd(void);
+        int* getSocketFd(void) override;
         int    setSocketFd(void);
         std::vector<VirtualHost> getHosts(void) const;
         void addHost(VirtualHost& cur);
@@ -48,5 +48,5 @@ class Listener : public EventHandler {
         int handleEvent(uint32_t ev) override;
         void addClient(Client& cur);
         std::vector<Client> getClients(void) const;
-        void delClient(Client cur);
+        void delClient(Client* cur);
     };

@@ -22,19 +22,20 @@ EventLoop::~EventLoop(){
     }
 }
 
-int EventLoop::addListeners(std::vector<Listener>& listFds){
+int EventLoop::addListeners(std::vector<EventHandler*> listFds){ //for listeners only
     for (std::size_t i = 0; i < listFds.size(); i++){
         struct epoll_event curE;
         curE.events = EPOLLIN;
-        curE.data.fd = *listFds.at(i).getSocketFd();
+        curE.data.fd = *listFds.at(i)->getSocketFd();
         curE.data.ptr = static_cast<void*>(&listFds.at(i));
 
-        if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, *listFds.at(i).getSocketFd(), &curE) == -1){
+        if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, *listFds.at(i)->getSocketFd(), &curE) == -1){
             std::cerr << "Error: Could not add the file descriptor to the epoll instance\n";
             strerror(errno);
             return (-1);
         }
-        listFds.at(i).setLoop(*this);
+        listFds.at(i)->setState(LISTENER);
+        // listFds.at(i).setLoop(*this);
     }
     return (0);
 }
@@ -49,7 +50,7 @@ int EventLoop::startRun(void){
     return (0);
 }
 
-int EventLoop::run(std::vector<Listener>& listFds){
+int EventLoop::run(std::vector<EventHandler*> listFds){
 
     if (this->startRun() == -1)
         return (-1);
@@ -61,6 +62,7 @@ int EventLoop::run(std::vector<Listener>& listFds){
             EventHandler* curE = static_cast<EventHandler*>(_events[i].data.ptr);
             if (curE->handleEvent(_events[i].events) == -1)
                 return (-1); //cleanup
+            //loop through fds to see which ones to add and which ones to change
             //get the state and change accordingly like if its towrite say its writing and switch it
         }
     }   
@@ -77,7 +79,7 @@ int EventLoop::addToEpoll(int* fd, uint32_t event, EventHandler* object){
         strerror(errno);
         return (-1);
     }
-    object->setLoop(*this);
+    // object->setLoop(*this);
     return (0);
 }
 
@@ -104,19 +106,21 @@ int EventLoop::delEpoll(int* fd, EventHandler* object){
     return (0);
 }
 
-void EventLoop::addClient(Client* cur){
-    _activeClients.push_back(cur);
-}
 
-std::vector<Client*> EventLoop::getClients(void) const{
-    return (_activeClients);
-}
+//FOR LISTENERS
+// void EventLoop::addClient(Client* cur){
+//     _activeClients.push_back(cur);
+// }
 
-void EventLoop::delClient(Client* cur){
-    for (std::size_t i = 0; i < _activeClients.size(); i++){
-        if (_activeClients.at(i) == cur){
-            _activeClients.erase(_activeClients.begin() + i);
-            return ;}
-    }
-}
+// std::vector<Client*> EventLoop::getClients(void) const{
+//     return (_activeClients);
+// }
+
+// void EventLoop::delClient(Client* cur){
+//     for (std::size_t i = 0; i < _activeClients.size(); i++){
+//         if (_activeClients.at(i) == cur){
+//             _activeClients.erase(_activeClients.begin() + i);
+//             return ;}
+//     }
+// }
 

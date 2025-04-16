@@ -16,7 +16,7 @@
 
 Client::Client():_listfd(nullptr), _clFd(-1), _curR(EMPTY){
     ftMemset(&_result, sizeof(_result));
-    setState(READING);
+    setState(TOADD);
     // ftMemset(&_event, sizeof(_event)); //do I leave this like this?
 }
 
@@ -71,7 +71,7 @@ Client& Client::operator=(Client&& other) noexcept {
 
 bool Client::operator==(const Client& other){
     if (_listfd == other._listfd && _clFd == other._clFd \
-    && _result == other._result && this->getState() == other.getState() \ 
+    && _result == other._result && this->getState() == other.getState() \
     && _curR == other._curR)
         return (true);
     return (false);
@@ -111,6 +111,7 @@ int Client::handleEvent(uint32_t ev){
         //data to be sent
         //if the whole thing was sent change what the epoll listens for to epollin 
     }
+    return (0);
 }
 //timeout checks
 
@@ -134,6 +135,7 @@ int Client::sending_stuff(){
         return (0);
     return (1);
     */
+   return (0);
 }
 
 

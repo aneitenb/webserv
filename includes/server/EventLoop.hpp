@@ -13,6 +13,7 @@
 #include "VirtualHost.hpp"
 #include <sys/epoll.h>
 #include "EventHandler.hpp"
+#include "Client.hpp"
 
 #define MAX_EVENTS 1024
 
@@ -41,7 +42,7 @@ private:
     // std::vector<int *>            _fds;
     struct epoll_event    _events[MAX_EVENTS]; //result array for epoll_wait()
     // int _maxEvents = MAX_EVENTS;
-    std::vector<Client*> _activeClients;
+    // std::vector<Client*> _activeClients;
     EventLoop(const EventLoop& other) = delete;
     const EventLoop& operator=(const EventLoop& other) = delete;
 public:
@@ -52,11 +53,8 @@ public:
     int modifyEpoll(int* fd, uint32_t event, EventHandler* object);
     int delEpoll(int* fd, EventHandler* object);
     int startRun();
-    int addListeners(std::vector<Listener>& listFds);
-    int run(std::vector<Listener>& listFds); //epoll_wait + resolve events: accept/send/recv
-    void addClient(Client* cur);
-    std::vector<Client*> getClients(void) const;
-    void delClient(Client* cur);
+    int addListeners(std::vector<EventHandler*> listFds);
+    int run(std::vector<EventHandler*> listFds); //epoll_wait + resolve events: accept/send/recv
 };
 
 /*epoll only cares about

@@ -10,7 +10,7 @@
 #pragma once
 
 #include <sys/epoll.h>
-#include "EventLoop.hpp"
+// #include "EventLoop.hpp"
 
 enum State {
     WRITING,
@@ -18,7 +18,8 @@ enum State {
     CLOSE,
     TOREAD,
     TOWRITE,
-    LISTENER
+    LISTENER,
+    TOADD
 }; /*if epollin && towrite
         switch to epollout
         set state to writing
@@ -31,23 +32,24 @@ enum State {
 
 class EventHandler{
     private:
-        EventLoop* _loop;
+        // EventLoop* _loop;
         State      _cur;
     public:
         virtual ~EventHandler(){};
         virtual int handleEvent(uint32_t ev) = 0;
-        void setLoop(EventLoop& curLoop){
-            _loop = &curLoop;
-        };
-        EventLoop& getLoop(void){
-            return (*_loop);
-        };
+        // void setLoop(EventLoop& curLoop){
+        //     _loop = &curLoop;
+        // };
+        // EventLoop& getLoop(void){
+        //     return (*_loop);
+        // };
         State getState() const{
             return (_cur);
         };
         void setState(State newState){
             _cur = newState;
         };
+        virtual int* getSocketFd(void) = 0; //add for the client too?
 
         //might make sense to freeadrinfo after deleting
 };
