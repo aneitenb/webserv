@@ -36,7 +36,7 @@ class	WebServer{
 		// void	run(void); //epoll + accepting connections + event handling
 		void freeStuff(void);
 
-		std::vector<Listener> getListeners(void) const;
+		std::vector<Listener>& getListeners(void);
 		std::vector<VirtualHost> getVHosts(void) const;
 		bool doesExist(std::string port, std::string host);
 		bool doesExistPort(std::string port);

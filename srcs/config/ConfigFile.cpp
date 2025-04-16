@@ -669,3 +669,8 @@ const ServerBlock& ConfigurationFile::getServerBlockByHostPortName(
 size_t ConfigurationFile::getServerCount() const {
 	return _servers.size();
 }
+
+
+std::vector<ServerBlock>& ConfigurationFile::getAllServerBlocks(){
+	return _servers;
+}

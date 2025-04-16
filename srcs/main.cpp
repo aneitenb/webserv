@@ -9,14 +9,13 @@
 
 #include "config/ConfigFile.hpp"
 #include "config/ConfigErrors.hpp"
+#include "WebServer.hpp"
+#include "EventLoop.hpp"
 
 void displayServerInfo(const ConfigurationFile& config);
 
 int main(int ac, char **av)
 {
-//	WebServer instance;
-//	instance.initialize(testingServ);
-//	instance.freeStuff();
 
 	if (ac != 2 || av[1] == nullptr || av[1][0] == '\0')
 	{
@@ -46,6 +45,27 @@ int main(int ac, char **av)
 		config.initialize((std::string)av[1]);
 		std::cout << "Configuration file parsed successfully!" << std::endl;
 		displayServerInfo(config);
+
+		WebServer instance;
+		EventLoop epolling;
+		std::vector<EventHandler*> listPtrs;
+
+		//use ServerBlocks to init webserver instance
+		if (instance.initialize(config.getAllServerBlocks()) == -1)
+			return 1;
+
+		//Listener -> EventHandler* so I can pass it to EventLoop
+		std::vector<Listener> listeners = instance.getListeners();
+		listPtrs.reserve(listeners.size());
+		for (Listener& listener : listeners)
+			listPtrs.push_back(&listener);
+
+		if (epolling.run(listPtrs) == -1){
+			instance.freeStuff();
+			return 1;
+		}
+
+		instance.freeStuff();
 	}
 	catch (const ConfigError& e) {
 		std::cerr << e.getErrorType() << ": " << e.what() << std::endl;

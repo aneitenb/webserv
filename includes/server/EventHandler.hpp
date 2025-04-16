@@ -10,6 +10,7 @@
 #pragma once
 
 #include <sys/epoll.h>
+#include <vector>
 // #include "EventLoop.hpp"
 
 enum State {
@@ -37,6 +38,8 @@ class EventHandler{
     public:
         virtual ~EventHandler(){};
         virtual int handleEvent(uint32_t ev) = 0;
+        virtual int* getSocketFd(void) = 0; //add for the client too?
+        virtual std::vector<EventHandler*> resolveAccept() = 0;
         // void setLoop(EventLoop& curLoop){
         //     _loop = &curLoop;
         // };
@@ -49,7 +52,5 @@ class EventHandler{
         void setState(State newState){
             _cur = newState;
         };
-        virtual int* getSocketFd(void) = 0; //add for the client too?
-
         //might make sense to freeadrinfo after deleting
 };

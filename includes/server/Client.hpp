@@ -54,14 +54,15 @@ class Client : public EventHandler {
         // int     settingUp(int* fd);
         // State getState() const;
         // void setState(State newState);
-        int* getClFd(void);
+        // int* getClFd(void);
 
         int copySocketFd(int* fd);
-        int handleEvent(uint32_t ev) override;
         int sending_stuff();
         int receiving_stuff();
         
-        void isRequestComplete();
-
+        int handleEvent(uint32_t ev) override;
+        int* getSocketFd(void) override;
+        std::vector<EventHandler*> resolveAccept(void) override;
+        
         //timeout??
 };

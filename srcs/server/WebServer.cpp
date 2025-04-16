@@ -118,7 +118,7 @@ void WebServer::freeStuff(void){
     }
 }
 
-std::vector<Listener> WebServer::getListeners(void) const{
+std::vector<Listener>& WebServer::getListeners(void){
     return (_theLList);
 }
 

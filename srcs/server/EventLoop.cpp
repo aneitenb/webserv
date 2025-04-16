@@ -22,34 +22,12 @@ EventLoop::~EventLoop(){
     }
 }
 
-int EventLoop::addListeners(std::vector<EventHandler*> listFds){ //for listeners only
-    for (std::size_t i = 0; i < listFds.size(); i++){
-        struct epoll_event curE;
-        curE.events = EPOLLIN;
-        curE.data.fd = *listFds.at(i)->getSocketFd();
-        curE.data.ptr = static_cast<void*>(&listFds.at(i));
-
-        if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, *listFds.at(i)->getSocketFd(), &curE) == -1){
-            std::cerr << "Error: Could not add the file descriptor to the epoll instance\n";
-            strerror(errno);
-            return (-1);
-        }
-        listFds.at(i)->setState(LISTENER);
-        // listFds.at(i).setLoop(*this);
-    }
-    return (0);
+//getter for all active fds, key : value; get value based on key
+std::vector<EventHandler*> EventLoop::findValue(int *fd){
+    return (_activeFds.at(fd));
 }
 
-int EventLoop::startRun(void){
-    //set up
-    if ((_epollFd = epoll_create1(0)) == -1){
-        std::cerr << "Error: Could not create epoll instance\n";
-        strerror(errno);
-        return (-1); //won't clean up the other things:/
-    }
-    return (0);
-}
-
+//start the run with init
 int EventLoop::run(std::vector<EventHandler*> listFds){
 
     if (this->startRun() == -1)
@@ -62,10 +40,51 @@ int EventLoop::run(std::vector<EventHandler*> listFds){
             EventHandler* curE = static_cast<EventHandler*>(_events[i].data.ptr);
             if (curE->handleEvent(_events[i].events) == -1)
                 return (-1); //cleanup
+            if (curE->getState() == LISTENER){
+                std::vector<EventHandler*> curClients = curE->resolveAccept();
+                for (int i = 0; i < curClients.size(); i++){
+                    if (curClients.at(i)->getState() == TOADD){
+                        //add them to the map
+                        //add them to the fds
+                        //set states to reading
+                        //???
+                    }
+                }
+            }
             //loop through fds to see which ones to add and which ones to change
             //get the state and change accordingly like if its towrite say its writing and switch it
         }
     }   
+}
+
+//create an epoll instance
+int EventLoop::startRun(void){
+    //set up
+    if ((_epollFd = epoll_create1(0)) == -1){
+        std::cerr << "Error: Could not create epoll instance\n";
+        strerror(errno);
+        return (-1); //won't clean up the other things:/
+    }
+    return (0);
+}
+
+//add listeners to the epoll monitoring
+int EventLoop::addListeners(std::vector<EventHandler*> listFds){
+    for (std::size_t i = 0; i < listFds.size(); i++){
+        struct epoll_event curE;
+        curE.events = EPOLLIN;
+        curE.data.fd = *listFds.at(i)->getSocketFd();
+        curE.data.ptr = static_cast<void*>(&listFds.at(i));
+
+        if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, *listFds.at(i)->getSocketFd(), &curE) == -1){
+            std::cerr << "Error: Could not add the file descriptor to the epoll instance\n";
+            strerror(errno);
+            return (-1);
+        }
+        listFds.at(i)->setState(LISTENER); //set state to listener
+        _activeFds[listFds.at(i)->getSocketFd()]; //add fd to the unordered map 
+    }
+    return (0);
 }
 
 int EventLoop::addToEpoll(int* fd, uint32_t event, EventHandler* object){

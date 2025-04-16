@@ -136,7 +136,7 @@ int Listener::handleEvent(uint32_t ev){
     }
     if (ev & EPOLLIN){ //accept incoming clients while there are clients to be accepted
         while (1){
-            Client* curC;
+            Client curC;
             int curFd = -1;
             curFd = accept(_sockFd, nullptr, nullptr); //think about taking in the client info for security reasons maybe
             if (curFd == -1){
@@ -148,18 +148,31 @@ int Listener::handleEvent(uint32_t ev){
             }
             if (setuping(&curFd) == -1) //set as nonblocking
                 return (-1);
-            if (curC->copySocketFd(&curFd) == -1) //pass the socket into Client
+            if (curC.copySocketFd(&curFd) == -1) //pass the socket into Client
                 return (-1);
             // EventLoop* curEL = &(this->getLoop()); //get the EventLoop
             // curC.setLoop(*curEL); //set the EventLoop for the client
             // if (curEL->addToEpoll(curC.getClFd(), EPOLLIN, &curC) == -1)
             //     return (-1); //add the client fd to the epoll
-            _activeClients.push_back(std::move(*curC));
+            _activeClients.push_back(std::move(curC));
+            close(curFd);
+            curFd = -1;
             // curEL->addClient(&(_activeClients.at(_activeClients.size() - 1)));
         }
     }
     return (0);
 }
+
+std::vector<EventHandler*> Listener::resolveAccept(void) {
+    std::vector<EventHandler*> clients;
+
+    clients.reserve(_activeClients.size());
+
+    for (Client& client : _activeClients)
+        clients.push_back(&client);
+        
+    return(clients);
+};
 
 
 void Listener::addClient(Client& cur){

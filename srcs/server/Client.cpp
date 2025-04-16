@@ -40,9 +40,8 @@ int Client::copySocketFd(int* fd){
     *fd = -1;
     return (0);
 }
-
-int* Client::getClFd(void){
-    return (&_clFd);
+int* Client::getSocketFd(void) {
+    return(&_clFd);
 }
 
 Client::Client(Client&& other) noexcept {
@@ -114,6 +113,8 @@ int Client::handleEvent(uint32_t ev){
     return (0);
 }
 //timeout checks
+
+std::vector<EventHandler*> Client::resolveAccept(void) {};
 
 
 int Client::sending_stuff(){

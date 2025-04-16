@@ -61,5 +61,7 @@ public:
 	const ServerBlock& getServerBlockByHostPortName(const std::string& ipAddress, const std::string& port, 
 				const std::string& serverName) const;
 	size_t getServerCount() const;
+	//get all server blocks func needed for webserv initialising
+	std::vector<ServerBlock>& getAllServerBlocks();
 };
 

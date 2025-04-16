@@ -45,6 +45,7 @@ private:
     // std::vector<Client*> _activeClients;
     EventLoop(const EventLoop& other) = delete;
     const EventLoop& operator=(const EventLoop& other) = delete;
+    std::unordered_map<int*, std::vector<EventHandler*>> _activeFds;
 public:
     EventLoop();
     ~EventLoop();
@@ -55,6 +56,9 @@ public:
     int startRun();
     int addListeners(std::vector<EventHandler*> listFds);
     int run(std::vector<EventHandler*> listFds); //epoll_wait + resolve events: accept/send/recv
+
+    //getters, setters
+    std::vector<EventHandler*> findValue(int *fd);
 };
 
 /*epoll only cares about
