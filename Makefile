@@ -42,7 +42,7 @@ CONFIGFILES	=	ConfigErrors.cpp \
 				ServerBlock.cpp
 
 FILES	=	main.cpp \
-			CommonFunctions.cpp
+			CommonFunctions.cpp \
 			$(addprefix $(HTTPDIR)/, $(HTTPFILES)) \
 			$(addprefix $(CONFIGDIR)/, $(CONFIGFILES)) \
 			$(addprefix $(SERVERDIR)/, $(SERVERFILES))
