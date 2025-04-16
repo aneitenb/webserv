@@ -3,8 +3,8 @@
 *.out
 *.log
 *.txt
-*test*
 .cache
 .clangd
 compile_commands.json
-WebServer
+webserv
+request_test
