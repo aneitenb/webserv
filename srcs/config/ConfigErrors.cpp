@@ -3,80 +3,64 @@
 /*                                                        :::      ::::::::   */
 /*   ConfigErrors.cpp                                   :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: aneitenb <aneitenb@student.hive.fi>        +#+  +:+       +#+        */
+/*   By: aneitenb <aneitenb@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/29 15:46:34 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/01/29 16:56:26 by aneitenb         ###   ########.fr       */
+/*   Updated: 2025/04/02 17:21:39 by aneitenb         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "../includes/ConfigErrors.hpp"
+#include "config/ConfigErrors.hpp"
 
-/************************************
-*		ErrorOpeningConfFile		*
-************************************/
-ErrorOpeningConfFile::ErrorOpeningConfFile() : _message("Could not open configuration file") {}	//constructor
-ErrorOpeningConfFile::ErrorOpeningConfFile(const ErrorOpeningConfFile& other) : _message(other._message) {}	//copy contructor
-ErrorOpeningConfFile& ErrorOpeningConfFile::operator=(const ErrorOpeningConfFile& other) {	//copy assignment operator
-    if (this != &other) {
-        _message = other._message;
-    }
-    return *this;
-}
-ErrorOpeningConfFile::~ErrorOpeningConfFile() throw() {}	//destructor
+// ===== ConfigError Base Class =====
+ConfigError::ConfigError(const std::string& message) : _message(message) {}
 
-const char* ErrorOpeningConfFile::what() const throw() {
-    return _message.c_str();
+ConfigError::~ConfigError() throw() {}
+
+const char* ConfigError::what() const throw() {
+	return _message.c_str();
 }
 
-/****************************
-*		Invalid Config		*
-****************************/
-ErrorInvalidConfig::ErrorInvalidConfig(const std::string& msg) : _message(msg) {}
-ErrorInvalidConfig::ErrorInvalidConfig(const ErrorInvalidConfig& other) : _message(other._message) {}
-ErrorInvalidConfig& ErrorInvalidConfig::operator=(const ErrorInvalidConfig& other) {
-    if (this != &other) {
-        _message = other._message;
-    }
-    return *this;
-}
-ErrorInvalidConfig::~ErrorInvalidConfig() throw() {}
-
-const char* ErrorInvalidConfig::what() const throw() {
-    return _message.c_str();
+std::string ConfigError::getErrorType() const {
+	return "Configuration Error";
 }
 
-/****************************
-*		Invalid Port		*
-****************************/
-ErrorInvalidPort::ErrorInvalidPort(const std::string& msg) : _message(msg) {}
-ErrorInvalidPort::ErrorInvalidPort(const ErrorInvalidPort& other) : _message(other._message) {}
-ErrorInvalidPort& ErrorInvalidPort::operator=(const ErrorInvalidPort& other) {
-    if (this != &other) {
-        _message = other._message;
-    }
-    return *this;
-}
-ErrorInvalidPort::~ErrorInvalidPort() throw() {}
+// ===== ErrorOpeningConfFile =====
+ErrorOpeningConfFile::ErrorOpeningConfFile(const std::string& message) 
+	: ConfigError(message) {}
 
-const char* ErrorInvalidPort::what() const throw() {
-    return _message.c_str();
+std::string ErrorOpeningConfFile::getErrorType() const {
+	return "File Error";
 }
 
+// ===== ErrorInvalidConfig =====
+ErrorInvalidConfig::ErrorInvalidConfig(const std::string& message) 
+	: ConfigError(message) {}
 
-/************************
-*		Invalid IP		*
-************************/
-ErrorInvalidIP::ErrorInvalidIP(const std::string& msg) : _message(msg) {}
-ErrorInvalidIP::ErrorInvalidIP(const ErrorInvalidIP& other) : _message(other._message) {}
-ErrorInvalidIP& ErrorInvalidIP::operator=(const ErrorInvalidIP& other) {
-    if (this != &other) {
-        _message = other._message;
-    }
-    return *this;
+std::string ErrorInvalidConfig::getErrorType() const {
+	return "Config Format Error";
 }
-ErrorInvalidIP::~ErrorInvalidIP() throw() {}
 
-const char* ErrorInvalidIP::what() const throw() {
-    return _message.c_str();
+// ===== ErrorInvalidPort =====
+ErrorInvalidPort::ErrorInvalidPort(const std::string& message) 
+	: ConfigError(message) {}
+
+std::string ErrorInvalidPort::getErrorType() const {
+	return "Port Error";
+}
+
+// ===== ErrorInvalidIP =====
+ErrorInvalidIP::ErrorInvalidIP(const std::string& message) 
+	: ConfigError(message) {}
+
+std::string ErrorInvalidIP::getErrorType() const {
+	return "IP Address Error";
+}
+
+// ===== ErrorNoMatchingServer =====
+ErrorNoMatchingServer::ErrorNoMatchingServer(const std::string& message) 
+    : ConfigError(message) {}
+
+std::string ErrorNoMatchingServer::getErrorType() const {
+    return "Server Matching Error";
 }

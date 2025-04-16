@@ -3,59 +3,66 @@
 /*                                                        :::      ::::::::   */
 /*   ConfigFile.hpp                                     :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: aneitenb <aneitenb@student.hive.fi>        +#+  +:+       +#+        */
+/*   By: aneitenb <aneitenb@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/20 12:47:33 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/02/11 17:15:04 by aneitenb         ###   ########.fr       */
+/*   Updated: 2025/04/14 16:56:57 by aneitenb         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #pragma once
-
 #include "Webserv.hpp"
+#include "LocationBlock.hpp"
+#include "ServerBlock.hpp"
 
-//Type definitions for readability
-typedef std::map<std::string, std::string> ServerBlocks;
+class ConfigError;
 
 class ConfigurationFile {
 private:
-	std::ifstream				_configFile;
-	std::string					_configContent;
-	std::vector<ServerBlocks>	_servers;
-	std::vector<size_t>			_ports;
-	
-	// FIle handling
-	int	_readFile(void);
-	int	_parseConfigFile(void);
-	void	_setupDefaultServer(void);
-	
-	//validation methods & helper functions
-	bool _isValidPort(const std::string& port) const;  // Just validation
-	int _addPort(const std::string& port);  
-	bool _isValidIP(const std::string& ip) const;
-	bool _isValidPath(const std::string& path) const;
-	bool _isAutoindexValid(const std::string& value) const;
-	bool _validateServerBlock(const ServerBlocks& directives) const;
-	bool _isValidDirective(const std::string& directive) const;
-	bool _checkPermissions(const std::string& path, bool needWrite = false) const;
+	std::ifstream _configFile;
+	std::string _configContent;
+
+	std::vector<ServerBlock> _servers;
+
+	static const std::set<std::string> _serverOnlyDirectives;
+	static const std::set<std::string> _locationOnlyDirectives;
+	static const std::set<std::string> _commonDirectives;
+
+	int _readFile(void);
+	int _parseConfigFile(void);
+
 	std::string _trimWhitespace(const std::string& str) const;
-	static const std::set<std::string> _validDirectives;
-
-	//Management
-	std::string _getValue(const ServerBlocks& directives, const std::string& key) const;
-	void _setValue(ServerBlocks& directives, const std::string& key, const std::string& value);
-	bool _hasValue(const ServerBlocks& directives, const std::string& key) const;
-
-	//Delete copy operators to avoid two objects managing a single file
-	ConfigurationFile(ConfigurationFile const &rhs);
-	ConfigurationFile& operator=(ConfigurationFile const &rhs);
+	bool _isValidIP(const std::string& ip) const;
+	bool _isValidPort(const std::string& port) const;
+	bool _isValidPathFormat(const std::string& path) const;
+	bool _isValidLocationPath(const std::string& path) const;
+	bool _isValidFilenameFormat(const std::string& filename) const;
+	bool _isValidServerDirective(const std::string& directive) const;
+	bool _isValidLocationDirective(const std::string& directive) const;
+	bool _isValidHostname(const std::string& hostname) const;
 	
+	void _parseServerDirective(ServerBlock& server, const std::string& key, const std::string& value);
+	void _parseLocationDirective(ServerBlock& server, LocationBlock& locBlock, 
+			const std::string& key, const std::string& value);
+
+	bool _validateServerBlock(ServerBlock& server) const;
+	bool _validateLocationBlock(const std::string& path, const LocationBlock& block) const;
+	bool _checkForDuplicateServers() const;
+
+	uint8_t _parseHttpMethods(const std::string& methods);
+
 public:
+	// Constructors and destructors
 	ConfigurationFile(void);
 	~ConfigurationFile(void);
 
-	// Public member functions
-	void								initializeConfFile(const std::string& filename);
-	const std::vector<ServerBlocks>&	getServers(void) const;
-	const std::vector<size_t>&			getPorts(void) const;
+	void initialize(const std::string& filename);
+
+	ServerBlock getServerBlock(size_t index) const;
+	const ServerBlock& getServerBlockByIPPort(const std::string& ipAddress, const std::string& port) const;
+	std::vector<const ServerBlock*> getAllServerBlocksByIPPort(const std::string& ipAddress, const std::string& port) const;
+	const ServerBlock& getServerBlockByHostPortName(const std::string& ipAddress, const std::string& port, 
+				const std::string& serverName) const;
+	size_t getServerCount() const;
 };
+

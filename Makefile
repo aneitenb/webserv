@@ -3,10 +3,10 @@
 #                                                         :::      ::::::::    #
 #    Makefile                                           :+:      :+:    :+:    #
 #                                                     +:+ +:+         +:+      #
-#    By: aneitenb <aneitenb@student.hive.fi>        +#+  +:+       +#+         #
+#    By: aneitenb <aneitenb@student.42.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2025/01/20 12:43:09 by aneitenb          #+#    #+#              #
-#    Updated: 2025/04/14 16:14:25 by ivalimak         ###   ########.fr        #
+#    Updated: 2025/04/16 16:14:14 by ivalimak         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -27,21 +27,23 @@ TESTDIR	=	tests
 OBJDIR	=	obj
 INCDIR	=	includes
 
-CONFIGDIR	=	config
 HTTPDIR		=	http
+CONFIGDIR	=	config
 SERVERDIR	=	server
 
-CONFIGFILES	=	ConfigErrors.cpp \
-				ConfigFile.cpp
-
 HTTPFILES	=	Request.cpp
+
+CONFIGFILES	=	ConfigErrors.cpp \
+				ConfigFile.cpp \
+				LocationBlock.cpp \
+				ServerBlock.cpp
 
 SERVERFILES	=	EventLoop.cpp \
 				Server.cpp
 
 FILES	=	main.cpp \
-			$(addprefix $(CONFIGDIR)/, $(CONFIGFILES)) \
 			$(addprefix $(HTTPDIR)/, $(HTTPFILES)) \
+			$(addprefix $(CONFIGDIR)/, $(CONFIGFILES)) \
 			$(addprefix $(SERVERDIR)/, $(SERVERFILES))
 
 SRCS	=	$(addprefix $(SRCDIR)/, $(FILES))
@@ -69,8 +71,8 @@ $(NAME): $(OBJDIR) $(OBJS)
 
 $(OBJDIR):
 	@printf "\e[1;38;5;42mWEBSERV >\e[m Creating objdir\n"
-	@mkdir -p $(OBJDIR)/$(CONFIGDIR)
 	@mkdir -p $(OBJDIR)/$(HTTPDIR)
+	@mkdir -p $(OBJDIR)/$(CONFIGDIR)
 	@mkdir -p $(OBJDIR)/$(SERVERDIR)
 
 $(OBJDIR)/%.o: $(SRCDIR)/%.cpp

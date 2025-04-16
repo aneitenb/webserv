@@ -6,7 +6,7 @@
 /*   By: aneitenb <aneitenb@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/20 14:47:13 by aneitenb          #+#    #+#             */
-/*   Updated: 2025/03/20 16:05:15 by aneitenb         ###   ########.fr       */
+/*   Updated: 2025/03/20 16:27:50 by aneitenb         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -22,7 +22,7 @@ private:
 	EventLoop					_eventLoop;
 	
 public:
-	Server();
+	Server(const std::string& configPath );
 	~Server();
 
 	void	initialize();
