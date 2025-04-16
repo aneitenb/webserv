@@ -12,8 +12,7 @@
 #include <vector>
 #include "VirtualHost.hpp"
 #include <sys/epoll.h>
-#include "Listener.hpp"
-#include "Client.hpp"
+#include "EventHandler.hpp"
 
 #define MAX_EVENTS 1024
 
