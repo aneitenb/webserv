@@ -14,6 +14,10 @@ void displayServerInfo(const ConfigurationFile& config);
 
 int main(int ac, char **av)
 {
+//	WebServer instance;
+//	instance.initialize(testingServ);
+//	instance.freeStuff();
+
 	if (ac != 2 || av[1] == nullptr || av[1][0] == '\0')
 	{
 		std::cerr << "Error: expecting only configuration file as argument" << std::endl;

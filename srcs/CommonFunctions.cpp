@@ -5,24 +5,14 @@
 // ╚███╔███╔╝    ███████╗    ██████╔╝    ███████║    ███████╗    ██║  ██║     ╚████╔╝
 //  ╚══╝╚══╝     ╚══════╝    ╚═════╝     ╚══════╝    ╚══════╝    ╚═╝  ╚═╝      ╚═══╝
 //
-// <<Webserv.hpp>> -- <<Aida, Ilmari, Milica>>
+// <<CommonFunctions.cpp>> -- <<Aida, Ilmari, Milica>>
 
-#pragma once
-
-//STREAM
-#include <iostream>
-#include <fstream>
-#include <sstream>
-#include <string>
-
-//OTHER
-#include <vector>
-#include <map>
-#include <algorithm>
-#include <sys/stat.h>
-#include <set>
+#include "CommonFunctions.hpp"
 #include <unistd.h>
-#include <exception>
-#include <regex>
-#include <filesystem>
-#include <dirent.h>
+
+void ftMemset(void *dest, std::size_t count){
+    unsigned char *p = (unsigned char*)dest;
+    for (std::size_t i = 0; i < count; i++){
+        p[i] = 0;
+    }
+}

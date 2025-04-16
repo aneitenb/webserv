@@ -8,7 +8,8 @@
 // <<LocationBlock.hpp>> -- <<Aida, Ilmari, Milica>>
 
 #pragma once
-#include "Webserv.hpp"
+
+#include "CommonFunctions.hpp"
 
 // HTTP Method enum as bit flags for easier method checking
 enum HttpMethod {

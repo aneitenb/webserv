@@ -9,7 +9,7 @@
 
 #pragma once
 
-#include "Webserv.hpp"
+#include "CommonFunctions.hpp"
 
 // base class for all configuration errors
 class ConfigError : public std::exception {

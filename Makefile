@@ -12,7 +12,7 @@ NAME	=	webserv
 BUILD	=	normal
 
 CC				=	c++
-cflags.common	=	-Wall -Wextra -Werror -std=c++17
+cflags.common	=	-Wall -Wextra -Werror -std=c++17 -g -fsanitize=address
 cflags.debug	=	-g
 cflags.fsan		=	$(cflags.debug) -fsanitize=address,undefined
 cflags.normal	=	-O3
@@ -26,8 +26,15 @@ INCDIR	=	includes
 
 HTTPDIR		=	http
 CONFIGDIR	=	config
+SERVERDIR	=	server
 
 HTTPFILES	=	Request.cpp
+
+SERVERFILES	=	Client.cpp \
+				Listener.cpp \
+				VirtualHost.cpp \
+				WebServer.cpp 
+				# EventLoop.cpp
 
 CONFIGFILES	=	ConfigErrors.cpp \
 				ConfigFile.cpp \
@@ -35,8 +42,10 @@ CONFIGFILES	=	ConfigErrors.cpp \
 				ServerBlock.cpp
 
 FILES	=	main.cpp \
+			CommonFunctions.cpp \
 			$(addprefix $(HTTPDIR)/, $(HTTPFILES)) \
 			$(addprefix $(CONFIGDIR)/, $(CONFIGFILES)) \
+			$(addprefix $(SERVERDIR)/, $(SERVERFILES))
 
 SRCS	=	$(addprefix $(SRCDIR)/, $(FILES))
 OBJS	=	$(patsubst $(SRCDIR)/%.cpp, $(OBJDIR)/%.o, $(SRCS))
@@ -65,6 +74,7 @@ $(OBJDIR):
 	@printf "\e[1;38;5;42mWEBSERV >\e[m Creating objdir\n"
 	@mkdir -p $(OBJDIR)/$(HTTPDIR)
 	@mkdir -p $(OBJDIR)/$(CONFIGDIR)
+	@mkdir -p $(OBJDIR)/$(SERVERDIR)
 
 $(OBJDIR)/%.o: $(SRCDIR)/%.cpp
 	@printf "\e[1;38;5;42mWEBSERV >\e[m Compiling %s\n" $@
