@@ -104,7 +104,9 @@ int Client::handleEvent(uint32_t ev){
 }
 //timeout checks
 
-std::vector<EventHandler*> Client::resolveAccept(void) {}
+std::vector<EventHandler*> Client::resolveAccept(void) {
+    return {};
+}
 
 void Client::resolveClose(){}
 

@@ -11,6 +11,7 @@
 
 #include <sys/epoll.h>
 #include <vector>
+#include <unistd.h>
 // #include "EventLoop.hpp"
 
 enum State {
