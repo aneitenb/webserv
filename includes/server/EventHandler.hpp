@@ -20,7 +20,8 @@ enum State {
     TOREAD,
     TOWRITE,
     LISTENER,
-    TOADD
+    TOADD,
+    CLOSEADD
 }; /*if epollin && towrite
         switch to epollout
         set state to writing
@@ -51,6 +52,12 @@ class EventHandler{
         };
         void setState(State newState){
             _cur = newState;
+        };
+        void closeFd(int *fd){
+            if (*fd != -1){
+                close (*fd);
+                *fd = -1;
+            }
         };
         //might make sense to freeadrinfo after deleting
 };

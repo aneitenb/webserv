@@ -54,8 +54,9 @@ public:
     int modifyEpoll(int* fd, uint32_t event, EventHandler* object);
     int delEpoll(int* fd, EventHandler* object);
     int startRun();
-    int addListeners(std::vector<EventHandler*> listFds);
+    void addListeners(std::vector<EventHandler*> listFds);
     int run(std::vector<EventHandler*> listFds); //epoll_wait + resolve events: accept/send/recv
+    void resolvingAccept(EventHandler* cur);
 
     //getters, setters
     std::vector<EventHandler*> findValue(int *fd);
