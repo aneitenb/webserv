@@ -10,11 +10,7 @@
 #pragma once
 
 #include "defs.hpp"
-
-#include <map>
-#include <string>
-#include <sstream>
-#include <exception>
+#include "CommonFunctions.hpp"
 
 typedef std::map<std::string, std::string>	headerlist_t;
 
