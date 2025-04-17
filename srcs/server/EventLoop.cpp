@@ -17,7 +17,7 @@ EventLoop::EventLoop() : _epollFd(-1){}
 
 EventLoop::~EventLoop(){
     if (_epollFd != -1){
-        (_epollFd);
+        close(_epollFd);
         _epollFd = -1;
     }
 }
@@ -29,33 +29,37 @@ std::vector<EventHandler*> EventLoop::findValue(int *fd){
 
 //start the run with init
 int EventLoop::run(std::vector<EventHandler*> listFds){
-
     if (this->startRun() == -1)
         return (-1);
     this->addListeners(listFds);
-    //if there are listeners that weren't added: CLOSEADD
+
     while(1){
         int events2Resolve = epoll_wait(_epollFd, _events, MAX_EVENTS, -1);
         for (int i = 0; i < events2Resolve; i++){
             EventHandler* curE = static_cast<EventHandler*>(_events[i].data.ptr);
             if (curE->handleEvent(_events[i].events) == -1){
                 //error occurred
-                if (curE->getState() == LISTENER){
-                    //clean up listener
-                    return (-1);
-                }
-                //clean up client
+                if (curE->getState() == LISTENER)
+                    condemnClients(curE); 
+                else
+                    curE->setState(CLOSE);
                 continue;
             }
             State curS = curE->getState();
-            if (curS == LISTENER){
-                //means clients got accepted
-                //if returns -1 it only means a client fd wasn't added to the loop so remove it and continue
-            }
-            else if(curS == READING){
-
+            switch (curS){
+                case LISTENER:
+                    resolvingAccept(curE);
+                    break;
+                case TOWRITE:
+                    resolvingModify(curE, EPOLLOUT);  //handled event was receiving, now it needs to be sending
+                    break;
+                case TOREAD:
+                    resolvingModify(curE, EPOLLIN); //handled event was sending, now it needs to be receiving 
+                    break;
             }
         }
+        //timeout?
+        resolvingClosing();
     }   
 }
 
@@ -63,8 +67,8 @@ int EventLoop::run(std::vector<EventHandler*> listFds){
 int EventLoop::startRun(void){
     //set up
     if ((_epollFd = epoll_create1(0)) == -1){
-        std::cerr << "Error: Could not create epoll instance\n";
-        strerror(errno);
+        std::cerr << "Error: Could not create epoll instance: ";
+        std::cerr << strerror(errno) << "\n";
         return (-1);
     }
     return (0);
@@ -79,36 +83,69 @@ void EventLoop::addListeners(std::vector<EventHandler*> listFds){
         curE.data.ptr = static_cast<void*>(&listFds.at(i));
 
         if (curE.data.fd == -1 || epoll_ctl(_epollFd, EPOLL_CTL_ADD, *listFds.at(i)->getSocketFd(), &curE) == -1){
-            std::cerr << "Error: Could not add the listening socket to the epoll instance\n";
-            strerror(errno);
-            listFds.at(i)->setState(CLOSEADD);
+            std::cerr << "Error: Could not add the listening socket to the epoll instance: ";
+            std::cerr << strerror(errno) << "\n";
+            listFds.at(i)->setState(CLOSED);
+            listFds.at(i)->closeFd(listFds.at(i)->getSocketFd());
             continue;
         }
 
         listFds.at(i)->setState(LISTENER); //set state to listener
         _activeFds[listFds.at(i)->getSocketFd()]; //add fd to the unordered map 
     }
-    for (std::size_t i = 0; i < listFds.size(); i++){ 
-        if (listFds.at(i)->getState() == CLOSEADD){
-            listFds.at(i)->closeFd(listFds.at(i)->getSocketFd());
-        }
-    }
 }
 
+void EventLoop::condemnClients(EventHandler* cur){
+   std::vector<EventHandler*> clients = findValue(cur->getSocketFd());
+
+   for (int i = 0; i < clients.size(); i++){
+        clients.at(i)->setState(CLOSE);
+   } 
+}
+
+//adding the newly accepted clients to the epoll
 void EventLoop::resolvingAccept(EventHandler* cur){
     std::vector<EventHandler*> curClients = cur->resolveAccept();
     // if (curClients.empty())
     for (int i = 0; i < curClients.size(); i++){
-        if (curClients.at(i)->getState() == TOADD){
+        if (*curClients.at(i)->getSocketFd() != -1 && curClients.at(i)->getState() == TOADD){
             if (addToEpoll(curClients.at(i)->getSocketFd(), EPOLLIN, curClients.at(i)) == -1){
-                curClients.at(i)->setState(CLOSEADD);
+                curClients.at(i)->setState(CLOSED);
+                curClients.at(i)->closeFd(curClients.at(i)->getSocketFd());
+                //there shouldn't be anything to clean from Response, Request probably
                 continue;}
-            curClients.at(i)->resolveAccept();
+            curClients.at(i)->setState(READING);
             _activeFds.at(cur->getSocketFd()).push_back(curClients.at(i));
         }
     }
 }
 
+//calling modify on the client
+void EventLoop::resolvingModify(EventHandler* cur, uint32_t event){
+    if (modifyEpoll(cur->getSocketFd(), event, cur) == -1)
+        cur->setState(CLOSE);
+}
+
+//resolve closing and removing of the done/disconnected clients
+void EventLoop::resolvingClosing(){
+    for (auto& pair : _activeFds){
+        if (*pair.first != -1){
+            for (int i = 0; i < pair.second.size(); i++){
+                if (pair.second.at(i)->getState() == CLOSE){
+                    //cleanup Request, Response, buffer
+                    delEpoll(pair.second.at(i)->getSocketFd());
+                    pair.second.at(i)->closeFd(pair.second.at(i)->getSocketFd());
+                    pair.second.at(i)->setState(CLOSED);
+                    pair.second.erase(pair.second.begin() + i);
+                    if (i != 0) //to return the iterator when an element gets erased
+                        i--;
+                }
+            }
+        }
+    }
+}
+
+//adding a fd to epoll
 int EventLoop::addToEpoll(int* fd, uint32_t event, EventHandler* object){
     struct epoll_event curE;
     curE.events = event;
@@ -116,14 +153,15 @@ int EventLoop::addToEpoll(int* fd, uint32_t event, EventHandler* object){
     curE.data.ptr = static_cast<void*>(object);
 
     if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, *fd, &curE) == -1){
-        std::cerr << "Error: Could not add the file descriptor to the epoll instance\n";
-        strerror(errno);
+        std::cerr << "Error: Could not add the file descriptor to the epoll instance: ";
+        std::cerr << strerror(errno) << "\n";
         return (-1);
     }
     // object->setLoop(*this);
     return (0);
 }
 
+//modifying what epoll monitors for a fd
 int EventLoop::modifyEpoll(int* fd, uint32_t event, EventHandler* object){
     struct epoll_event curE;
     curE.events = event;
@@ -131,17 +169,18 @@ int EventLoop::modifyEpoll(int* fd, uint32_t event, EventHandler* object){
     curE.data.ptr = static_cast<void*>(object);
 
     if (epoll_ctl(_epollFd, EPOLL_CTL_MOD, *fd, &curE) == -1){
-        std::cerr << "Error: Could not modify the file descriptor in the epoll instance\n";
-        strerror(errno);
+        std::cerr << "Error: Could not modify the file descriptor in the epoll instance: ";
+        std::cerr << strerror(errno) << "\n";
         return (-1);
     }
     return (0);
 }
 
-int EventLoop::delEpoll(int* fd, EventHandler* object){
+//removing from the epoll
+int EventLoop::delEpoll(int* fd){
     if (epoll_ctl(_epollFd, EPOLL_CTL_DEL, *fd, 0) == -1){
-        std::cerr << "Error: Could not delete the file descriptor from the epoll instance\n";
-        strerror(errno);
+        std::cerr << "Error: Could not delete the file descriptor from the epoll instance: ";
+        std::cerr << strerror(errno) << "\n";
         return (-1);
     }
     return (0);

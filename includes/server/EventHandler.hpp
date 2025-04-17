@@ -14,15 +14,17 @@
 // #include "EventLoop.hpp"
 
 enum State {
-    WRITING,
-    READING,
-    CLOSE,
-    TOREAD,
-    TOWRITE,
-    LISTENER,
-    TOADD,
-    CLOSEADD
-}; /*if epollin && towrite
+    WRITING, //client is currently writing
+    READING, //client is currently reading
+    CLOSE, //client needs to be closed
+    TOREAD, //client needs to be switched to read
+    TOWRITE, //client needs to be switched to write
+    LISTENER, //socket is a listening socket
+    TOADD, //fd needs to be added
+    CLOSED //fd has been closed
+}; 
+
+/*if epollin && towrite
         switch to epollout
         set state to writing
     if epollout && toread
@@ -41,6 +43,7 @@ class EventHandler{
         virtual int handleEvent(uint32_t ev) = 0;
         virtual int* getSocketFd(void) = 0; //add for the client too?
         virtual std::vector<EventHandler*> resolveAccept() = 0;
+        virtual void resolveClose() = 0;
         // void setLoop(EventLoop& curLoop){
         //     _loop = &curLoop;
         // };

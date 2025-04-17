@@ -52,11 +52,15 @@ public:
     // void addListenerFds(std::vector<Listener>& listFds);
     int addToEpoll (int* fd, uint32_t event, EventHandler* object);
     int modifyEpoll(int* fd, uint32_t event, EventHandler* object);
-    int delEpoll(int* fd, EventHandler* object);
+    int delEpoll(int* fd);
     int startRun();
     void addListeners(std::vector<EventHandler*> listFds);
     int run(std::vector<EventHandler*> listFds); //epoll_wait + resolve events: accept/send/recv
     void resolvingAccept(EventHandler* cur);
+    void resolvingModify(EventHandler* cur, uint32_t event);
+    void resolvingClosing(void);
+    void condemnClients(EventHandler* cur);
+
 
     //getters, setters
     std::vector<EventHandler*> findValue(int *fd);

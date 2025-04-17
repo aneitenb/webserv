@@ -76,29 +76,19 @@ bool Client::operator==(const Client& other){
     return (false);
 }
 
-// State Client::getState(void) const{
-//     return(_curS);
-// }
-
-// void Client::setState(State newState){
-//     _curS = newState;
-// }
-
 int Client::handleEvent(uint32_t ev){
     if (ev & EPOLLERR || ev & EPOLLHUP){
-        //error and clear?
-        this->setState(CLOSE);
+        return (-1);
     }
     if (ev & EPOLLIN){
         receiving_stuff();
         //is it complete, check and set
         if (_curR == COMPLETE){
             //respond
-            //EPOLLOUT //_curS = TOWRITE
+            //EPOLLOUT
+            _buffer.clear(); //or see how it's handled?
             this->setState(TOWRITE);
         }
-        // else if(_curR == CLOSE)
-            ///handle here?
     }
     if (ev & EPOLLOUT){
         sending_stuff();
@@ -114,9 +104,9 @@ int Client::handleEvent(uint32_t ev){
 }
 //timeout checks
 
-std::vector<EventHandler*> Client::resolveAccept(void) {
-    setState(READING);
-}
+std::vector<EventHandler*> Client::resolveAccept(void) {}
+
+void Client::resolveClose(){}
 
 
 int Client::sending_stuff(){
@@ -145,7 +135,7 @@ int Client::sending_stuff(){
 int Client::receiving_stuff(){
     ssize_t len = 0;
     std::string temp_buff;
-    temp_buff.clear(); //maybe I don't need this?
+    // temp_buff.clear(); //maybe I don't need this?
     if (_curR == CLEAR)
         _buffer.clear(); //maybe can't do this if the request is not complete
 

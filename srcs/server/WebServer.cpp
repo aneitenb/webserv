@@ -64,7 +64,7 @@ int WebServer::resolveListener(std::string port, std::string host){
         if (curL.setSocketFd() == -1)
             return (-1);
         _theLList.push_back(curL);
-        curL.closeFD();
+        curL.closeFd(curL.getSocketFd());
     }
     for(std::size_t m = 0; m < _theLList.size(); m++){
         if (_theLList.at(m).getPort() == port)

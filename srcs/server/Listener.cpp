@@ -119,13 +119,6 @@ void Listener::setHost(const std::string& host){
     _host = host;
 }
 
-void Listener::closeFD(void){
-    if (_sockFd != -1){
-        close(_sockFd);
-        _sockFd = -1;
-    }
-}
-
 int Listener::handleEvent(uint32_t ev){
     if (ev & EPOLLERR || ev & EPOLLHUP){
         //rare but it could happen
@@ -142,7 +135,7 @@ int Listener::handleEvent(uint32_t ev){
             if (curFd == -1){
                 if (errno == EAGAIN || errno == EWOULDBLOCK)
                     return (0); //means there are no more clients that wait to be accepted, but can we use errno??
-                std::cerr << "Error: accept() failed\n";
+                std::cerr << "Error: accept() failed: ";
                 std::cerr << strerror(errno) << "\n";
                 return (-1);
             }
@@ -172,8 +165,17 @@ std::vector<EventHandler*> Listener::resolveAccept(void) {
         clients.push_back(&client);
         
     return(clients);
-};
+}
 
+void Listener::resolveClose(){
+    for (int i = 0; i < _activeClients.size(); i++){
+        if (_activeClients.at(i).getState() == CLOSED){
+            _activeClients.erase(_activeClients.begin() + i);
+            if (i != 0)
+                i--;
+        }
+    }
+}
 
 void Listener::addClient(Client& cur){
     _activeClients.push_back(cur);
