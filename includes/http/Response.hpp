@@ -10,18 +10,20 @@
 #pragma once
 
 #include "CommonFunctions.hpp"
+#include "Request.hpp"
+#include "config/ServerBlock.hpp"
+#include "config/LocationBlock.hpp"
 
 class Response {
 private:
-	int _statusCode;
-	std::string _statusMessage;
-	std::map<std::string, std::string> _headers;
-	std::string _body;
+	int									_statusCode;
+	std::string							_statusMessage;
+	std::map<std::string, std::string>	_headers;
+	std::string							_body;
 	
-	Request& _request;
-
-	ServerBlock* _serverBlock;
-	LocationBlock* _locationBlock;
+	Request& 		_request;
+	ServerBlock*	_serverBlock;
+	LocationBlock*	_locationBlock;
 	
 	std::map<std::string, std::string> _mimeTypes;
 	
