@@ -24,7 +24,7 @@ private:
     size_t								_bytesSent;
     bool								_responseReady;
 	
-	Request& 		_request;
+	Request 		_request;
 	ServerBlock*	_serverBlock;
 	LocationBlock*	_locationBlock;
 	
@@ -60,7 +60,6 @@ public:
 	~Response();
 
 	void processRequest();
-	void send(int clientSocket);
 
 	int getStatusCode() const;
 	const std::string& getBody() const;

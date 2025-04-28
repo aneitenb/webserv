@@ -32,8 +32,13 @@ static const std::map<int, std::string> statusMessages = {
 	{505, "HTTP Version Not Supported"}
 };
 
-Response::Response(Request& request, ServerBlock* serverBlock)
-	: _statusCode(200), _request(request), _serverBlock(serverBlock), _locationBlock(NULL)
+Response::Response(const Request& request, ServerBlock* serverBlock)
+	: _statusCode(200), 
+	_request(request), 
+	_serverBlock(serverBlock), 
+	_locationBlock(NULL),
+	_bytesSent(0),
+	_responseReady(false)
 {
 	initializeMimeTypes();
 }
@@ -78,19 +83,20 @@ std::string Response::getMimeType(const std::string& path) const {
 void Response::processRequest() {
 	std::string uri = _request.getURI();
 	std::string matchedLocation = findMatchingLocation(uri);
-	_request.setMatchedLocation(matchedLocation); // store for later use withincase of alias
 	
-	if (matchedLocation.empty()) {
+	if (matchedLocation.empty())
 		_locationBlock = NULL;
-	} else {
+	else
 		_locationBlock = &_serverBlock->getLocationBlockRef(matchedLocation);
-	}
+
 	setHeader("Date", getCurrentDate());
 	
 	if (!isMethodAllowed()) {
 		_statusCode = 405;
 		_body = getErrorPage(405);
 		setHeader("Allow", _locationBlock->allowedMethodsToString());
+		setHeader("Content-Type", "text/html");
+		setHeader("Content-Length", std::to_string(_body.size()));
 		return;
 	}
 	
@@ -99,6 +105,8 @@ void Response::processRequest() {
 		_statusCode = redirect.first;
 		setHeader("Location", redirect.second);
 		_body = "";
+		setHeader("Content-Type", "text/html");
+		setHeader("Content-Length", std::to_string(_body.size()));
 		return;
 	}
 	
@@ -112,6 +120,8 @@ void Response::processRequest() {
 	} else {
 		_statusCode = 501; // Not implemented
 		_body = getErrorPage(501);
+		setHeader("Content-Type", "text/html");
+		setHeader("Content-Length", std::to_string(_body.size()));
 	}
 }
 
@@ -144,7 +154,7 @@ bool Response::isComplete() const {
 }
 
 void Response::handleGet(){
-	std::string path = resolvePath( _request.getURI());
+	std::string path = resolvePath(_request.getURI());
 
 	if (isCgiRequest(path)) {
 		//handleCgi(path);
@@ -179,6 +189,8 @@ void Response::handleGet(){
 		// No directory listing and no index file
 		_statusCode = 403;
 		_body = getErrorPage(403);
+		setHeader("Content-Type", "text/html");
+		setHeader("Content-Length", std::to_string(_body.size()));
 		return;
 	}
 	//check if path is a file
@@ -262,7 +274,7 @@ void Response::handleDelete(){
 		return;
 	}
 	
-	// Check if we have permission to delete
+	// do we have permission to delete
 	std::string dirPath = path.substr(0, path.find_last_of('/'));
 	if (!hasWritePermission(dirPath)) {
 		_statusCode = 403;
@@ -270,14 +282,13 @@ void Response::handleDelete(){
 		return;
 	}
 	
-	// Delete the file
 	if (std::remove(path.c_str()) != 0) {
 		_statusCode = 500;
 		_body = getErrorPage(500);
 		return;
 	}
 	
-	_statusCode = 204; // No content
+	_statusCode = 204; // success, just no content to send back
 	_body = "";
 }
 
@@ -402,6 +413,31 @@ void Response::generateDirectoryListing(const std::string& path) {
 	setHeader("Content-Length", std::to_string(_body.size()));
 }
 
+void Response::readFile(const std::string& path) {
+	std::ifstream file(path.c_str(), std::ios::binary);
+	if (!file.is_open()) {
+		_statusCode = 500;
+		_body = getErrorPage(500);
+		setHeader("Content-Type", "text/html");
+		setHeader("Content-Length", std::to_string(_body.size()));
+		return;
+	}
+	
+	// Get file size
+	file.seekg(0, std::ios::end);
+	size_t size = file.tellg();
+	file.seekg(0, std::ios::beg);
+	
+	// Read file content
+	_body.resize(size);
+	file.read(&_body[0], size);
+	file.close();
+	
+	_statusCode = 200;
+	setContentType(path);
+	setHeader("Content-Length", std::to_string(_body.size()));
+}
+
 bool Response::isMethodAllowed() const {
 	if (!_locationBlock)
 		return false;
@@ -453,7 +489,6 @@ bool Response::hasReadPermission(const std::string& path) const {
 }
 
 bool Response::hasWritePermission(const std::string& path) const {
-	//check if directory is writable
 	std::string dir = path.substr(0, path.find_last_of('/'));
 	return access(dir.c_str(), W_OK) == 0;
 }
