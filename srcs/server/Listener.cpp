@@ -88,6 +88,8 @@ int Listener::copySocketFd(const int& fd){
         if (_sockFd != -1){
             close(_sockFd);
             _sockFd = -1;}
+        if (fd == -1)
+            return (_sockFd);
         _sockFd = dup(fd);
         if (_sockFd == -1)
             std::cout << "Error: dup() failed\n";
