@@ -50,7 +50,7 @@ public:
     EventLoop();
     ~EventLoop();
     // void addListenerFds(std::vector<Listener>& listFds);
-    int addToEpoll (int* fd, uint32_t event, EventHandler* object);
+    int addToEpoll (int* fd, EventHandler* object);
     int modifyEpoll(int* fd, uint32_t event, EventHandler* object);
     int delEpoll(int* fd);
     int startRun();

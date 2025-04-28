@@ -45,6 +45,7 @@ class EventHandler{
         virtual int* getSocketFd(void) = 0; //add for the client too?
         virtual std::vector<EventHandler*> resolveAccept() = 0;
         virtual void resolveClose() = 0;
+        struct epoll_event _event;
         // void setLoop(EventLoop& curLoop){
         //     _loop = &curLoop;
         // };
@@ -63,5 +64,16 @@ class EventHandler{
                 *fd = -1;
             }
         };
+        void initEvent(){
+            _event.events = EPOLLIN;
+            _event.data.fd  = *((getSocketFd()));
+            _event.data.ptr = static_cast<void*>(this);
+        }
+        struct epoll_event* getEvent(){
+            return (&_event);
+        }
+        void changeEvent(uint32_t curE){
+            _event.events = curE;
+        }
         //might make sense to freeadrinfo after deleting
 };

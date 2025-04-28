@@ -40,7 +40,7 @@ class	WebServer{
 		std::vector<VirtualHost> getVHosts(void) const;
 		bool doesExist(std::string port, std::string host);
 		bool doesExistPort(std::string port);
-		int resolveListener(std::string port, std::string host, const ServerBlock& serBlock);
+		int resolveListener(std::string port, std::string host, ServerBlock& serBlock);
 };
 
 // void ftMemset(void *dest, std::size_t count);

@@ -36,6 +36,7 @@ ServerBlock::~ServerBlock() {
 }
 
 ServerBlock& ServerBlock::operator=(const ServerBlock& other){
+	if (this != &other){
 	_listen = other._listen;
 	_host = other._host;
 	_serverName = other._serverName;
@@ -47,7 +48,8 @@ ServerBlock& ServerBlock::operator=(const ServerBlock& other){
 	_locationBlocks = other._locationBlocks;
 	_hasCustomErrorPages = other._hasCustomErrorPages;
 	_defaultErrorDir = other._defaultErrorDir;
-	_allowedMethods = other._allowedMethods;
+	_allowedMethods = other._allowedMethods;}
+	return (*this);
 }
 
 void ServerBlock::clear() {

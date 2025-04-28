@@ -57,7 +57,7 @@ bool WebServer::doesExistPort(std::string port){
     return (_theSList.count(port));
 }
 
-int WebServer::resolveListener(std::string port, std::string host, const ServerBlock& serBlock){
+int WebServer::resolveListener(std::string port, std::string host, ServerBlock& serBlock){
     if (doesExistPort(port) == FALSE){
         std::cout << "this shouldve happened\n";
         Listener curL(port, host);

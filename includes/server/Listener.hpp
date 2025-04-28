@@ -54,6 +54,6 @@ class Listener : public EventHandler {
         void resolveClose() override;
 
         void addClient(Client& cur);
-        std::vector<Client> getClients(void) const;
+        const std::vector<Client>& getClients(void) const;
         void delClient(Client* cur);
     };

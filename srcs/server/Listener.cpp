@@ -24,6 +24,7 @@ Listener::Listener(const Listener& obj){
     this->copySocketFd(obj._sockFd);
     _port = obj._port;
     _host = obj._host;
+    _relevant = obj._relevant;
 }
 //remember to close the previous fd
 Listener& Listener::operator=(const Listener& obj) {
@@ -31,6 +32,7 @@ Listener& Listener::operator=(const Listener& obj) {
         this->copySocketFd(obj._sockFd);
         _port = obj._port;
         _host = obj._host;
+        _relevant = obj._relevant;
     }
     return (*this);
 }
@@ -176,20 +178,22 @@ std::vector<EventHandler*> Listener::resolveAccept(void) {
 }
 
 void Listener::resolveClose(){
-    for (int i = 0; i < _activeClients.size(); i++){
-        if (_activeClients.at(i).getState() == CLOSED){
-            _activeClients.erase(_activeClients.begin() + i);
-            if (i != 0)
-                i--;
+    ssize_t i = 0;
+    for (auto it = _activeClients.begin(); it != _activeClients.end(); ){
+        if (_activeClients.at(i).getState() == CLOSED)
+            it = _activeClients.erase(it); // erase returns the next valid iterator
+        else {
+            ++it;
+            i++;
         }
     }
 }
 
 void Listener::addClient(Client& cur){
-    _activeClients.push_back(cur);
+    _activeClients.push_back(std::move(cur));
 }
 
-std::vector<Client> Listener::getClients(void) const{
+const std::vector<Client>& Listener::getClients(void) const{
     return (_activeClients);
 }
 

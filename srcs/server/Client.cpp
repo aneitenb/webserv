@@ -14,7 +14,13 @@
 #include <string.h>
 #include <fcntl.h>
 
-Client::Client(ServerBlock* cur): _relevant(cur), _listfd(nullptr), _clFd(-1), _curR(EMPTY), _requesting(nullptr){
+Client::Client(): _listfd(nullptr), _clFd(-1), _curR(EMPTY){
+    ftMemset(&_result, sizeof(_result));
+    setState(TOADD);
+    // ftMemset(&_event, sizeof(_event)); //do I leave this like this?
+}
+
+Client::Client(ServerBlock* cur): _relevant(cur), _listfd(nullptr), _clFd(-1), _curR(EMPTY){
     ftMemset(&_result, sizeof(_result));
     setState(TOADD);
     // ftMemset(&_event, sizeof(_event)); //do I leave this like this?
@@ -28,11 +34,11 @@ Client::~Client(){
 }
 
 int Client::copySocketFd(int* fd){
-    if (_clFd != -1){
+    if (this->_clFd != -1){
         close(_clFd);
         _clFd = -1;}
-    _clFd = dup(*fd);
-    if (_clFd == -1){
+    this->_clFd = dup(*fd);
+    if (this->_clFd == -1){
         std::cout << "Error: dup() failed\n"; //exit?
         return (-1);
     }
@@ -40,6 +46,7 @@ int Client::copySocketFd(int* fd){
     *fd = -1;
     return (0);
 }
+
 int* Client::getSocketFd(void) {
     return(&_clFd);
 }
@@ -49,7 +56,9 @@ Client::Client(Client&& other) noexcept{
     other._relevant = nullptr;
     _listfd = other._listfd;
     other._listfd = nullptr;
+    this->_clFd = -1;
     this->copySocketFd(&other._clFd);
+    other._clFd = -1;
     _result = other._result;
     other._result = nullptr;
     _curR = other._curR;
@@ -111,6 +120,7 @@ int Client::handleEvent(uint32_t ev){
         return (-1);
     }
     if (ev & EPOLLIN){
+        std::cout << "Receiving\n";
         if (receiving_stuff() == -1)
             this->setState(CLOSE);
         //is it complete, check and set
@@ -170,12 +180,13 @@ int Client::sending_stuff(){
 int Client::receiving_stuff(){
     ssize_t len = 0;
     std::string temp_buff;
+    temp_buff.resize(4096);
     // temp_buff.clear(); //maybe I don't need this?
     if (_curR == CLEAR)
         _buffer.clear(); //maybe can't do this if the request is not complete
 
     while(1){
-        len = recv(_clFd, &temp_buff, sizeof(temp_buff), 0); //sizeof(buffer) - 1?
+        len = recv(_clFd, &temp_buff[0], temp_buff.size(), 0); //sizeof(buffer) - 1?
         if (len == -1){ //either means that there is no more data to read or error
             if (errno == EAGAIN || errno == EWOULDBLOCK) //done reading
                 break;
@@ -186,6 +197,9 @@ int Client::receiving_stuff(){
         else if(len == 0) //means the client closed connection, no need to send
             return (-1);
         else{ // means something was returned
+            temp_buff.resize(len);
+            std::cout << "What's here  " << temp_buff << std::endl;
+            std::cout << "Says here: " << temp_buff.size() << "     " << _buffer.max_size() << "\n";
             if (temp_buff.size() <= _buffer.max_size() - _buffer.size())
                 _buffer.append(temp_buff); //append temp to buffer
             temp_buff.clear();

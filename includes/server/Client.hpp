@@ -47,6 +47,7 @@ class Client : public EventHandler {
         Response            _responding;
         //size_t? _lastActive;
     public:
+        Client();
         Client(ServerBlock* cur);
         ~Client();
         Client(const Client& other) = delete;
