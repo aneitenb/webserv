@@ -141,7 +141,7 @@ void Response::processRequest() {
 	}
 }
 
-void Response::send(int clientSocket) {
+void Response::send() {
 	//WRITE
     std::cout << "Sending data\n";
 }
@@ -258,7 +258,7 @@ void Response::setContentType(const std::string& path) {
 
 
 //newly added 
-int Response::addToBytesSent(ssize_t adding){
+void Response::addToBytesSent(ssize_t adding){
 	_bytesSentSoFar += adding;
 }
 

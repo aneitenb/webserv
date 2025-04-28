@@ -46,12 +46,12 @@ public:
 	void processRequest();
 	/*probably won't need the client socket, but will need how many bytes need to be sent
 	will need to set the _rawData too so I can know where I'm at*/
-	void send(int clientSocket); 
+	void send(); 
     void handleGet();
     void handlePost();
     void handleDelete();
 
-	int addToBytesSent(ssize_t adding);
+	void addToBytesSent(ssize_t adding);
 	bool allSent();
 	const std::string& getRawData() const;
 	ssize_t getBytes() const;

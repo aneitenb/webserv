@@ -12,9 +12,9 @@
 #include <sys/epoll.h>
 #include "EventHandler.hpp"
 #include "EventLoop.hpp"
-#include "Request.hpp"
-#include "Response.hpp"
-#include "ServerBlock.hpp"
+#include "http/Request.hpp"
+#include "http/Response.hpp"
+#include "config/ServerBlock.hpp"
 
 
 
