@@ -20,6 +20,9 @@ private:
 	std::string							_statusMessage;
 	std::map<std::string, std::string>	_headers;
 	std::string							_body;
+	std::string							_fullResponse;
+    size_t								_bytesSent;
+    bool								_responseReady;
 	
 	Request& 		_request;
 	ServerBlock*	_serverBlock;
@@ -28,7 +31,29 @@ private:
 	std::map<std::string, std::string> _mimeTypes;
 	
 	void initializeMimeTypes();
+	std::string getStatusLine() const;
+	std::string getHeadersString() const;
+	std::string getMimeType(const std::string& path) const;
+	std::string getErrorPage(int statusCode) const;
+	std::string getCurrentDate() const;
+	bool isMethodAllowed() const;
+	bool hasReadPermission(const std::string& path) const;
+	bool hasWritePermission(const std::string& path) const;
+	bool fileExists(const std::string& path) const;
+	bool directoryExists(const std::string& path) const;
+	void prepareResponse();
+	int sendChunk(int clientSocket);
+	bool isComplete() const;
+	std::string resolvePath(const std::string& uri);
+    bool isCgiRequest(const std::string& path);
+	std::string findMatchingLocation(const std::string& uri);
+    void readFile(const std::string& path);
+	void generateDirectoryListing(const std::string& path);
 
+	
+	void handleGet();
+	void handlePost();
+	void handleDelete();
 	
 public:
 	Response(Request& request, ServerBlock* serverBlock);
