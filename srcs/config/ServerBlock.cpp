@@ -35,6 +35,21 @@ ServerBlock::ServerBlock() :
 ServerBlock::~ServerBlock() {
 }
 
+ServerBlock& ServerBlock::operator=(const ServerBlock& other){
+	_listen = other._listen;
+	_host = other._host;
+	_serverName = other._serverName;
+	_root = other._root;
+	_clientMaxBodySize = other._clientMaxBodySize;
+	_errorPages = other._errorPages;
+	_defaultErrorPages = other._defaultErrorPages;
+	_index = other._index;
+	_locationBlocks = other._locationBlocks;
+	_hasCustomErrorPages = other._hasCustomErrorPages;
+	_defaultErrorDir = other._defaultErrorDir;
+	_allowedMethods = other._allowedMethods;
+}
+
 void ServerBlock::clear() {
 	_listen.clear();
 	_host = "";

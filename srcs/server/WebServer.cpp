@@ -57,10 +57,11 @@ bool WebServer::doesExistPort(std::string port){
     return (_theSList.count(port));
 }
 
-int WebServer::resolveListener(std::string port, std::string host){
+int WebServer::resolveListener(std::string port, std::string host, const ServerBlock& serBlock){
     if (doesExistPort(port) == FALSE){
         std::cout << "this shouldve happened\n";
         Listener curL(port, host);
+        curL.addServBlock(serBlock);
         if (curL.setSocketFd() == -1)
             return (-1);
         _theLList.push_back(curL);
@@ -86,7 +87,7 @@ int WebServer::initialize(std::vector<ServerBlock>& serBlocks){
         maxPorts = curPorts.size();
         curHost = serBlocks.at(countS).getHost();
         for (std::size_t countP = 0; countP < maxPorts; countP++){
-            if ((countL = this->resolveListener(curPorts.at(countP), curHost)) == -1)
+            if ((countL = this->resolveListener(curPorts.at(countP), curHost, serBlocks.at(countS))) == -1)
                 return (-1);
             VirtualHost curVH(serBlocks.at(countS), curPorts.at(countP));
             if (curVH.addressInfo() == -1)

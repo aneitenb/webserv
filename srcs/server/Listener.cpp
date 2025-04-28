@@ -93,12 +93,20 @@ int Listener::copySocketFd(const int& fd){
         return (_sockFd);
 }
 
-std::vector<VirtualHost> Listener::getHosts(void) const{
-    return (_knownVHs);
+// std::vector<VirtualHost> Listener::getHosts(void) const{
+//     return (_knownVHs);
+// }
+
+// void Listener::addHost(VirtualHost& cur){
+//     _knownVHs.push_back(cur);
+// }
+
+void Listener::addServBlock(ServerBlock& cur){
+    _relevant = cur;
 }
 
-void Listener::addHost(VirtualHost& cur){
-    _knownVHs.push_back(cur);
+ServerBlock* Listener::getServBlock(){
+    return (&_relevant);
 }
 
 const std::string& Listener::getPort(void) const{
@@ -129,7 +137,7 @@ int Listener::handleEvent(uint32_t ev){
     }
     if (ev & EPOLLIN){ //accept incoming clients while there are clients to be accepted
         while (1){
-            Client curC;
+            Client curC(this->getServBlock());
             int curFd = -1;
             curFd = accept(_sockFd, nullptr, nullptr); //think about taking in the client info for security reasons maybe
             if (curFd == -1){

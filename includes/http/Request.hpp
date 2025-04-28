@@ -11,10 +11,7 @@
 
 #include "defs.hpp"
 
-#include <map>
-#include <string>
-#include <sstream>
-#include <exception>
+#include "CommonFunctions.hpp"
 
 typedef std::map<std::string, std::string>	headerlist_t;
 
@@ -28,6 +25,7 @@ class Request
 		std::string	_method;
 		std::string	_body;
 		std::string	_uri;
+		std::string _copyBuffer;
 
 		size_t	_contentLength;
 
@@ -42,9 +40,11 @@ class Request
 		bool	_parseBody(const std::string &rawBody);
 
 	public:
-		Request(void) = delete;
+		Request(void); //need it for client
 		Request(const std::string &rawRequest);
 		~Request(void);
+		Request(const Request& other);
+		Request& operator=(const Request& other); //need it for client
 
 		// public methods
 		bool	processChunkedBody(std::stringstream bodySection);

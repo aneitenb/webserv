@@ -12,6 +12,8 @@
 #define _find(c, x)	(std::find(c.cbegin(), c.cend(), x))
 #define _trimLWS(s)	(s.erase(0, s.find_first_not_of(LWS)), s.erase(s.find_last_not_of(LWS) + 1))
 
+Request::Request(){}
+
 Request::Request(const std::string &rawRequest): _contentLength(0), _chunked(false) {
 	std::string	bodySection;
 	size_t		requestEnd;
@@ -47,9 +49,38 @@ Request::Request(const std::string &rawRequest): _contentLength(0), _chunked(fal
 			throw Request::InvalidBodyException();
 	}
 	this->_parsed = !this->_chunked;
+	_copyBuffer = rawRequest; //if everything hasn't been received yet necessary
 }
 
 Request::~Request(void) {}
+
+Request::Request(const Request& other){
+	_headers = other._headers;
+	_contentType = other._contentType;
+	_version = other._version;
+	_method = other._method;
+	_body = other._body;
+	_uri = other._uri;
+	_copyBuffer = other._copyBuffer;
+	_contentLength = other._contentLength;
+	_chunked = other._chunked;
+	_parsed = other._parsed;	
+}
+
+Request& Request::operator=(const Request& other){
+	if (this != &other){
+		_headers = other._headers;
+		_contentType = other._contentType;
+		_version = other._version;
+		_method = other._method;
+		_body = other._body;
+		_uri = other._uri;
+		_copyBuffer = other._copyBuffer;
+		_contentLength = other._contentLength;
+		_chunked = other._chunked;
+		_parsed = other._parsed;}
+	return (*this);
+}
 
 // public methods
 bool	Request::processChunkedBody(std::stringstream bodySection) {
