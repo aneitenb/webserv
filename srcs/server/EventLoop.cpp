@@ -123,6 +123,7 @@ void EventLoop::resolvingAccept(EventHandler* cur){
                 //there shouldn't be anything to clean from Response, Request probably
                 continue;}
             curClients.at(i)->setState(READING);
+            curClients.at(i)->updateTime();
             _activeFds.at(cur->getSocketFd()).push_back(curClients.at(i));
         }
     }
