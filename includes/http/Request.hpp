@@ -14,6 +14,7 @@
 #include <map>
 #include <regex>
 #include <string>
+#include <cstring>
 #include <sstream>
 #include <exception>
 

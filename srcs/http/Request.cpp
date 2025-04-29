@@ -12,7 +12,8 @@
 #define _find(c, x)	(std::find(c.cbegin(), c.cend(), x))
 #define _trimLWS(s)	(s.erase(0, s.find_first_not_of(LWS)), s.erase(s.find_last_not_of(LWS) + 1))
 
-static inline bool	_getChunkSize(std::stringstream &bodySection, std::string &remainder, size_t &chunkSize);
+[[maybe_unused]] static inline std::string	_printRawRequest(const std::string &reqData);
+static inline bool							_getChunkSize(std::stringstream &bodySection, std::string &remainder, size_t &chunkSize);
 
 Request::Request(void): _contentLength(0), _parsingStage(REQUESTLINE), _chunked(false), _valid(true) {}
 
@@ -30,13 +31,18 @@ void	Request::append(const std::string &reqData) {
 
 	end = 0;
 	fell = false;
-	std::cerr << SGR_DEBUG << "append: current remainder: " << this->_remainder << SGR_RESET << "\n";
+#ifdef __DEBUG
+	std::cerr << SGR_DEBUG << "append: current remainder: {" << _printRawRequest(this->_remainder) << "}" << SGR_RESET << "\n";
+	std::cerr << SGR_DEBUG << "append: new request data: {" << _printRawRequest(reqData) << "}" << SGR_RESET << "\n";
+#endif /* __DEBUG */
 	switch (this->_parsingStage) {
 		case REQUESTLINE:
+			this->_parsed = false;
 			this->_remainder += reqData;
 			end = this->_remainder.find(CRLF);
 			if (end == std::string::npos)
 				break ;
+			end += 2;
 			try {
 				this->_valid = true;
 				this->_parseRequestLine(this->_remainder.substr(0, end));
@@ -52,8 +58,9 @@ void	Request::append(const std::string &reqData) {
 			end = this->_remainder.find(CRLF CRLF);
 			if (end == std::string::npos)
 				break ;
+			end += 4;
 			try {
-				this->_parseHeaders(std::stringstream(this->_remainder.substr(0, end + 4)));
+				this->_parseHeaders(std::stringstream(this->_remainder.substr(0, end)));
 			} catch (Request::InvalidHeaderException &) { this->_valid = false; } // store error code (and return ?)
 			this->_remainder.erase(0, end);
 			this->_body.clear();
@@ -87,12 +94,15 @@ std::string	Request::_decodeURI(const std::string &uri) {
 }
 
 void	Request::_parseRequestLine(std::string line) {
-	static std::regex	validReqLine("(GET|POST|DELETE) +[^\\x00-\\x1F\"#<>{}|\\\\^[\\]`\\x7F]+ +HTTP\\/1\\.1");
+	static std::regex	validReqLine("(GET|POST|DELETE) +[^\\x00-\\x1F\"#<>{}|\\\\^[\\]`\\x7F]+ +HTTP\\/1\\.1\\r\\n");
 
-	std::cerr << SGR_DEBUG << "_parseRequestLine: Request-Line: " << line << SGR_RESET << "\n";
+#ifdef __DEBUG
+	std::cerr << SGR_DEBUG << "_parseRequestLine: Request-Line: " << line.substr(0, line.length() - 2) << SGR_RESET << "\n";
+#endif /* __DEBUG */
 	if (!std::regex_match(line, validReqLine))
 		throw Request::InvalidRequestLineException();
 	std::stringstream(line) >> this->_method >> this->_uri >> this->_version;
+	this->_uri = this->_decodeURI(this->_uri); // rework to just this->_decodeURI()
 }
 
 void	Request::_parseHeaders(std::stringstream rawHeaders) {
@@ -105,7 +115,9 @@ void	Request::_parseHeaders(std::stringstream rawHeaders) {
 	valid = true;
 	while (std::getline(rawHeaders, line)) {
 		if (!line.empty() && line != CR) {
+#ifdef __DEBUG
 			std::cerr << SGR_DEBUG << "_parseHeaders: current header line: " << line << SGR_RESET << "\n";
+#endif /* __DEBUG */
 			if (line[line.length() - 1] == *CR)
 				line.erase(line.length() - 1);
 			sep = line.find(":");
@@ -144,6 +156,9 @@ bool	Request::_processBody(const std::string &rawBody) {
 	if (this->_chunked)
 		rv = this->_processChunkedBody(std::stringstream(rawBody));
 	else {
+#ifdef __DEBUG
+		std::cerr << SGR_DEBUG << "_processBody: current body segment: '" << rawBody << "'" << SGR_RESET << "\n";
+#endif /* __DEBUG */
 		this->_body += rawBody;
 		this->_remainder.clear();
 		rv = this->_body.size() >= this->_contentLength;
@@ -162,11 +177,15 @@ bool	Request::_processChunkedBody(std::stringstream bodySection) {
 		TRAILERS
 	}				parsingStage = CHUNKSIZE;
 	std::string		chunkData;
+	size_t			dataLen;
 
 	switch (parsingStage) {
 		case CHUNKSIZE:
 			if (!_getChunkSize(bodySection, this->_remainder, this->_chunkSize))
 				return false;
+#ifdef __DEBUG
+			std::cerr << SGR_DEBUG << "_processChunkedBody: next chunk size: " << this->_chunkSize << SGR_RESET << "\n";
+#endif /* __DEBUG */
 			this->_remainder.clear();
 			parsingStage = CHUNK;
 			[[fallthrough]];
@@ -174,13 +193,24 @@ bool	Request::_processChunkedBody(std::stringstream bodySection) {
 			while (this->_chunkSize) {
 				chunkData.resize(this->_chunkSize);
 				bodySection.read(&chunkData[0], this->_chunkSize);
-				if (chunkData.length() != this->_chunkSize)
-					return false;
+				dataLen = std::strlen(chunkData.c_str()); // use strlen because chunkData.length() isn't actually the length of chunkData
+				if (dataLen != this->_chunkSize) {
+					this->_remainder = chunkData.c_str();
+					return false ;
+				}
+//				if (chunkData.length() != this->_chunkSize)
+//					return false;
+#ifdef __DEBUG
+				std::cerr << SGR_DEBUG << "_processChunkedBody: next chunk data: '" << chunkData << "'" << SGR_RESET << "\n";
+#endif /* __DEBUG */
 				this->_contentLength += this->_chunkSize;
 				this->_body += chunkData;
 				parsingStage = CHUNKSIZE;
 				if (!_getChunkSize(bodySection, this->_remainder, this->_chunkSize))
 					return false;
+#ifdef __DEBUG
+				std::cerr << SGR_DEBUG << "_processChunkedBody: next chunk size: " << this->_chunkSize << SGR_RESET << "\n";
+#endif /* __DEBUG */
 				parsingStage = CHUNK;
 			}
 			this->_remainder.clear();
@@ -188,7 +218,7 @@ bool	Request::_processChunkedBody(std::stringstream bodySection) {
 			if (parsingStage == CHUNKSIZE)
 				break ;
 			[[fallthrough]];
-		case TRAILERS: // TODO trailer handling
+		case TRAILERS:
 			while (!bodySection.eof()) {
 				std::getline(bodySection, chunkData);
 				this->_remainder += chunkData;
@@ -205,11 +235,28 @@ bool	Request::_processChunkedBody(std::stringstream bodySection) {
 	return true;
 }
 
+[[maybe_unused]] static inline std::string	_printRawRequest(const std::string &reqData) {
+	std::string	escaped;
+
+	escaped.clear();;
+	for (const char c : reqData) {
+		if (isprint(c) || c == '\n')
+			escaped += c;
+		else if (c == '\r')
+			escaped += "\\r";
+		else if (c && c < ' ') {
+			escaped += '^';
+			escaped += c + '@';
+		}
+	}
+	return escaped;
+}
+
 static inline bool	_getChunkSize(std::stringstream &bodySection, std::string &remainder, size_t &chunkSize) {
 	std::string	chunkSizeStr;
 
 	std::getline(bodySection, chunkSizeStr);
-	if (*chunkSizeStr.end() != *CR) {
+	if (chunkSizeStr.empty() || chunkSizeStr.at(chunkSizeStr.length() - 1) != *CR) {
 		remainder += chunkSizeStr;
 		return false;
 	}
