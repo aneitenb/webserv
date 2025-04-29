@@ -55,7 +55,7 @@ public:
 
 	void initialize(const std::string& filename);
 
-	ServerBlock getServerBlock(size_t index) const;
+	const ServerBlock& getServerBlock(size_t index) const;
 	const ServerBlock& getServerBlockByIPPort(const std::string& ipAddress, const std::string& port) const;
 	std::vector<const ServerBlock*> getAllServerBlocksByIPPort(const std::string& ipAddress, const std::string& port) const;
 	const ServerBlock& getServerBlockByHostPortName(const std::string& ipAddress, const std::string& port, 
