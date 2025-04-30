@@ -38,6 +38,7 @@ class Client : public EventHandler {
         ServerBlock*        _relevant;
         int*                _listfd; //do i need this
         int                 _clFd;
+        int                 _count;
         struct sockaddr*    _result; //do i need this if when i accept i just take the fd?
         // struct epoll_event  _event;
         // State               _curS;
