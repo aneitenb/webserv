@@ -17,14 +17,12 @@
 Client::Client(): _listfd(nullptr), _clFd(-1), _curR(EMPTY){
     ftMemset(&_result, sizeof(_result));
     setState(TOADD);
-    _lastActive = time(nullptr);
     // ftMemset(&_event, sizeof(_event)); //do I leave this like this?
 }
 
 Client::Client(ServerBlock* cur): _relevant(cur), _listfd(nullptr), _clFd(-1), _curR(EMPTY){
     ftMemset(&_result, sizeof(_result));
     setState(TOADD);
-    _lastActive = time(nullptr);
     // ftMemset(&_event, sizeof(_event)); //do I leave this like this?
 }
 
