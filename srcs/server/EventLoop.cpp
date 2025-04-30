@@ -138,15 +138,18 @@ void EventLoop::resolvingModify(EventHandler* cur, uint32_t event){
 void EventLoop::resolvingClosing(){
     for (auto& pair : _activeFds){
         if (*pair.first != -1){
-            for (size_t i = 0; i < pair.second.size(); i++){
+            std::size_t i = 0;
+            for (auto it = pair.second.begin(); it != pair.second.end(); ){
                 if (pair.second.at(i)->getState() == CLOSE){
                     //cleanup Request, Response, buffer
                     delEpoll(pair.second.at(i)->getSocketFd());
                     pair.second.at(i)->closeFd(pair.second.at(i)->getSocketFd());
                     pair.second.at(i)->setState(CLOSED);
-                    pair.second.erase(pair.second.begin() + i);
-                    if (i != 0) //to return the iterator when an element gets erased
-                        i--;
+                    it = pair.second.erase(it);
+                }
+                else{
+                    ++i;
+                    ++it;
                 }
             }
         }
