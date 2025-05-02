@@ -93,10 +93,9 @@ void Response::processRequest() {
 	
 	if (!isMethodAllowed()) {
 		_statusCode = 405;
-		_body = getErrorPage(405);
+		setBody(getErrorPage(405));
 		setHeader("Allow", _locationBlock->allowedMethodsToString());
 		setHeader("Content-Type", "text/html");
-		setHeader("Content-Length", std::to_string(_body.size()));
 		return;
 	}
 	
@@ -104,9 +103,8 @@ void Response::processRequest() {
 		const auto& redirect = _locationBlock->getRedirect();
 		_statusCode = redirect.first;
 		setHeader("Location", redirect.second);
-		_body = "";
+		setBody("");
 		setHeader("Content-Type", "text/html");
-		setHeader("Content-Length", std::to_string(_body.size()));
 		return;
 	}
 	
@@ -119,9 +117,8 @@ void Response::processRequest() {
 		handleDelete();
 	} else {
 		_statusCode = 501; // Not implemented
-		_body = getErrorPage(501);
+		setBody(getErrorPage(501));
 		setHeader("Content-Type", "text/html");
-		setHeader("Content-Length", std::to_string(_body.size()));
 	}
 }
 
@@ -188,9 +185,8 @@ void Response::handleGet(){
 		
 		// No directory listing and no index file
 		_statusCode = 403;
-		_body = getErrorPage(403);
+		setBody(getErrorPage(403));
 		setHeader("Content-Type", "text/html");
-		setHeader("Content-Length", std::to_string(_body.size()));
 		return;
 	}
 	//check if path is a file
@@ -200,7 +196,8 @@ void Response::handleGet(){
 	}
 	//file not found
 	_statusCode = 404;
-	_body = getErrorPage(404);
+	setBody(getErrorPage(404));
+	setHeader("Content-Type", "text/html");
 }
 
 void Response::handlePost(){
@@ -221,26 +218,30 @@ void Response::handlePost(){
 		}
 		
 		path = uploadDir + filename;
-	} else {
+	} 
+	else {
 		path = resolvePath(_request.getURI());
 	}
 
 	std::string dirPath = path.substr(0, path.find_last_of('/'));
 	if (!directoryExists(dirPath)) {
 		_statusCode = 404;
-		_body = getErrorPage(404);
+		setBody(getErrorPage(404));
+		setHeader("Content-Type", "text/html");
 		return;
 	}
 	
 	if (!hasWritePermission(path)) {
 		_statusCode = 403;
-		_body = getErrorPage(403);
+		setBody(getErrorPage(403));
+		setHeader("Content-Type", "text/html");
 		return;
 	}
 	
 	if (_request.getContentLength() > _serverBlock->getClientMaxBodySize()) {
 		_statusCode = 413;
-		_body = getErrorPage(413);
+		setBody(getErrorPage(413));
+		setHeader("Content-Type", "text/html");
 		return;
 	}
 	
@@ -248,20 +249,22 @@ void Response::handlePost(){
 	std::ofstream file(path, std::ios::binary | std::ios::trunc);
 	if (!file.is_open()) {
 		_statusCode = 500;
-		_body = getErrorPage(500);
+		setBody(getErrorPage(500));
+		setHeader("Content-Type", "text/html");
 		return;
 	}
 	
 	file.write(_request.getBody().c_str(), _request.getBody().size());
 	file.close();
 	
-	_statusCode = fileExisted ? 200 : 201;
-	_body = "";
-	
-	if (_statusCode == 201) {
-		//set Location header for created resource
+	if (fileExisted)
+		_statusCode = 200;
+	else
+	{
 		setHeader("Location", _request.getURI());
+		_statusCode = 201;
 	}
+	setBody("");
 }
 
 void Response::handleDelete(){
@@ -270,7 +273,8 @@ void Response::handleDelete(){
 	// Check if file exists
 	if (!fileExists(path)) {
 		_statusCode = 404;
-		_body = getErrorPage(404);
+		setBody(getErrorPage(404));
+		setHeader("Content-Type", "text/html");
 		return;
 	}
 	
@@ -278,18 +282,20 @@ void Response::handleDelete(){
 	std::string dirPath = path.substr(0, path.find_last_of('/'));
 	if (!hasWritePermission(dirPath)) {
 		_statusCode = 403;
-		_body = getErrorPage(403);
+		setBody(getErrorPage(403));
+		setHeader("Content-Type", "text/html");
 		return;
 	}
 	
 	if (std::remove(path.c_str()) != 0) {
 		_statusCode = 500;
-		_body = getErrorPage(500);
+		setBody(getErrorPage(500));
+		setHeader("Content-Type", "text/html");
 		return;
 	}
 	
 	_statusCode = 204; // success, just no content to send back
-	_body = "";
+	setBody("");
 }
 
 std::string Response::resolvePath(const std::string& uri) {
@@ -372,7 +378,8 @@ void Response::generateDirectoryListing(const std::string& path) {
 	dir = opendir(path.c_str());
 	if (!dir) {
 		_statusCode = 500;
-		_body = getErrorPage(500);
+		setBody(getErrorPage(500));
+		setHeader("Content-Type", "text/html");
 		return;
 	}
 	
@@ -408,18 +415,16 @@ void Response::generateDirectoryListing(const std::string& path) {
 	closedir(dir);
 	
 	_statusCode = 200;
-	_body = listing.str();
+	setBody(listing.str());
 	setHeader("Content-Type", "text/html");
-	setHeader("Content-Length", std::to_string(_body.size()));
 }
 
 void Response::readFile(const std::string& path) {
 	std::ifstream file(path.c_str(), std::ios::binary);
 	if (!file.is_open()) {
 		_statusCode = 500;
-		_body = getErrorPage(500);
+		setBody(getErrorPage(500));
 		setHeader("Content-Type", "text/html");
-		setHeader("Content-Length", std::to_string(_body.size()));
 		return;
 	}
 	
@@ -548,17 +553,14 @@ const std::string& Response::getBody() const {
 	return _body;
 }
 
-void Response::setStatusCode(int code) {
-	_statusCode = code;
-}
-
 void Response::setHeader(const std::string& key, const std::string& value) {
 	_headers[key] = value;
 }
 
 void Response::setBody(const std::string& body) {
 	_body = body;
-	setHeader("Content-Length", std::to_string(_body.size()));
+	if (_statusCode != 204)
+		setHeader("Content-Length", std::to_string(_body.size()));
 }
 
 void Response::setContentType(const std::string& path) {

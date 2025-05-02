@@ -41,16 +41,12 @@ private:
 	bool hasWritePermission(const std::string& path) const;
 	bool fileExists(const std::string& path) const;
 	bool directoryExists(const std::string& path) const;
-	void prepareResponse();
-	int sendChunk(int clientSocket);
-	bool isComplete() const;
 	std::string resolvePath(const std::string& uri);
     bool isCgiRequest(const std::string& path);
 	std::string findMatchingLocation(const std::string& uri);
     void readFile(const std::string& path);
 	void generateDirectoryListing(const std::string& path);
 
-	
 	void handleGet();
 	void handlePost();
 	void handleDelete();
@@ -64,8 +60,11 @@ public:
 	int getStatusCode() const;
 	const std::string& getBody() const;
 	
-	void setStatusCode(int code);
 	void setHeader(const std::string& key, const std::string& value);
 	void setBody(const std::string& body);
 	void setContentType(const std::string& path);
+
+	void prepareResponse();
+	int sendChunk(int clientSocket);
+	bool isComplete() const;
 };
