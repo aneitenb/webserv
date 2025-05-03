@@ -12,6 +12,9 @@
 #include <string.h>
 #include <iostream> //cerr
 #include <unistd.h> //close
+#include <csignal>
+
+extern sig_atomic_t gSignal;
 
 EventLoop::EventLoop() : _epollFd(-1){}
 
@@ -33,11 +36,11 @@ int EventLoop::run(std::vector<EventHandler*> listFds){
         return (-1);
     this->addListeners(listFds);
 
-    while(1){
+    while(gSignal == 0){
         int events2Resolve = epoll_wait(_epollFd, _events, MAX_EVENTS, -1);
         for (int i = 0; i < events2Resolve; i++){
             EventHandler* curE = static_cast<EventHandler*>(_events[i].data.ptr);
-            std::cout << "Should be listener: " << curE->getState() << std::endl;
+            // std::cout << "After receiving events\n";
             if (curE->handleEvent(_events[i].events) == -1){
                 //error occurred
                 if (curE->getState() == LISTENER)
@@ -46,6 +49,8 @@ int EventLoop::run(std::vector<EventHandler*> listFds){
                     curE->setState(CLOSE);
                 continue;
             }
+            // std::cout << "After handling\n";
+
             State curS = curE->getState();
             switch (curS){
                 case LISTENER:
@@ -60,10 +65,13 @@ int EventLoop::run(std::vector<EventHandler*> listFds){
                 default:
                     break;
             }
+            // std::cout << "After one loop\n";
         }
         //timeout?
         resolvingClosing();
-    }   
+        // std::cout << "After closing\n";
+    }
+    return (0);   
 }
 
 //create an epoll instance
@@ -114,7 +122,7 @@ void EventLoop::condemnClients(EventHandler* cur){
 void EventLoop::resolvingAccept(EventHandler* cur){
     std::vector<EventHandler*> curClients = cur->resolveAccept();
     // if (curClients.empty())
-    std::cout << "Trying to add clients\n";
+    // std::cout << "Trying to add clients\n";
     for (size_t i = 0; i < curClients.size(); i++){
         if (*curClients.at(i)->getSocketFd() != -1 && curClients.at(i)->getState() == TOADD){
             if (addToEpoll(curClients.at(i)->getSocketFd(), curClients.at(i)) == -1){

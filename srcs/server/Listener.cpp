@@ -66,7 +66,7 @@ int setuping(int *fd){
         std::cerr << strerror(errno) << "\n";
         return (-1);
     }
-    std::cout << "socketFD " << *fd << " has been successfully set up as non-blocking\n";     
+    // std::cout << "socketFD " << *fd << " has been successfully set up as non-blocking\n";     
     return (0);
 }
 
@@ -160,8 +160,7 @@ int Listener::handleEvent(uint32_t ev){
             // if (curEL->addToEpoll(curC.getClFd(), EPOLLIN, &curC) == -1)
             //     return (-1); //add the client fd to the epoll
             _activeClients.push_back(std::move(curC));
-            close(curFd);
-            curFd = -1;
+            closeFd(&curFd);
             // curEL->addClient(&(_activeClients.at(_activeClients.size() - 1)));
         }
     }

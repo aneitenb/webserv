@@ -38,6 +38,8 @@ int Client::copySocketFd(int* fd){
     if (this->_clFd != -1){
         close(_clFd);
         _clFd = -1;}
+    if (*fd == -1)
+        return (-1);
     this->_clFd = dup(*fd);
     if (this->_clFd == -1){
         std::cout << "Error: dup() failed\n"; //exit?
@@ -104,6 +106,7 @@ int Client::saveRequest(){
         //the thing is what if it's a partial request so not everything has been received? it needs to be updated without being marked as wrong
         if (curR.isParsed() == true){
             _requesting = curR;
+            std::cout << "PARSED\n";
             return (0);
         }
     }
@@ -128,6 +131,7 @@ int Client::handleEvent(uint32_t ev){
             _count++;
             if (_count == 5)
                 this->setState(CLOSE);
+            std::cout << "Count: " << _count << std::endl;
         }
         //is it complete, check and set
         if (saveRequest() == 0){
@@ -199,8 +203,8 @@ int Client::receiving_stuff(){
         }
         else{ // means something was returned
             temp_buff.resize(len);
-            std::cout << "What's here  " << temp_buff << std::endl;
-            std::cout << "Says here: " << temp_buff.size() << "     " << _buffer.max_size() << "\n";
+            // std::cout << "What's here  " << temp_buff << std::endl;
+            // std::cout << "Says here: " << temp_buff.size() << "     " << _buffer.max_size() << "\n";
             if (temp_buff.size() <= _buffer.max_size() - _buffer.size())
                 _buffer.append(temp_buff); //append temp to buffer
             temp_buff.clear();

@@ -37,6 +37,7 @@ Response::Response(Request& request, ServerBlock* serverBlock)
 	 _request(request), _serverBlock(serverBlock), _locationBlock(NULL)
 {
 	initializeMimeTypes();
+	std::cout << "RESPONSE MADE\n";
 }
 
 Response::Response(){}
