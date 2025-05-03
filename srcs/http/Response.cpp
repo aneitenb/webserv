@@ -38,12 +38,25 @@ Response::Response(const Request& request, ServerBlock* serverBlock)
 	_serverBlock(serverBlock), 
 	_locationBlock(NULL),
 	_bytesSent(0),
-	_responseReady(false)
 {
 	initializeMimeTypes();
 }
 
 Response::~Response() {}
+
+Response::clear() {
+	_statusCode = 200;
+	_headers.clear();
+	_body.clear();
+	_fullResponse.clear();
+	_bytesSent = 0;
+	_locationBlock = NULL;
+	_request.clear();	//implement a clear in Request class
+}
+
+void Response::setRequest(const Request& request) {
+	_request = request;
+}
 
 void Response::initializeMimeTypes() {
 	_mimeTypes = {
@@ -80,7 +93,7 @@ std::string Response::getMimeType(const std::string& path) const {
 	return "application/octet-stream";
 }
 
-void Response::processRequest() {
+void Response::handleResponse() {
 	std::string uri = _request.getURI();
 	std::string matchedLocation = findMatchingLocation(uri);
 	
@@ -125,28 +138,9 @@ void Response::processRequest() {
 void  Response::prepareResponse() {
 	_fullResponse = getStatusLine() + getHeadersString() + _body;
 	_bytesSent = 0;
-	_responseReady = true;
-}
-
-int  Response::sendChunk(int clientSocket) {
-	if (!_responseReady || _bytesSent >= _fullResponse.size())
-		return 0;
-	const char* buffer = _fullResponse.c_str() + _bytesSent;
-	size_t remaining = _fullResponse.size() - _bytesSent;
-	
-	ssize_t sent = write(clientSocket, buffer, remaining);
-	if (sent < 0) {
-		if (errno == EAGAIN || errno == EWOULDBLOCK)
-			return 0;  // would block, try again later
-		return -1;
-	}
-	_bytesSent += sent;
-	return sent;
 }
 
 bool Response::isComplete() const {
-	if (!_responseReady)
-		return false;
 	return (_bytesSent >= _fullResponse.size());
 }
 

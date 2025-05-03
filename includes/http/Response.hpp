@@ -22,7 +22,6 @@ private:
 	std::string							_body;
 	std::string							_fullResponse;
     size_t								_bytesSent;
-    bool								_responseReady;
 	
 	Request 		_request;
 	ServerBlock*	_serverBlock;
@@ -54,8 +53,10 @@ private:
 public:
 	Response(Request& request, ServerBlock* serverBlock);
 	~Response();
+	void clear();
+	void setRequest(Request& request);
 
-	void processRequest();
+	void handleResponse();
 
 	int getStatusCode() const;
 	const std::string& getBody() const;
@@ -65,6 +66,5 @@ public:
 	void setContentType(const std::string& path);
 
 	void prepareResponse();
-	int sendChunk(int clientSocket);
 	bool isComplete() const;
 };
