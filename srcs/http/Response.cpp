@@ -107,12 +107,18 @@ void Response::handleResponse() {
 	if (!isMethodAllowed()) {
 		_statusCode = 405;
 		setBody(getErrorPage(405));
-		setHeader("Allow", _locationBlock->allowedMethodsToString());
+		if (_locationBlock && _locationBlock->hasAllowedMethods()) {
+			setHeader("Allow", _locationBlock->allowedMethodsToString());
+		} else if (_serverBlock->hasAllowedMethods()) {
+			setHeader("Allow", _serverBlock->allowedMethodsToString());
+		} else {
+			setHeader("Allow", "");
+		}
 		setHeader("Content-Type", "text/html");
 		return;
 	}
 	
-	if (_locationBlock->hasRedirect()) {
+	if (_locationBlock && _locationBlock->hasRedirect()) {
 		const auto& redirect = _locationBlock->getRedirect();
 		_statusCode = redirect.first;
 		setHeader("Location", redirect.second);
@@ -129,7 +135,7 @@ void Response::handleResponse() {
 	} else if (method == "DELETE") {
 		handleDelete();
 	} else {
-		_statusCode = 501; // Not implemented
+		_statusCode = 501;
 		setBody(getErrorPage(501));
 		setHeader("Content-Type", "text/html");
 	}
@@ -262,9 +268,23 @@ void Response::handlePost(){
 }
 
 void Response::handleDelete(){
-	std::string path = _locationBlock->getRoot() + _request.getURI();
-	
-	// Check if file exists
+	std::string path;
+    std::string root;
+    
+    if (_locationBlock && _locationBlock->hasRoot()) {
+        root = _locationBlock->getRoot();
+    } else {
+        root = _serverBlock->getRoot();
+    }
+    
+    // add slash between root and URI
+    if (!root.empty() && root[root.length()-1] != '/' && 
+        !_request.getURI().empty() && _request.getURI()[0] != '/') {
+        path = root + "/" + _request.getURI();
+    } else {
+        path = root + _request.getURI();
+    }
+
 	if (!fileExists(path)) {
 		_statusCode = 404;
 		setBody(getErrorPage(404));
@@ -293,9 +313,9 @@ void Response::handleDelete(){
 }
 
 std::string Response::resolvePath(const std::string& uri) {
-	// Check if location block has an alias directive
+	// check if location block has an alias directive
 	if (_locationBlock && _locationBlock->hasAlias()) {
-		// When using alias, replace the location path with the alias path
+		// replace the location path with the alias path
 		std::string locationPath = findMatchingLocation(uri);
 		
 		if (!locationPath.empty() && uri.find(locationPath) == 0) {
@@ -319,7 +339,7 @@ std::string Response::resolvePath(const std::string& uri) {
 		root = _serverBlock->getRoot();
 	}
 	
-	// make sure there's a slash between root and URI
+	// put slash between root and URI
 	if (!root.empty() && root[root.length()-1] != '/' && 
 		!uri.empty() && uri[0] != '/') {
 		return root + "/" + uri;
@@ -337,14 +357,13 @@ std::string Response::findMatchingLocation(const std::string& uri) {
 		 it != locations.end(); ++it) {
 		std::string locationPath = it->first;
 		
-		// Normalize paths for comparison - ensure both start with /
+		// ensure both start with / for comparison
 		std::string absLocationPath = locationPath;
 		std::string absUri = uri;
 		
 		if (!absLocationPath.empty() && absLocationPath[0] != '/') {
 			absLocationPath = "/" + absLocationPath;
 		}
-		
 		if (!absUri.empty() && absUri[0] != '/') {
 			absUri = "/" + absUri;
 		}
@@ -356,7 +375,7 @@ std::string Response::findMatchingLocation(const std::string& uri) {
 				(absUri.length() == absLocationPath.length() || 
 				 absUri[absLocationPath.length()] == '/' || 
 				 absLocationPath[absLocationPath.length() - 1] == '/')) {
-				bestMatch = locationPath; // Store the original path
+				bestMatch = locationPath; // store the original path
 				bestMatchLength = absLocationPath.length();
 			}
 		}
@@ -438,18 +457,26 @@ void Response::readFile(const std::string& path) {
 }
 
 bool Response::isMethodAllowed() const {
-	if (!_locationBlock)
-		return false;
-	
 	const std::string& method = _request.getMethod();
+	HttpMethod requestMethod;
 	
 	if (method == "GET")
-		return _locationBlock->isMethodAllowed(GET);
+		requestMethod = GET;
 	else if (method == "POST")
-		return _locationBlock->isMethodAllowed(POST);
+		requestMethod = POST;
 	else if (method == "DELETE")
-		return _locationBlock->isMethodAllowed(DELETE);
+		requestMethod = DELETE;
+	else
+		return false;
 	
+	if (_locationBlock && _locationBlock->hasAllowedMethods()) {
+		return _locationBlock->isMethodAllowed(requestMethod);
+	}
+	
+	if (_serverBlock->hasAllowedMethods()) {
+		return _serverBlock->isMethodAllowed(requestMethod);
+	}
+
 	return false;
 }
 
