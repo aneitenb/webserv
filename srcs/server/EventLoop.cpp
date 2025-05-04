@@ -108,6 +108,10 @@ void EventLoop::addListeners(std::vector<EventHandler*> listFds){
             std::cout << "checking active Fds: " << *(x.first) << std::endl;
         }
     }
+    _listeners = listFds;
+    for (auto& x : _listeners){
+        std::cout << "checking lists: " << *(x->getSocketFd()) << std::endl;
+    }
 }
 
 void EventLoop::condemnClients(EventHandler* cur){
@@ -122,7 +126,7 @@ void EventLoop::condemnClients(EventHandler* cur){
 void EventLoop::resolvingAccept(EventHandler* cur){
     std::vector<EventHandler*> curClients = cur->resolveAccept();
     // if (curClients.empty())
-    // std::cout << "Trying to add clients\n";
+    std::cout << "Trying to add clients\n";
     for (size_t i = 0; i < curClients.size(); i++){
         if (*curClients.at(i)->getSocketFd() != -1 && curClients.at(i)->getState() == TOADD){
             if (addToEpoll(curClients.at(i)->getSocketFd(), curClients.at(i)) == -1){
@@ -132,6 +136,7 @@ void EventLoop::resolvingAccept(EventHandler* cur){
                 continue;}
             curClients.at(i)->setState(READING);
             _activeFds.at(cur->getSocketFd()).push_back(curClients.at(i));
+            std::cout << "Client added with fd: " << *(_activeFds.at(cur->getSocketFd()).at(i)->getSocketFd()) << std::endl;
         }
     }
 }
@@ -142,24 +147,31 @@ void EventLoop::resolvingModify(EventHandler* cur, uint32_t event){
         cur->setState(CLOSE);
 }
 
+EventHandler* EventLoop::getListener(int *fd){
+    for (auto& it : _listeners)
+        if (fd == it->getSocketFd())
+            return (it);
+    std::cout << "SHOULD NEVER HAPPEN\n";
+    return {};
+}
+
 //resolve closing and removing of the done/disconnected clients
 void EventLoop::resolvingClosing(){
     for (auto& pair : _activeFds){
         if (*pair.first != -1){
+            //update vectors
             std::size_t i = 0;
-            for (auto it = pair.second.begin(); it != pair.second.end(); ){
+            EventHandler* curL = getListener(pair.first);
+            for (auto it = pair.second.begin(); it != pair.second.end(); it++){
                 if (pair.second.at(i)->getState() == CLOSE){
                     //cleanup Request, Response, buffer
                     delEpoll(pair.second.at(i)->getSocketFd());
-                    pair.second.at(i)->closeFd(pair.second.at(i)->getSocketFd());
-                    pair.second.at(i)->setState(CLOSED);
-                    it = pair.second.erase(it);
-                }
-                else{
-                    ++i;
-                    ++it;
+                    pair.second.at(i)->setState(TOCLOSE);
                 }
             }
+            curL->resolveClose();
+            pair.second = curL->resolveAccept();
+            std::cout << "updated clients: " << pair.second.empty() << "\n";
         }
     }
 }

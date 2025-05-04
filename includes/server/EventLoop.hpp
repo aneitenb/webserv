@@ -43,6 +43,7 @@ private:
     struct epoll_event    _events[MAX_EVENTS]; //result array for epoll_wait()
     // int _maxEvents = MAX_EVENTS;
     // std::vector<Client*> _activeClients;
+    std::vector<EventHandler*> _listeners;
     EventLoop(const EventLoop& other) = delete;
     const EventLoop& operator=(const EventLoop& other) = delete;
     std::unordered_map<int*, std::vector<EventHandler*>> _activeFds;
@@ -64,6 +65,7 @@ public:
 
     //getters, setters
     std::vector<EventHandler*> findValue(int *fd);
+    EventHandler* getListener(int *fd);
 };
 
 /*epoll only cares about

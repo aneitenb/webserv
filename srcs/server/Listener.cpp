@@ -179,10 +179,14 @@ std::vector<EventHandler*> Listener::resolveAccept(void) {
 }
 
 void Listener::resolveClose(){
+    if (_activeClients.size() == 0)
+        return ;
     ssize_t i = 0;
     for (auto it = _activeClients.begin(); it != _activeClients.end(); ){
-        if (_activeClients.at(i).getState() == CLOSED)
-            it = _activeClients.erase(it); // erase returns the next valid iterator
+        if (_activeClients.at(i).getState() == TOCLOSE){
+            _activeClients.at(i).setState(CLOSED);
+            closeFd(_activeClients.at(i).getSocketFd());
+            it = _activeClients.erase(it); }// erase returns the next valid iterator
         else {
             ++it;
             i++;

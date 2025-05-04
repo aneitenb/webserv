@@ -13,9 +13,17 @@
 #include "server/EventLoop.hpp"
 #include <csignal>
 
+/*a visible side-effect for the purposes of optimization 
+(that is, within a single thread of execution, volatile accesses cannot be optimized out or reordered with 
+another visible side effect that is sequenced-before or sequenced-after the volatile access. 
+This makes volatile objects suitable for communication with a signal handler, but not with another thread of execution*/
 volatile sig_atomic_t gSignal = 0;
 
 void displayServerInfo(const ConfigurationFile& config);
+
+/*extern "C": makes a function-name in C++ have C linkage (compiler does not mangle the name) 
+so that client C code can link to (use) the function using a C compatible header file 
+that contains just the declaration of the function*/
 
 extern "C" void signalHandler(int signum){
 	gSignal = signum;
@@ -88,8 +96,8 @@ int main(int ac, char **av)
 		return 1; 
 	}
 	
-	while (gSignal == 0)
-		program(av);
+	program(av);
+	
 	return 0;
 }
 

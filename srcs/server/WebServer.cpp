@@ -93,8 +93,10 @@ int WebServer::initialize(std::vector<ServerBlock>& serBlocks){
             if (curVH.addressInfo() == -1)
                     return (-1);
             if (doesExist(curPorts.at(countP), curHost) == FALSE){
-                if ((bind_listen(&curVH, _theLList.at(countL).getSocketFd())) == -1)
+                if ((bind_listen(&curVH, _theLList.at(countL).getSocketFd())) == -1){
+                        curVH.freeAddress();
                         return(-1);
+                }
             }
             _theVHList[_theLList.at(countL).getSocketFd()].push_back(std::move(curVH));
             // std::cout << "testing: " << curVH.getIP() << std::endl;

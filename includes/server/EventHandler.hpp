@@ -22,7 +22,8 @@ enum State {
     TOWRITE, //client needs to be switched to write
     LISTENER, //socket is a listening socket
     TOADD, //fd needs to be added
-    CLOSED //fd has been closed
+    CLOSED, //fd has been closed
+    TOCLOSE //deleted from epoll, not yet from vector
 }; 
 
 /*if epollin && towrite
