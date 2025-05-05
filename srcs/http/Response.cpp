@@ -37,14 +37,14 @@ Response::Response(const Request& request, ServerBlock* serverBlock)
 	_request(request), 
 	_serverBlock(serverBlock), 
 	_locationBlock(NULL),
-	_bytesSent(0),
+	_bytesSent(0)
 {
 	initializeMimeTypes();
 }
 
 Response::~Response() {}
 
-Response::clear() {
+void Response::clear() {
 	_statusCode = 200;
 	_headers.clear();
 	_body.clear();
@@ -357,7 +357,7 @@ std::string Response::findMatchingLocation(const std::string& uri) {
 		 it != locations.end(); ++it) {
 		std::string locationPath = it->first;
 		
-		// ensure both start with / for comparison
+		// make both start with / for comparison
 		std::string absLocationPath = locationPath;
 		std::string absUri = uri;
 		
@@ -441,13 +441,17 @@ void Response::readFile(const std::string& path) {
 		return;
 	}
 	
-	// Get file size
+	// Get file size using seekg "seek get pointer" :
+	//  - it positions the file's read pointer at a specific location in the file.
+	// tellg returns the current position of the read pointer as a number of bytes
+	// from the beginning of the file
 	file.seekg(0, std::ios::end);
 	size_t size = file.tellg();
 	file.seekg(0, std::ios::beg);
 	
-	// Read file content
-	_body.resize(size);
+	// Read file content and copy contents directly into _body
+	// resize(size) pre-allocates memory for the string to hold exactly the size of the file
+	_body.resize(size);	
 	file.read(&_body[0], size);
 	file.close();
 	
@@ -545,7 +549,6 @@ std::string Response::getStatusLine() const {
 	return ss.str();
 }
 
-//EDIT THIS TO INCLUDE DATE 
 std::string Response::getHeadersString() const {
 	std::stringstream ss;
 	
