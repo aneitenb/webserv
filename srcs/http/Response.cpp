@@ -32,14 +32,6 @@ static const std::map<int, std::string> statusMessages = {
 	{505, "HTTP Version Not Supported"}
 };
 
-Response::Response(Request& request, ServerBlock* serverBlock)
-	: _statusCode(200),  _bytesSentSoFar(0), _totalMsgBytes(0), \
-	 _request(request), _serverBlock(serverBlock), _locationBlock(NULL)
-{
-	initializeMimeTypes();
-	std::cout << "RESPONSE MADE\n";
-}
-
 Response::Response(){}
 
 Response::~Response() {}
@@ -73,6 +65,31 @@ Response& Response::operator=(Response&& other) noexcept{
 		_mimeTypes = other._mimeTypes;		
 	}
 	return (*this);
+
+Response::Response(const Request& request, ServerBlock* serverBlock)
+	: _statusCode(200), 
+	_request(request), 
+	_serverBlock(serverBlock), 
+	_locationBlock(NULL),
+	_bytesSent(0)
+{
+	initializeMimeTypes();
+}
+
+Response::~Response() {}
+
+void Response::clear() {
+	_statusCode = 200;
+	_headers.clear();
+	_body.clear();
+	_fullResponse.clear();
+	_bytesSent = 0;
+	_locationBlock = NULL;
+	_request.clear();	//implement a clear in Request class
+}
+
+void Response::setRequest(const Request& request) {
+	_request = request;
 }
 
 void Response::initializeMimeTypes() {
@@ -110,22 +127,37 @@ std::string Response::getMimeType(const std::string& path) const {
 	return "application/octet-stream";
 }
 
-void Response::processRequest() {
+void Response::handleResponse() {
 	std::string uri = _request.getURI();
-	_locationBlock = &_serverBlock->getLocationBlockRef(uri);
+	std::string matchedLocation = findMatchingLocation(uri);
+	
+	if (matchedLocation.empty())
+		_locationBlock = NULL;
+	else
+		_locationBlock = &_serverBlock->getLocationBlockRef(matchedLocation);
+
+	setHeader("Date", getCurrentDate());
 	
 	if (!isMethodAllowed()) {
 		_statusCode = 405;
-		_body = getErrorPage(405);
-		setHeader("Allow", _locationBlock->allowedMethodsToString());
+		setBody(getErrorPage(405));
+		if (_locationBlock && _locationBlock->hasAllowedMethods()) {
+			setHeader("Allow", _locationBlock->allowedMethodsToString());
+		} else if (_serverBlock->hasAllowedMethods()) {
+			setHeader("Allow", _serverBlock->allowedMethodsToString());
+		} else {
+			setHeader("Allow", "");
+		}
+		setHeader("Content-Type", "text/html");
 		return;
 	}
 	
-	if (_locationBlock->hasRedirect()) {
+	if (_locationBlock && _locationBlock->hasRedirect()) {
 		const auto& redirect = _locationBlock->getRedirect();
 		_statusCode = redirect.first;
 		setHeader("Location", redirect.second);
-		_body = "";
+		setBody("");
+		setHeader("Content-Type", "text/html");
 		return;
 	}
 	
@@ -137,44 +169,351 @@ void Response::processRequest() {
 	} else if (method == "DELETE") {
 		handleDelete();
 	} else {
-		_statusCode = 501; // Not implemented
-		_body = getErrorPage(501);
+		_statusCode = 501;
+		setBody(getErrorPage(501));
+		setHeader("Content-Type", "text/html");
 	}
 }
 
-void Response::send() {
-	//WRITE
-    std::cout << "Sending data\n";
+void  Response::prepareResponse() {
+	_fullResponse = getStatusLine() + getHeadersString() + _body;
+	_bytesSent = 0;
+}
+
+bool Response::isComplete() const {
+	return (_bytesSent >= _fullResponse.size());
 }
 
 void Response::handleGet(){
-	//WRITE
-    std::cout << "Getting\n";
+	std::string path = resolvePath(_request.getURI());
+
+	if (isCgiRequest(path)) {
+		//handleCgi(path);
+		return;
+	}
+
+	std::string absPath = path;
+	if (!absPath.empty() && absPath[absPath.length()-1] == '/' && 
+		absPath.length() > 1)
+		absPath = absPath.substr(0, absPath.length()-1);
+
+ 	if (directoryExists(absPath))
+	{
+		std::string indexFile;
+		if (_locationBlock && _locationBlock->hasIndex()) {
+			indexFile = _locationBlock->getIndex();
+		} else {
+			indexFile = _serverBlock->getIndex();
+		}
+		
+		// path has to end with slash for appending index file
+		if (!absPath.empty() && absPath[absPath.length()-1] != '/') {
+			absPath += '/';
+		}
+		
+		std::string indexPath = absPath + indexFile;
+		if (fileExists(indexPath) && hasReadPermission(indexPath)) {
+			readFile(indexPath);
+			return;
+		}
+		
+		// No directory listing and no index file
+		_statusCode = 403;
+		setBody(getErrorPage(403));
+		setHeader("Content-Type", "text/html");
+		return;
+	}
+	//check if path is a file
+	if (fileExists(absPath) && hasReadPermission(absPath)) {
+		readFile(absPath);
+		return;
+	}
+	//file not found
+	_statusCode = 404;
+	setBody(getErrorPage(404));
+	setHeader("Content-Type", "text/html");
 }
 
 void Response::handlePost(){
-	//WRITE
-    std::cout << "Posting\n";
+	std::string path;
+
+	//check for upload_store directive
+	if (_locationBlock && _locationBlock->hasUploadStore()) {
+		std::string filename = _request.getURI();
+		size_t lastSlash = filename.find_last_of('/');
+		if (lastSlash != std::string::npos) {
+			filename = filename.substr(lastSlash + 1);
+		}
+		
+		// making sure upload dir ends with a slash
+		std::string uploadDir = _locationBlock->getUploadStore();
+		if (!uploadDir.empty() && uploadDir[uploadDir.length()-1] != '/') {
+			uploadDir += '/';
+		}
+		
+		path = uploadDir + filename;
+	} 
+	else {
+		path = resolvePath(_request.getURI());
+	}
+
+	std::string dirPath = path.substr(0, path.find_last_of('/'));
+	if (!directoryExists(dirPath)) {
+		_statusCode = 404;
+		setBody(getErrorPage(404));
+		setHeader("Content-Type", "text/html");
+		return;
+	}
+	
+	if (!hasWritePermission(path)) {
+		_statusCode = 403;
+		setBody(getErrorPage(403));
+		setHeader("Content-Type", "text/html");
+		return;
+	}
+	
+	if (_request.getContentLength() > _serverBlock->getClientMaxBodySize()) {
+		_statusCode = 413;
+		setBody(getErrorPage(413));
+		setHeader("Content-Type", "text/html");
+		return;
+	}
+	
+	bool fileExisted = fileExists(path);
+	std::ofstream file(path, std::ios::binary | std::ios::trunc);
+	if (!file.is_open()) {
+		_statusCode = 500;
+		setBody(getErrorPage(500));
+		setHeader("Content-Type", "text/html");
+		return;
+	}
+	
+	file.write(_request.getBody().c_str(), _request.getBody().size());
+	file.close();
+	
+	if (fileExisted)
+		_statusCode = 200;
+	else
+	{
+		setHeader("Location", _request.getURI());
+		_statusCode = 201;
+	}
+	setBody("");
 }
 
 void Response::handleDelete(){
-	//WRITE
-    std::cout << "Deleting\n";
+	std::string path;
+    std::string root;
+    
+    if (_locationBlock && _locationBlock->hasRoot()) {
+        root = _locationBlock->getRoot();
+    } else {
+        root = _serverBlock->getRoot();
+    }
+    
+    // add slash between root and URI
+    if (!root.empty() && root[root.length()-1] != '/' && 
+        !_request.getURI().empty() && _request.getURI()[0] != '/') {
+        path = root + "/" + _request.getURI();
+    } else {
+        path = root + _request.getURI();
+    }
+
+	if (!fileExists(path)) {
+		_statusCode = 404;
+		setBody(getErrorPage(404));
+		setHeader("Content-Type", "text/html");
+		return;
+	}
+	
+	// do we have permission to delete
+	std::string dirPath = path.substr(0, path.find_last_of('/'));
+	if (!hasWritePermission(dirPath)) {
+		_statusCode = 403;
+		setBody(getErrorPage(403));
+		setHeader("Content-Type", "text/html");
+		return;
+	}
+	
+	if (std::remove(path.c_str()) != 0) {
+		_statusCode = 500;
+		setBody(getErrorPage(500));
+		setHeader("Content-Type", "text/html");
+		return;
+	}
+	
+	_statusCode = 204; // success, just no content to send back
+	setBody("");
+}
+
+std::string Response::resolvePath(const std::string& uri) {
+	// check if location block has an alias directive
+	if (_locationBlock && _locationBlock->hasAlias()) {
+		// replace the location path with the alias path
+		std::string locationPath = findMatchingLocation(uri);
+		
+		if (!locationPath.empty() && uri.find(locationPath) == 0) {
+			std::string alias = _locationBlock->getAlias();
+			std::string relativePath = uri.substr(locationPath.length());
+			
+			// make sure there's a slash between alias and relative path
+			if (!alias.empty() && alias[alias.length()-1] != '/' && 
+				!relativePath.empty() && relativePath[0] != '/') {
+				return alias + "/" + relativePath;
+			}
+			return alias + relativePath;
+		}
+	}
+	
+	// If location block has a root directive, use it
+	std::string root;
+	if (_locationBlock && _locationBlock->hasRoot()) {
+		root = _locationBlock->getRoot();
+	} else {
+		root = _serverBlock->getRoot();
+	}
+	
+	// put slash between root and URI
+	if (!root.empty() && root[root.length()-1] != '/' && 
+		!uri.empty() && uri[0] != '/') {
+		return root + "/" + uri;
+	}
+	return root + uri;
+}
+
+std::string Response::findMatchingLocation(const std::string& uri) {
+	std::string bestMatch = "";
+	size_t bestMatchLength = 0;
+	
+	const std::map<std::string, LocationBlock>& locations = _serverBlock->getLocationBlocks();
+	
+	for (std::map<std::string, LocationBlock>::const_iterator it = locations.begin(); 
+		 it != locations.end(); ++it) {
+		std::string locationPath = it->first;
+		
+		// make both start with / for comparison
+		std::string absLocationPath = locationPath;
+		std::string absUri = uri;
+		
+		if (!absLocationPath.empty() && absLocationPath[0] != '/') {
+			absLocationPath = "/" + absLocationPath;
+		}
+		if (!absUri.empty() && absUri[0] != '/') {
+			absUri = "/" + absUri;
+		}
+		
+		// If this location path is a prefix of the URI and longer than our best match so far
+		if (absUri.find(absLocationPath) == 0) {
+			// make sure it's a complete segment match
+			if (absLocationPath.length() > bestMatchLength && 
+				(absUri.length() == absLocationPath.length() || 
+				 absUri[absLocationPath.length()] == '/' || 
+				 absLocationPath[absLocationPath.length() - 1] == '/')) {
+				bestMatch = locationPath; // store the original path
+				bestMatchLength = absLocationPath.length();
+			}
+		}
+	}
+	
+	return bestMatch;
+}
+
+void Response::generateDirectoryListing(const std::string& path) {
+	DIR* dir;
+	struct dirent* entry;
+	
+	dir = opendir(path.c_str());
+	if (!dir) {
+		_statusCode = 500;
+		setBody(getErrorPage(500));
+		setHeader("Content-Type", "text/html");
+		return;
+	}
+	
+	std::stringstream listing;
+	listing << "<!DOCTYPE html>\n<html>\n<head>\n";
+	listing << "<title>Index of " << _request.getURI() << "</title>\n";
+	listing << "</head>\n<body>\n";
+	listing << "<h1>Index of " << _request.getURI() << "</h1>\n";
+	listing << "<hr>\n<pre>\n";
+	
+	// add parent directory link if not at root
+	if (_request.getURI() != "/") {
+		listing << "<a href=\"..\">..</a>\n";
+	}
+	
+	while ((entry = readdir(dir)) != NULL) {
+		std::string name = entry->d_name;
+	
+		if (name == "." || name == "..") {
+			continue;
+		}
+		
+		std::string fullPath = path + "/" + name;
+		bool isDir = directoryExists(fullPath);
+		
+		listing << "<a href=\"" 
+				<< (_request.getURI() == "/" ? "" : _request.getURI()) 
+				<< "/" << name << (isDir ? "/" : "") << "\">" 
+				<< name << (isDir ? "/" : "") << "</a>\n";
+	}
+	
+	listing << "</pre>\n<hr>\n</body>\n</html>";
+	closedir(dir);
+	
+	_statusCode = 200;
+	setBody(listing.str());
+	setHeader("Content-Type", "text/html");
+}
+
+void Response::readFile(const std::string& path) {
+	std::ifstream file(path.c_str(), std::ios::binary);
+	if (!file.is_open()) {
+		_statusCode = 500;
+		setBody(getErrorPage(500));
+		setHeader("Content-Type", "text/html");
+		return;
+	}
+	
+	// Get file size using seekg "seek get pointer" :
+	//  - it positions the file's read pointer at a specific location in the file.
+	// tellg returns the current position of the read pointer as a number of bytes
+	// from the beginning of the file
+	file.seekg(0, std::ios::end);
+	size_t size = file.tellg();
+	file.seekg(0, std::ios::beg);
+	
+	// Read file content and copy contents directly into _body
+	// resize(size) pre-allocates memory for the string to hold exactly the size of the file
+	_body.resize(size);	
+	file.read(&_body[0], size);
+	file.close();
+	
+	_statusCode = 200;
+	setContentType(path);
+	setHeader("Content-Length", std::to_string(_body.size()));
 }
 
 bool Response::isMethodAllowed() const {
-	if (!_locationBlock)
-		return false;
-	
 	const std::string& method = _request.getMethod();
+	HttpMethod requestMethod;
 	
 	if (method == "GET")
-		return _locationBlock->isMethodAllowed(GET);
+		requestMethod = GET;
 	else if (method == "POST")
-		return _locationBlock->isMethodAllowed(POST);
+		requestMethod = POST;
 	else if (method == "DELETE")
-		return _locationBlock->isMethodAllowed(DELETE);
+		requestMethod = DELETE;
+	else
+		return false;
 	
+	if (_locationBlock && _locationBlock->hasAllowedMethods()) {
+		return _locationBlock->isMethodAllowed(requestMethod);
+	}
+	
+	if (_serverBlock->hasAllowedMethods()) {
+		return _serverBlock->isMethodAllowed(requestMethod);
+	}
 	return false;
 }
 
@@ -196,15 +535,37 @@ std::string Response::getErrorPage(int statusCode) const {
 	return ss.str();
 }
 
-//st_mode is stat struct member containign file type and permissions
+//st_mode is stat struct member containing file type and permissions
 bool Response::fileExists(const std::string& path) const {
 	struct stat buffer;
 	return (stat(path.c_str(), &buffer) == 0 && S_ISREG(buffer.st_mode));
 }
 
+bool Response::directoryExists(const std::string& path) const {
+	struct stat buffer;
+	return (stat(path.c_str(), &buffer) == 0 && S_ISDIR(buffer.st_mode));
+}
+
 //access() returns 0 when permission exists, return true(1) if it has permissions
 bool Response::hasReadPermission(const std::string& path) const {
 	return access(path.c_str(), R_OK) == 0;
+}
+
+bool Response::hasWritePermission(const std::string& path) const {
+	std::string dir = path.substr(0, path.find_last_of('/'));
+	return access(dir.c_str(), W_OK) == 0;
+}
+
+bool Response::isCgiRequest(const std::string& path) {
+	if (!_locationBlock->hasCgiPass()) {
+		return false;
+	}
+
+	size_t dotPos = path.find_last_of('.');
+	if (dotPos == std::string::npos) {
+		return false;
+	}
+	return true;
 }
 
 std::string Response::getStatusLine() const {
@@ -221,7 +582,6 @@ std::string Response::getStatusLine() const {
 	return ss.str();
 }
 
-//EDIT THIS TO INCLUDE DATE 
 std::string Response::getHeadersString() const {
 	std::stringstream ss;
 	
@@ -232,6 +592,16 @@ std::string Response::getHeadersString() const {
 	return ss.str();
 }
 
+std::string Response::getCurrentDate() const {
+	char buffer[100];
+	time_t now = time(0);
+	struct tm* timeinfo = gmtime(&now);
+	
+	//format: Mon, 28 Apr 2025 08:42:03 GMT
+	strftime(buffer, sizeof(buffer), "%a, %d %b %Y %H:%M:%S GMT", timeinfo);
+	return std::string(buffer);
+}
+
 int Response::getStatusCode() const {
 	return _statusCode;
 }
@@ -239,6 +609,7 @@ int Response::getStatusCode() const {
 const std::string& Response::getBody() const {
 	return _body;
 }
+
 
 void Response::setStatusCode(int code) {
 	_statusCode = code;
@@ -250,7 +621,8 @@ void Response::setHeader(const std::string& key, const std::string& value) {
 
 void Response::setBody(const std::string& body) {
 	_body = body;
-	setHeader("Content-Length", std::to_string(_body.size()));
+	if (_statusCode != 204)
+		setHeader("Content-Length", std::to_string(_body.size()));
 }
 
 void Response::setContentType(const std::string& path) {
@@ -258,7 +630,8 @@ void Response::setContentType(const std::string& path) {
 }
 
 
-//newly added 
+//remove eventually
+  /*
 void Response::addToBytesSent(ssize_t adding){
 	_bytesSentSoFar += adding;
 }
@@ -275,4 +648,5 @@ const std::string& Response::getRawData() const{
 
 ssize_t Response::getBytes() const{
 	return (_bytesSentSoFar);
-}
+}*/
+

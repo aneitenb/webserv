@@ -13,7 +13,12 @@ LocationBlock::LocationBlock() :
 	redirect(std::make_pair(0, "")),
 	autoindex(false),
 	autoindexSet(false),
-	allowed_methods(0) {
+	cgi_pass(""),
+	allowed_methods(0),
+	upload_store(""),
+	alias(""),
+	index(""),
+	root("") {
 }
 
 LocationBlock::~LocationBlock() {

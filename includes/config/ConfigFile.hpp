@@ -9,8 +9,8 @@
 
 #pragma once
 
-#include "config/LocationBlock.hpp"
-#include "config/ServerBlock.hpp"
+#include "LocationBlock.hpp"
+#include "ServerBlock.hpp"
 
 class ConfigError;
 
