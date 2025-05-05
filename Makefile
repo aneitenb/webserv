@@ -28,7 +28,8 @@ HTTPDIR		=	http
 CONFIGDIR	=	config
 SERVERDIR	=	server
 
-HTTPFILES	=	Request.cpp
+HTTPFILES	=	Request.cpp \
+				Response.cpp
 
 SERVERFILES	=	Client.cpp \
 				Listener.cpp \

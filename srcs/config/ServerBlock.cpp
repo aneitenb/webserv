@@ -141,6 +141,22 @@ std::string ServerBlock::getErrorPage(int status) const {
 	return defaultPath;
 }
 
+std::vector<std::pair<int, std::string>> ServerBlock::getErrorPages() const {
+	return _errorPages;
+}
+
+const std::vector<std::pair<int, std::string>>& ServerBlock::getDefaultErrorPages() const {
+	return _defaultErrorPages;
+}
+
+std::string ServerBlock::getDefaultErrorDir() const {
+	return _defaultErrorDir;
+}
+
+bool ServerBlock::hasCustomErrorPages() const {
+	return _hasCustomErrorPages;
+}
+
 bool ServerBlock::hasAllowedMethods() const {
 	return _allowedMethods != 0;
 }
@@ -174,21 +190,6 @@ bool ServerBlock::isMethodAllowed(HttpMethod method) const {
 	return (_allowedMethods & method) != 0;
 }
 
-std::vector<std::pair<int, std::string>> ServerBlock::getErrorPages() const {
-	return _errorPages;
-}
-
-const std::vector<std::pair<int, std::string>>& ServerBlock::getDefaultErrorPages() const {
-	return _defaultErrorPages;
-}
-
-std::string ServerBlock::getDefaultErrorDir() const {
-	return _defaultErrorDir;
-}
-
-bool ServerBlock::hasCustomErrorPages() const {
-	return _hasCustomErrorPages;
-}
 
 const std::vector<std::string>& ServerBlock::getListen() const {
 	return _listen;

@@ -9,8 +9,8 @@
 
 #pragma once
 
-#include "config/ConfigErrors.hpp"
-#include "config/LocationBlock.hpp"
+#include "ConfigErrors.hpp"
+#include "LocationBlock.hpp"
 
 #define MAX_SERVER_NAME_LENGTH 50
 #define MAX_PATH_LENGTH 50
