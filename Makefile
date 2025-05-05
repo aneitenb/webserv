@@ -12,8 +12,8 @@ NAME	=	webserv
 BUILD	=	normal
 
 CC				=	c++
-cflags.common	=	-Wall -Wextra -Werror -std=c++17 -g -fsanitize=address
-cflags.debug	=	-g
+cflags.common	=	-Wall -Wextra -Werror -std=c++17
+cflags.debug	=	-g -D__DEBUG
 cflags.fsan		=	$(cflags.debug) -fsanitize=address,undefined
 cflags.normal	=	-O3
 cflags.extra	=	

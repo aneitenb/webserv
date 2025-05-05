@@ -12,75 +12,69 @@
 #define _find(c, x)	(std::find(c.cbegin(), c.cend(), x))
 #define _trimLWS(s)	(s.erase(0, s.find_first_not_of(LWS)), s.erase(s.find_last_not_of(LWS) + 1))
 
-Request::Request(const std::string &rawRequest): _contentLength(0), _chunked(false) {
-	std::string	bodySection;
-	size_t		requestEnd;
-	size_t		headerEnd;
+[[maybe_unused]] static inline std::string	_printRawRequest(const std::string &reqData);
+static inline bool							_getChunkSize(std::stringstream &bodySection, std::string &remainder, size_t &chunkSize);
 
-	requestEnd = rawRequest.find(CRLF);
-	if (requestEnd == std::string::npos)
-		throw Request::InvalidRequestLineException();
-	headerEnd = rawRequest.find(CRLF CRLF, requestEnd + 2);
-	if (headerEnd == std::string::npos)
-		throw Request::IncompleteHeaderException();
-	if (!this->_parseRequestLine(std::stringstream(rawRequest.substr(0, requestEnd))))
-		throw Request::InvalidRequestLineException();
-	if (!this->_parseHeaders(std::stringstream(rawRequest.substr(requestEnd + 2))))
-		throw Request::InvalidHeaderException();
-	try {
-		this->_chunked = this->getHeader("Transfer-Encoding") == "chunked";
-	} catch (std::exception &) {}
-	try {
-		std::string _clstr = this->getHeader("Content-Length");
-		this->_contentLength = std::stoul(_clstr);
-	} catch (Request::FieldNotFoundException &) {
-	} catch (std::exception &) { throw Request::InvalidFieldException(); }
-	bodySection = (rawRequest.length() > headerEnd + 4) ? rawRequest.substr(headerEnd + 4) : "";
-	if (!bodySection.empty()) {
-		try {
-			this->_contentType = this->getHeader("Content-Type");
-		} catch (std::exception &) {
-			this->_contentType = "application/octet-stream"; // 2616/7.2.1
-		}
-		bool _rv = (this->_chunked) ? this->processChunkedBody(std::stringstream(bodySection)) : this->_parseBody(bodySection);
-		if (!_rv)
-			throw Request::InvalidBodyException();
-	}
-	this->_parsed = !this->_chunked;
-}
+Request::Request(void): _contentLength(0), _parsingStage(REQUESTLINE), _chunked(false), _valid(true) {}
 
 Request::~Request(void) {}
 
-// public methods
-bool	Request::processChunkedBody(std::stringstream bodySection) {
-	std::string	entityHeaders;
-	std::string	chunkSizeStr;
-	std::string	headerLine;
-	std::string	chunkData;
-	size_t		chunkSize;
+#include <iostream>
 
-	std::getline(bodySection, chunkSizeStr);
-	if (chunkSizeStr.empty() || *chunkSizeStr.end() != *CR)
-		return false;
-	try {
-		chunkSize = std::stoul(chunkSizeStr.substr(0, chunkSizeStr.find(";" CR)), 0, 16);
-	} catch (std::exception &) { return false; } // invalid chunk size line
-	if (chunkSize) {
-		chunkData.resize(chunkSize);
-		bodySection.read(&chunkData[0], chunkSize);
-		if (chunkData.length() != chunkSize)
-			return false;
-		this->_contentLength += chunkSize;
-		this->_body += chunkData;
-	} else {
-		entityHeaders = "";
-		for (std::getline(bodySection, headerLine); !headerLine.empty();std::getline(bodySection, headerLine))
-			entityHeaders += headerLine;
-		this->_parseHeaders(std::stringstream(entityHeaders));
-		this->_chunked = false;
-		this->_parsed = true;
+#define SGR_DEBUG	"\x1b[1;38;5;202m"
+#define SGR_RESET	"\x1b[m"
+
+// public methods
+void	Request::append(const std::string &reqData) {
+	size_t	end;
+	bool	fell;
+
+	end = 0;
+	fell = false;
+#ifdef __DEBUG
+	std::cerr << SGR_DEBUG << "append: current remainder: {" << _printRawRequest(this->_remainder) << "}" << SGR_RESET << "\n";
+	std::cerr << SGR_DEBUG << "append: new request data: {" << _printRawRequest(reqData) << "}" << SGR_RESET << "\n";
+#endif /* __DEBUG */
+	switch (this->_parsingStage) {
+		case REQUESTLINE:
+			this->_parsed = false;
+			this->_remainder += reqData;
+			end = this->_remainder.find(CRLF);
+			if (end == std::string::npos)
+				break ;
+			end += 2;
+			try {
+				this->_valid = true;
+				this->_parseRequestLine(this->_remainder.substr(0, end));
+			} catch (Request::InvalidRequestLineException &) { this->_valid = false; } // store error code (and return ?)
+			this->_remainder.erase(0, end);
+			this->_headers.clear();
+			this->_parsingStage = HEADERS;
+			fell = true;
+			[[fallthrough]];
+		case HEADERS:
+			if (!fell)
+				this->_remainder += reqData;
+			end = this->_remainder.find(CRLF CRLF);
+			if (end == std::string::npos)
+				break ;
+			end += 4;
+			try {
+				this->_parseHeaders(std::stringstream(this->_remainder.substr(0, end)));
+			} catch (Request::InvalidHeaderException &) { this->_valid = false; } // store error code (and return ?)
+			this->_remainder.erase(0, end);
+			this->_body.clear();
+			this->_parsingStage = BODY;
+			fell = true;
+			[[fallthrough]];
+		case BODY:
+			if (!fell)
+				this->_remainder += reqData;
+			if (!this->_processBody(this->_remainder))
+				break ;
+			this->_parsingStage = REQUESTLINE;
+			this->_parsed = true;
 	}
-	return true;
 }
 
 // private methods
@@ -99,42 +93,176 @@ std::string	Request::_decodeURI(const std::string &uri) {
 	return _uri;
 }
 
-bool	Request::_parseRequestLine(std::stringstream line) {
-	if (!(line >> this->_method >> this->_uri >> this->_version))
-		return false;
-	return true;
+void	Request::_parseRequestLine(std::string line) {
+	static std::regex	validReqLine("(GET|POST|DELETE) +[^\\x00-\\x1F\"#<>{}|\\\\^[\\]`\\x7F]+ +HTTP\\/1\\.1\\r\\n");
+
+#ifdef __DEBUG
+	std::cerr << SGR_DEBUG << "_parseRequestLine: Request-Line: " << line.substr(0, line.length() - 2) << SGR_RESET << "\n";
+#endif /* __DEBUG */
+	if (!std::regex_match(line, validReqLine))
+		throw Request::InvalidRequestLineException();
+	std::stringstream(line) >> this->_method >> this->_uri >> this->_version;
+	this->_uri = this->_decodeURI(this->_uri); // rework to just this->_decodeURI()
 }
 
-bool	Request::_parseHeaders(std::stringstream rawHeaders) {
+void	Request::_parseHeaders(std::stringstream rawHeaders) {
 	std::string	line;
 	std::string	key;
 	std::string	val;
 	size_t		sep;
+	bool		valid;
 
+	valid = true;
 	while (std::getline(rawHeaders, line)) {
 		if (!line.empty() && line != CR) {
+#ifdef __DEBUG
+			std::cerr << SGR_DEBUG << "_parseHeaders: current header line: " << line << SGR_RESET << "\n";
+#endif /* __DEBUG */
 			if (line[line.length() - 1] == *CR)
 				line.erase(line.length() - 1);
 			sep = line.find(":");
 			if (sep == std::string::npos)
-				return false;
+				valid = false;
 			key = line.substr(0, sep);
 			val = line.substr(sep + 1);
 			_trimLWS(key);
 			_trimLWS(val);
-			this->_headers[key] = val;
+			if (this->_headers.find(key) == this->_headers.end())
+				this->_headers[key] = val;
+			else
+				this->_headers[key].append(val);
 		}
 	}
+	try { this->_chunked = this->getHeader("Transfer-Encoding") == "chunked"; }
+	catch (Request::FieldNotFoundException &) { this->_chunked = false; }
+	try { this->_trailers = this->getHeader("Trailers") != ""; }
+	catch (Request::FieldNotFoundException &) { this->_trailers = false; }
+	try { this->_contentType = this->getHeader("Content-Type"); }
+	catch (Request::FieldNotFoundException &) { this->_contentType = "application/octet-stream"; } // 2616/7.2.1
+	try { this->_contentLength = std::stoul(this->getHeader("Content-Length")); }
+	catch (Request::FieldNotFoundException &) { this->_contentLength = 0; }
+	catch (std::exception &) { valid = false; } // set error code
+	if (!valid)
+		throw Request::InvalidHeaderException();
+}
+
+bool	Request::_processBody(const std::string &rawBody) {
+	bool	rv;
+
+	if (this->_contentLength == 0 && !this->_chunked) {
+		this->_remainder.clear();
+		return true;
+	}
+	if (this->_chunked)
+		rv = this->_processChunkedBody(std::stringstream(rawBody));
+	else {
+#ifdef __DEBUG
+		std::cerr << SGR_DEBUG << "_processBody: current body segment: '" << rawBody << "'" << SGR_RESET << "\n";
+#endif /* __DEBUG */
+		this->_body += rawBody;
+		this->_remainder.clear();
+		rv = this->_body.size() >= this->_contentLength;
+		if (rv && this->_body.size() > this->_contentLength) {
+			this->_remainder = this->_body.substr(this->_contentLength);
+			this->_body.erase(this->_contentLength);
+		}
+	}
+	return rv;
+}
+
+bool	Request::_processChunkedBody(std::stringstream bodySection) {
+	static enum {
+		CHUNKSIZE,
+		CHUNK,
+		TRAILERS
+	}				parsingStage = CHUNKSIZE;
+	std::string		chunkData;
+	size_t			dataLen;
+
+	switch (parsingStage) {
+		case CHUNKSIZE:
+			if (!_getChunkSize(bodySection, this->_remainder, this->_chunkSize))
+				return false;
+#ifdef __DEBUG
+			std::cerr << SGR_DEBUG << "_processChunkedBody: next chunk size: " << this->_chunkSize << SGR_RESET << "\n";
+#endif /* __DEBUG */
+			this->_remainder.clear();
+			parsingStage = CHUNK;
+			[[fallthrough]];
+		case CHUNK:
+			while (this->_chunkSize) {
+				chunkData.resize(this->_chunkSize);
+				bodySection.read(&chunkData[0], this->_chunkSize);
+				dataLen = std::strlen(chunkData.c_str()); // use strlen because chunkData.length() isn't actually the length of chunkData
+				if (dataLen != this->_chunkSize) {
+					this->_remainder = chunkData.c_str();
+					return false ;
+				}
+//				if (chunkData.length() != this->_chunkSize)
+//					return false;
+#ifdef __DEBUG
+				std::cerr << SGR_DEBUG << "_processChunkedBody: next chunk data: '" << chunkData << "'" << SGR_RESET << "\n";
+#endif /* __DEBUG */
+				this->_contentLength += this->_chunkSize;
+				this->_body += chunkData;
+				parsingStage = CHUNKSIZE;
+				if (!_getChunkSize(bodySection, this->_remainder, this->_chunkSize))
+					return false;
+#ifdef __DEBUG
+				std::cerr << SGR_DEBUG << "_processChunkedBody: next chunk size: " << this->_chunkSize << SGR_RESET << "\n";
+#endif /* __DEBUG */
+				parsingStage = CHUNK;
+			}
+			this->_remainder.clear();
+			parsingStage = (this->_trailers) ? TRAILERS : CHUNKSIZE;
+			if (parsingStage == CHUNKSIZE)
+				break ;
+			[[fallthrough]];
+		case TRAILERS:
+			while (!bodySection.eof()) {
+				std::getline(bodySection, chunkData);
+				this->_remainder += chunkData;
+			}
+			if (this->_remainder.find(CRLF CRLF) == std::string::npos)
+				return false;
+			try {
+				this->_parseHeaders(std::stringstream(this->_remainder));
+				this->_remainder.clear();
+			} catch (Request::InvalidHeaderException &) { this->_valid = false; } // store error code
+			parsingStage = CHUNKSIZE;
+	}
+	this->_chunked = false;
 	return true;
 }
 
-bool	Request::_parseBody(const std::string &rawBody) {
-	this->_body = rawBody;
-	if (this->_contentLength) {
-		if (this->_body.size() < this->_contentLength)
-			return false;
-		this->_body = this->_body.substr(0, this->_contentLength);
+[[maybe_unused]] static inline std::string	_printRawRequest(const std::string &reqData) {
+	std::string	escaped;
+
+	escaped.clear();;
+	for (const char c : reqData) {
+		if (isprint(c) || c == '\n')
+			escaped += c;
+		else if (c == '\r')
+			escaped += "\\r";
+		else if (c && c < ' ') {
+			escaped += '^';
+			escaped += c + '@';
+		}
 	}
+	return escaped;
+}
+
+static inline bool	_getChunkSize(std::stringstream &bodySection, std::string &remainder, size_t &chunkSize) {
+	std::string	chunkSizeStr;
+
+	std::getline(bodySection, chunkSizeStr);
+	if (chunkSizeStr.empty() || chunkSizeStr.at(chunkSizeStr.length() - 1) != *CR) {
+		remainder += chunkSizeStr;
+		return false;
+	}
+	remainder.clear();
+	try { chunkSize = std::stoul(chunkSizeStr.substr(0, chunkSizeStr.find(";" CR)), 0, 16); }
+	catch (std::exception &) { return false; } // store error (invalid chunk size line)
 	return true;
 }
 
@@ -164,6 +292,8 @@ const size_t	&Request::getContentLength(void) const { return this->_contentLengt
 const bool	&Request::isChunked(void) const { return this->_chunked; }
 
 const bool	&Request::isParsed(void) const { return this->_parsed; }
+
+const bool	&Request::isValid(void) const { return this->_valid; }
 
 //exceptions
 const char	*Request::InvalidRequestLineException::what(void) const noexcept { return "Invalid or missing request line"; }
