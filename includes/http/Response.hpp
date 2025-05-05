@@ -23,7 +23,7 @@ private:
 	std::string							_fullResponse;
   size_t								_bytesSent;
 	
-	Request 		_request;
+	Request* 		_request;
 	ServerBlock*	_serverBlock;
 	LocationBlock*	_locationBlock;
 	
@@ -52,7 +52,7 @@ private:
 	void handleDelete();
 	
 public:
-	Response(Request& request, ServerBlock* serverBlock);
+	Response(Request* request, ServerBlock* serverBlock);
 	~Response();
   	Response(); //add to cpp
   	Response(Response &&other) noexcept; //add

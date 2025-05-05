@@ -36,7 +36,8 @@ Response::Response(){}
 
 Response::~Response() {}
 
-Response::Response(Response&& other) noexcept{
+Response::Response(Response&& other) noexcept
+	: _request(other._request){
 	_statusCode = other._statusCode;
 	_statusMessage = other._statusMessage;
 	_headers = other._headers;
@@ -52,6 +53,7 @@ Response::Response(Response&& other) noexcept{
 
 Response& Response::operator=(Response&& other) noexcept{
 	if (this != &other){
+		_request = other._request;
 		_statusCode = other._statusCode;
 		_statusMessage = other._statusMessage;
 		_headers = other._headers;
@@ -67,7 +69,7 @@ Response& Response::operator=(Response&& other) noexcept{
 	return (*this);
 }
 
-Response::Response(Request& request, ServerBlock* serverBlock)
+Response::Response(Request* request, ServerBlock* serverBlock)
 	: _statusCode(200), 
 	_bytesSent(0),
 	_request(request), 
@@ -84,11 +86,11 @@ void Response::clear() {
 	_fullResponse.clear();
 	_bytesSent = 0;
 	_locationBlock = NULL;
-	// _request.clear();	//implement a clear in Request class
+	// _request->clear();	//implement a clear in Request class
 }
 
 void Response::setRequest(Request& request) {
-	_request = request;
+	_request = &request;
 }
 
 void Response::initializeMimeTypes() {
@@ -127,7 +129,7 @@ std::string Response::getMimeType(const std::string& path) const {
 }
 
 void Response::handleResponse() {
-	std::string uri = _request.getURI();
+	std::string uri = _request->getURI();
 	std::string matchedLocation = findMatchingLocation(uri);
 	
 	if (matchedLocation.empty())
@@ -160,7 +162,7 @@ void Response::handleResponse() {
 		return;
 	}
 	
-	const std::string& method = _request.getMethod();
+	const std::string& method = _request->getMethod();
 	if (method == "GET") {
 		handleGet();
 	} else if (method == "POST") {
@@ -177,7 +179,6 @@ void Response::handleResponse() {
 void  Response::prepareResponse() {
 	handleResponse();
 	_fullResponse = getStatusLine() + getHeadersString() + _body;
-	std::cout << getStatusCode() << " " << getHeadersString() << " " << _body << std::endl;
 	_bytesSent = 0;
 }
 
@@ -186,17 +187,19 @@ bool Response::isComplete() const {
 }
 
 void Response::handleGet(){
-	std::string path = resolvePath(_request.getURI());
+	std::string path = resolvePath(_request->getURI());
 
-	if (isCgiRequest(path)) {
-		//handleCgi(path);
-		return;
-	}
+	// if (isCgiRequest(path)) {
+	// 	//handleCgi(path);
+	// 	return;
+	// }
 
 	std::string absPath = path;
 	if (!absPath.empty() && absPath[absPath.length()-1] == '/' && 
 		absPath.length() > 1)
-		absPath = absPath.substr(0, absPath.length()-1);
+		{
+			absPath = absPath.substr(0, absPath.length()-1);
+		}
 
  	if (directoryExists(absPath))
 	{
@@ -240,7 +243,7 @@ void Response::handlePost(){
 
 	//check for upload_store directive
 	if (_locationBlock && _locationBlock->hasUploadStore()) {
-		std::string filename = _request.getURI();
+		std::string filename = _request->getURI();
 		size_t lastSlash = filename.find_last_of('/');
 		if (lastSlash != std::string::npos) {
 			filename = filename.substr(lastSlash + 1);
@@ -255,7 +258,7 @@ void Response::handlePost(){
 		path = uploadDir + filename;
 	} 
 	else {
-		path = resolvePath(_request.getURI());
+		path = resolvePath(_request->getURI());
 	}
 
 	std::string dirPath = path.substr(0, path.find_last_of('/'));
@@ -273,7 +276,7 @@ void Response::handlePost(){
 		return;
 	}
 	
-	if (_request.getContentLength() > _serverBlock->getClientMaxBodySize()) {
+	if (_request->getContentLength() > _serverBlock->getClientMaxBodySize()) {
 		_statusCode = 413;
 		setBody(getErrorPage(413));
 		setHeader("Content-Type", "text/html");
@@ -289,14 +292,14 @@ void Response::handlePost(){
 		return;
 	}
 	
-	file.write(_request.getBody().c_str(), _request.getBody().size());
+	file.write(_request->getBody().c_str(), _request->getBody().size());
 	file.close();
 	
 	if (fileExisted)
 		_statusCode = 200;
 	else
 	{
-		setHeader("Location", _request.getURI());
+		setHeader("Location", _request->getURI());
 		_statusCode = 201;
 	}
 	setBody("");
@@ -314,10 +317,10 @@ void Response::handleDelete(){
     
     // add slash between root and URI
     if (!root.empty() && root[root.length()-1] != '/' && 
-        !_request.getURI().empty() && _request.getURI()[0] != '/') {
-        path = root + "/" + _request.getURI();
+        !_request->getURI().empty() && _request->getURI()[0] != '/') {
+        path = root + "/" + _request->getURI();
     } else {
-        path = root + _request.getURI();
+        path = root + _request->getURI();
     }
 
 	if (!fileExists(path)) {
@@ -433,13 +436,13 @@ void Response::generateDirectoryListing(const std::string& path) {
 	
 	std::stringstream listing;
 	listing << "<!DOCTYPE html>\n<html>\n<head>\n";
-	listing << "<title>Index of " << _request.getURI() << "</title>\n";
+	listing << "<title>Index of " << _request->getURI() << "</title>\n";
 	listing << "</head>\n<body>\n";
-	listing << "<h1>Index of " << _request.getURI() << "</h1>\n";
+	listing << "<h1>Index of " << _request->getURI() << "</h1>\n";
 	listing << "<hr>\n<pre>\n";
 	
 	// add parent directory link if not at root
-	if (_request.getURI() != "/") {
+	if (_request->getURI() != "/") {
 		listing << "<a href=\"..\">..</a>\n";
 	}
 	
@@ -454,7 +457,7 @@ void Response::generateDirectoryListing(const std::string& path) {
 		bool isDir = directoryExists(fullPath);
 		
 		listing << "<a href=\"" 
-				<< (_request.getURI() == "/" ? "" : _request.getURI()) 
+				<< (_request->getURI() == "/" ? "" : _request->getURI()) 
 				<< "/" << name << (isDir ? "/" : "") << "\">" 
 				<< name << (isDir ? "/" : "") << "</a>\n";
 	}
@@ -496,7 +499,7 @@ void Response::readFile(const std::string& path) {
 }
 
 bool Response::isMethodAllowed() const {
-	const std::string& method = _request.getMethod();
+	const std::string& method = _request->getMethod();
 	HttpMethod requestMethod;
 	
 	if (method == "GET")
@@ -511,7 +514,6 @@ bool Response::isMethodAllowed() const {
 	if (_locationBlock && _locationBlock->hasAllowedMethods()) {
 		return _locationBlock->isMethodAllowed(requestMethod);
 	}
-	
 	if (_serverBlock->hasAllowedMethods()) {
 		return _serverBlock->isMethodAllowed(requestMethod);
 	}

@@ -116,7 +116,7 @@ int Client::saveRequest(){
 }
 
 void Client::saveResponse(){
-    Response curR(_requesting, getServerBlock());
+    Response curR(&_requesting, getServerBlock());
     _responding = std::move(curR);
 }
 
@@ -179,7 +179,9 @@ int Client::sending_stuff(){
     buffer = _responding.getFullResponse();
     if (buffer.size() == 0)
         return (-1);
-    std::cout << "Budf" << buffer << std::endl;
+    std::cout << std::endl;
+    std::cout << std::endl;
+    std::cout << "BUFFER:    " << buffer << std::endl;
     while (_responding.isComplete() != true){
         ssize_t len = send(_clFd, buffer.c_str() + _responding.getBytes(), buffer.size() - _responding.getBytes(), 0); //buffer + bytesSentSoFar, sizeof remaining bytes, 0
         if (len < 1){
