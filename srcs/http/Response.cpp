@@ -175,6 +175,7 @@ void Response::handleResponse() {
 }
 
 void  Response::prepareResponse() {
+	handleResponse();
 	_fullResponse = getStatusLine() + getHeadersString() + _body;
 	std::cout << getStatusCode() << " " << getHeadersString() << " " << _body << std::endl;
 	_bytesSent = 0;
@@ -645,6 +646,6 @@ ssize_t Response::getBytes() const{
 	return (_bytesSent);
 }
 
-const std::string& Response::getFullResponse() const{
+std::string Response::getFullResponse() const{
 	return (_fullResponse);
 }

@@ -174,13 +174,14 @@ int Client::sending_stuff(){
     // response class that has totalBytesThatNeed2BSent + bytesSentSoFar
     //for allSent() check per buffer.size() - 1 maybe
     //did I init _bytesSent and _totalMsgBytes?
+    std::string buffer = {0};
     _responding.prepareResponse();
-    const std::string& buffer = _responding.getFullResponse();
+    buffer = _responding.getFullResponse();
     if (buffer.size() == 0)
         return (-1);
     std::cout << "Budf" << buffer << std::endl;
     while (_responding.isComplete() != true){
-        ssize_t len = send(_clFd, &buffer + _responding.getBytes(), buffer.size() - _responding.getBytes(), 0); //buffer + bytesSentSoFar, sizeof remaining bytes, 0
+        ssize_t len = send(_clFd, buffer.c_str() + _responding.getBytes(), buffer.size() - _responding.getBytes(), 0); //buffer + bytesSentSoFar, sizeof remaining bytes, 0
         if (len < 1){
             std::cout << "Error coulld not send\n";
             return (-1);
