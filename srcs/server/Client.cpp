@@ -102,10 +102,9 @@ ServerBlock* Client::getServerBlock() const{
 
 int Client::saveRequest(){
     try{
-        Request curR(_buffer);
+        _requesting.append(_buffer);
         //the thing is what if it's a partial request so not everything has been received? it needs to be updated without being marked as wrong
-        if (curR.isParsed() == true){
-            _requesting = curR;
+        if (_requesting.isParsed() == true){
             std::cout << "PARSED\n";
             return (0);
         }
@@ -147,9 +146,11 @@ int Client::handleEvent(uint32_t ev){
             if (_count == 5)
                 this->setState(CLOSE);
         }
-        if (_responding.allSent() == true){
+        if (_responding.isComplete() == true){
             this->setState(TOREAD); //EPOLLIN
+            std::cout << "switching sides\n";
             //clear the request and response?
+            _responding.clear();
             _count = 0;
         }
         //if connection::keep-alive switch to epollout
@@ -172,15 +173,21 @@ void Client::resolveClose(){}
 int Client::sending_stuff(){
     // response class that has totalBytesThatNeed2BSent + bytesSentSoFar
     //for allSent() check per buffer.size() - 1 maybe
-    //did I init _bytesSentSoFar and _totalMsgBytes?
-    const std::string& buffer = _responding.getRawData();
-    while (_responding.allSent() != true){
+    //did I init _bytesSent and _totalMsgBytes?
+    _responding.prepareResponse();
+    const std::string& buffer = _responding.getFullResponse();
+    if (buffer.size() == 0)
+        return (-1);
+    std::cout << "Budf" << buffer << std::endl;
+    while (_responding.isComplete() != true){
         ssize_t len = send(_clFd, &buffer + _responding.getBytes(), buffer.size() - _responding.getBytes(), 0); //buffer + bytesSentSoFar, sizeof remaining bytes, 0
         if (len < 1){
+            std::cout << "Error coulld not send\n";
             return (-1);
         }
         else{ // len > 0
             _responding.addToBytesSent(len);
+            std::cout << "some data sent\n";
             //clear rawData?
         }
     }

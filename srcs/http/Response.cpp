@@ -41,8 +41,8 @@ Response::Response(Response&& other) noexcept{
 	_statusMessage = other._statusMessage;
 	_headers = other._headers;
 	_body = other._body;
-	_bytesSentSoFar = other._bytesSentSoFar;
-	_totalMsgBytes = other._totalMsgBytes;
+	_bytesSent = other._bytesSent;
+	// _totalMsgBytes = other._totalMsgBytes;
 	_serverBlock = other._serverBlock;
 	other._serverBlock = nullptr;
 	_locationBlock = other._locationBlock;
@@ -56,8 +56,8 @@ Response& Response::operator=(Response&& other) noexcept{
 		_statusMessage = other._statusMessage;
 		_headers = other._headers;
 		_body = other._body;
-		_bytesSentSoFar = other._bytesSentSoFar;
-		_totalMsgBytes = other._totalMsgBytes;
+		_bytesSent = other._bytesSent;
+		// _totalMsgBytes = other._totalMsgBytes;
 		_serverBlock = other._serverBlock;
 		other._serverBlock = nullptr;
 		_locationBlock = other._locationBlock;
@@ -65,18 +65,17 @@ Response& Response::operator=(Response&& other) noexcept{
 		_mimeTypes = other._mimeTypes;		
 	}
 	return (*this);
+}
 
-Response::Response(const Request& request, ServerBlock* serverBlock)
+Response::Response(Request& request, ServerBlock* serverBlock)
 	: _statusCode(200), 
+	_bytesSent(0),
 	_request(request), 
 	_serverBlock(serverBlock), 
-	_locationBlock(NULL),
-	_bytesSent(0)
+	_locationBlock(NULL)
 {
 	initializeMimeTypes();
 }
-
-Response::~Response() {}
 
 void Response::clear() {
 	_statusCode = 200;
@@ -85,10 +84,10 @@ void Response::clear() {
 	_fullResponse.clear();
 	_bytesSent = 0;
 	_locationBlock = NULL;
-	_request.clear();	//implement a clear in Request class
+	// _request.clear();	//implement a clear in Request class
 }
 
-void Response::setRequest(const Request& request) {
+void Response::setRequest(Request& request) {
 	_request = request;
 }
 
@@ -177,11 +176,12 @@ void Response::handleResponse() {
 
 void  Response::prepareResponse() {
 	_fullResponse = getStatusLine() + getHeadersString() + _body;
+	std::cout << getStatusCode() << " " << getHeadersString() << " " << _body << std::endl;
 	_bytesSent = 0;
 }
 
 bool Response::isComplete() const {
-	return (_bytesSent >= _fullResponse.size());
+	return (_bytesSent == _fullResponse.size());
 }
 
 void Response::handleGet(){
@@ -610,11 +610,6 @@ const std::string& Response::getBody() const {
 	return _body;
 }
 
-
-void Response::setStatusCode(int code) {
-	_statusCode = code;
-}
-
 void Response::setHeader(const std::string& key, const std::string& value) {
 	_headers[key] = value;
 }
@@ -631,22 +626,25 @@ void Response::setContentType(const std::string& path) {
 
 
 //remove eventually
-  /*
+
 void Response::addToBytesSent(ssize_t adding){
-	_bytesSentSoFar += adding;
+	_bytesSent += adding;
 }
 
-bool Response::allSent(){
-	if (_totalMsgBytes == _bytesSentSoFar)
-		return true;
-	return false;
-}
+// bool Response::allSent(){
+// 	if (_totalMsgBytes == _bytesSent)
+// 		return true;
+// 	return false;
+// }
 
-const std::string& Response::getRawData() const{
-	return (_rawData);
-}
+// const std::string& Response::getRawData() const{
+// 	return (_rawData);
+// }
 
 ssize_t Response::getBytes() const{
-	return (_bytesSentSoFar);
-}*/
+	return (_bytesSent);
+}
 
+const std::string& Response::getFullResponse() const{
+	return (_fullResponse);
+}

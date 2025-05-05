@@ -40,7 +40,7 @@ int EventLoop::run(std::vector<EventHandler*> listFds){
         int events2Resolve = epoll_wait(_epollFd, _events, MAX_EVENTS, -1);
         for (int i = 0; i < events2Resolve; i++){
             EventHandler* curE = static_cast<EventHandler*>(_events[i].data.ptr);
-            // std::cout << "After receiving events\n";
+            std::cout << "After receiving events\n";
             if (curE->handleEvent(_events[i].events) == -1){
                 //error occurred
                 if (curE->getState() == LISTENER)
@@ -49,7 +49,7 @@ int EventLoop::run(std::vector<EventHandler*> listFds){
                     curE->setState(CLOSE);
                 continue;
             }
-            // std::cout << "After handling\n";
+            std::cout << "After handling\n";
 
             State curS = curE->getState();
             switch (curS){
@@ -65,11 +65,11 @@ int EventLoop::run(std::vector<EventHandler*> listFds){
                 default:
                     break;
             }
-            // std::cout << "After one loop\n";
+            std::cout << "After one loop\n";
         }
         //timeout?
         resolvingClosing();
-        // std::cout << "After closing\n";
+        std::cout << "After closing\n";
     }
     return (0);   
 }
@@ -145,6 +145,7 @@ void EventLoop::resolvingAccept(EventHandler* cur){
 void EventLoop::resolvingModify(EventHandler* cur, uint32_t event){
     if (modifyEpoll(cur->getSocketFd(), event, cur) == -1)
         cur->setState(CLOSE);
+    std::cout << "Client event changed\n";
 }
 
 EventHandler* EventLoop::getListener(int *fd){

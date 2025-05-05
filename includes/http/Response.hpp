@@ -54,9 +54,10 @@ private:
 public:
 	Response(Request& request, ServerBlock* serverBlock);
 	~Response();
-  Response(); //add to cpp
-  Response(Response &&other) noexcept; //add
+  	Response(); //add to cpp
+  	Response(Response &&other) noexcept; //add
 	Response &operator=(Response &&other) noexcept; //add
+
 	void clear();
 	void setRequest(Request& request);
 
@@ -64,11 +65,11 @@ public:
 
 	int getStatusCode() const;
 	const std::string& getBody() const;
-  
+	const std::string& getFullResponse() const;
   
 	void addToBytesSent(ssize_t adding);  //check
-	bool allSent();             //check
-	const std::string& getRawData() const;  //check
+	// bool allSent();             //check
+	// const std::string& getRawData() const;  //check
 	ssize_t getBytes() const;     //check
 	
 	void setHeader(const std::string& key, const std::string& value);
