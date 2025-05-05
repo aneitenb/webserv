@@ -21,7 +21,7 @@ private:
 	std::map<std::string, std::string>	_headers;
 	std::string							_body;
 	std::string							_fullResponse;
-    size_t								_bytesSent;
+  size_t								_bytesSent;
 	
 	Request 		_request;
 	ServerBlock*	_serverBlock;
@@ -30,6 +30,7 @@ private:
 	std::map<std::string, std::string> _mimeTypes;
 	
 	void initializeMimeTypes();
+
 	std::string getStatusLine() const;
 	std::string getHeadersString() const;
 	std::string getMimeType(const std::string& path) const;
@@ -53,6 +54,9 @@ private:
 public:
 	Response(Request& request, ServerBlock* serverBlock);
 	~Response();
+  Response(); //add to cpp
+  Response(Response &&other) noexcept; //add
+	Response &operator=(Response &&other) noexcept; //add
 	void clear();
 	void setRequest(Request& request);
 
@@ -60,6 +64,12 @@ public:
 
 	int getStatusCode() const;
 	const std::string& getBody() const;
+  
+  
+	void addToBytesSent(ssize_t adding);  //check
+	bool allSent();             //check
+	const std::string& getRawData() const;  //check
+	ssize_t getBytes() const;     //check
 	
 	void setHeader(const std::string& key, const std::string& value);
 	void setBody(const std::string& body);

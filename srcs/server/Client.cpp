@@ -14,9 +14,16 @@
 #include <string.h>
 #include <fcntl.h>
 
-Client::Client():_listfd(nullptr), _clFd(-1), _curR(EMPTY){
+Client::Client(): _listfd(nullptr), _clFd(-1), _count(0), _curR(EMPTY){
     ftMemset(&_result, sizeof(_result));
-    setState(READING);
+    setState(TOADD);
+    // ftMemset(&_event, sizeof(_event)); //do I leave this like this?
+}
+
+Client::Client(ServerBlock* cur): _relevant(cur), _listfd(nullptr), \
+    _clFd(-1), _count(0), _curR(EMPTY){
+    ftMemset(&_result, sizeof(_result));
+    setState(TOADD);
     // ftMemset(&_event, sizeof(_event)); //do I leave this like this?
 }
 
@@ -28,11 +35,13 @@ Client::~Client(){
 }
 
 int Client::copySocketFd(int* fd){
-    if (_clFd != -1){
+    if (this->_clFd != -1){
         close(_clFd);
         _clFd = -1;}
-    _clFd = dup(*fd);
-    if (_clFd == -1){
+    if (*fd == -1)
+        return (-1);
+    this->_clFd = dup(*fd);
+    if (this->_clFd == -1){
         std::cout << "Error: dup() failed\n"; //exit?
         return (-1);
     }
@@ -41,26 +50,34 @@ int Client::copySocketFd(int* fd){
     return (0);
 }
 
-int* Client::getClFd(void){
-    return (&_clFd);
+int* Client::getSocketFd(void) {
+    return(&_clFd);
 }
 
-Client::Client(Client&& other) noexcept {
+Client::Client(Client&& other) noexcept{
+    _relevant = other._relevant;
+    other._relevant = nullptr;
     _listfd = other._listfd;
     other._listfd = nullptr;
+    this->_clFd = -1;
     this->copySocketFd(&other._clFd);
+    _count = other._count;
     _result = other._result;
     other._result = nullptr;
     _curR = other._curR;
     this->setState(other.getState());
+    _requesting = other._requesting;
 }
 
 //this should never be used though
 Client& Client::operator=(Client&& other) noexcept {
     if (this != &other){
+        _relevant = other._relevant;
+        other._relevant = nullptr;
         _listfd = other._listfd;
         other._listfd = nullptr;
         this->copySocketFd(&other._clFd);
+        _count = other._count;
         _result = other._result;
         other._result = nullptr;
         _curR = other._curR;
@@ -69,99 +86,125 @@ Client& Client::operator=(Client&& other) noexcept {
     return (*this);
 }
 
+//add variables; response and request == operators
 bool Client::operator==(const Client& other){
-    if (_listfd == other._listfd && _clFd == other._clFd \
-    && _result == other._result && this->getState() == other.getState() \ 
-    && _curR == other._curR)
+    if (_relevant == other._relevant &&_listfd == other._listfd \
+        && _clFd == other._clFd && _count == other._count \
+        && _result == other._result \
+        && this->getState() == other.getState() && _curR == other._curR)
         return (true);
     return (false);
 }
 
-// State Client::getState(void) const{
-//     return(_curS);
-// }
+ServerBlock* Client::getServerBlock() const{
+    return (_relevant);
+}
 
-// void Client::setState(State newState){
-//     _curS = newState;
-// }
+int Client::saveRequest(){
+    try{
+        Request curR(_buffer);
+        //the thing is what if it's a partial request so not everything has been received? it needs to be updated without being marked as wrong
+        if (curR.isParsed() == true){
+            _requesting = curR;
+            std::cout << "PARSED\n";
+            return (0);
+        }
+    }
+    catch(std::exception& e){
+        return (-1);
+    }
+    return (-1);
+}
+
+void Client::saveResponse(){
+    Response curR(_requesting, getServerBlock());
+    _responding = std::move(curR);
+}
 
 int Client::handleEvent(uint32_t ev){
     if (ev & EPOLLERR || ev & EPOLLHUP){
-        //error and clear?
-        this->setState(CLOSE);
+        return (-1);
     }
     if (ev & EPOLLIN){
-        receiving_stuff();
-        //is it complete, check and set
-        if (_curR == COMPLETE){
-            //respond
-            //EPOLLOUT //_curS = TOWRITE
-            this->setState(TOWRITE);
+        std::cout << "Receiving\n";
+        if (receiving_stuff() == -1){
+            _count++;
+            if (_count == 5)
+                this->setState(CLOSE);
+            std::cout << "Count: " << _count << std::endl;
         }
-        // else if(_curR == CLOSE)
-            ///handle here?
+        //is it complete, check and set
+        if (saveRequest() == 0){
+            saveResponse(); //since the response will be formed on a complete request, maybe the constructor can call process request right away?
+            _buffer.clear(); //or see how it's handled?
+            this->setState(TOWRITE); //EPOLLOUT
+            _count = 0;
+        }
     }
     if (ev & EPOLLOUT){
-        sending_stuff();
-        // if (_responding.state == COMPLETE){
-            this->setState(TOREAD);
+        if (sending_stuff() == -1){
+            _count++;
+            if (_count == 5)
+                this->setState(CLOSE);
+        }
+        if (_responding.allSent() == true){
+            this->setState(TOREAD); //EPOLLIN
+            //clear the request and response?
+            _count = 0;
+        }
         //if connection::keep-alive switch to epollout
         //if connection::close close socket + cleanup
         // }
         //data to be sent
         //if the whole thing was sent change what the epoll listens for to epollin 
     }
+    return (0);
 }
 //timeout checks
+
+std::vector<EventHandler*> Client::resolveAccept(void) {
+    return {};
+}
+
+void Client::resolveClose(){}
 
 
 int Client::sending_stuff(){
     // response class that has totalBytesThatNeed2BSent + bytesSentSoFar
-    /*
-    ssize_t len = send(_clFd, &_buffer + bytesSentSoFar, total - sent, 0); //buffer + bytesSentSoFar, sizeof remaining bytes, 0
-    if ( len == EMSGSIZE)
-        the message is too long to pass atomically through the underlying protocol, the msg is not transmitted
-        return (-1);
-        if (len == -1){
-        if (errno == EAGAIN || errno == EWOULDBLOCK)
-            break ;
-        std::cerr << "Could not send data over the connected socket with the fd of " << _clFd << "\n";
-        std::cerr << strerror(errno) << "\n";
-        return (-1);
+    //for allSent() check per buffer.size() - 1 maybe
+    //did I init _bytesSentSoFar and _totalMsgBytes?
+    const std::string& buffer = _responding.getRawData();
+    while (_responding.allSent() != true){
+        ssize_t len = send(_clFd, &buffer + _responding.getBytes(), buffer.size() - _responding.getBytes(), 0); //buffer + bytesSentSoFar, sizeof remaining bytes, 0
+        if (len < 1){
+            return (-1);
+        }
+        else{ // len > 0
+            _responding.addToBytesSent(len);
+            //clear rawData?
+        }
     }
-    if (totalSent == bytessentsofar)
-        switch to EPOLLIN //_curS = TOREAD
-        return (0);
-    return (1);
-    */
+    return (0);
 }
 
 
 int Client::receiving_stuff(){
     ssize_t len = 0;
     std::string temp_buff;
-    temp_buff.clear(); //maybe I don't need this?
+    temp_buff.resize(4096);
+    // temp_buff.clear(); //maybe I don't need this?
     if (_curR == CLEAR)
         _buffer.clear(); //maybe can't do this if the request is not complete
 
     while(1){
-        len = recv(_clFd, &temp_buff, sizeof(temp_buff), 0); //sizeof(buffer) - 1?
-        if (len == -1){ //either means that there is no more data to read or error
-            if (errno == EAGAIN || errno == EWOULDBLOCK) //done reading
-                break;
-            std::cerr << "Could not receive data over the connected socket with the fd of " << _clFd << "\n";
-            std::cerr << strerror(errno) << "\n";
-            return (-1); //actual error occurred
-        }
-        else if(len == 0) //means the client closed connection
-        {
-            // isRequestComplete();
-            if (_curR == COMPLETE)
-                this->setState(CLOSE); //if the client is no longer connected then no need to respond, right?
-            //cleanup? probably fd needs to be closed?
-            return (1);
+        len = recv(_clFd, &temp_buff[0], temp_buff.size(), 0); //sizeof(buffer) - 1?
+        if (len < 1){ //either means that there is no more data to read or error or client closed connection (len == 0)
+            return (-1);
         }
         else{ // means something was returned
+            temp_buff.resize(len);
+            // std::cout << "What's here  " << temp_buff << std::endl;
+            // std::cout << "Says here: " << temp_buff.size() << "     " << _buffer.max_size() << "\n";
             if (temp_buff.size() <= _buffer.max_size() - _buffer.size())
                 _buffer.append(temp_buff); //append temp to buffer
             temp_buff.clear();

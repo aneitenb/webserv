@@ -32,6 +32,40 @@ static const std::map<int, std::string> statusMessages = {
 	{505, "HTTP Version Not Supported"}
 };
 
+Response::Response(){}
+
+Response::~Response() {}
+
+Response::Response(Response&& other) noexcept{
+	_statusCode = other._statusCode;
+	_statusMessage = other._statusMessage;
+	_headers = other._headers;
+	_body = other._body;
+	_bytesSentSoFar = other._bytesSentSoFar;
+	_totalMsgBytes = other._totalMsgBytes;
+	_serverBlock = other._serverBlock;
+	other._serverBlock = nullptr;
+	_locationBlock = other._locationBlock;
+	other._locationBlock = nullptr;
+	_mimeTypes = other._mimeTypes;
+}
+
+Response& Response::operator=(Response&& other) noexcept{
+	if (this != &other){
+		_statusCode = other._statusCode;
+		_statusMessage = other._statusMessage;
+		_headers = other._headers;
+		_body = other._body;
+		_bytesSentSoFar = other._bytesSentSoFar;
+		_totalMsgBytes = other._totalMsgBytes;
+		_serverBlock = other._serverBlock;
+		other._serverBlock = nullptr;
+		_locationBlock = other._locationBlock;
+		other._locationBlock = nullptr;
+		_mimeTypes = other._mimeTypes;		
+	}
+	return (*this);
+
 Response::Response(const Request& request, ServerBlock* serverBlock)
 	: _statusCode(200), 
 	_request(request), 
@@ -480,7 +514,6 @@ bool Response::isMethodAllowed() const {
 	if (_serverBlock->hasAllowedMethods()) {
 		return _serverBlock->isMethodAllowed(requestMethod);
 	}
-
 	return false;
 }
 
@@ -577,6 +610,11 @@ const std::string& Response::getBody() const {
 	return _body;
 }
 
+
+void Response::setStatusCode(int code) {
+	_statusCode = code;
+}
+
 void Response::setHeader(const std::string& key, const std::string& value) {
 	_headers[key] = value;
 }
@@ -590,3 +628,25 @@ void Response::setBody(const std::string& body) {
 void Response::setContentType(const std::string& path) {
 	setHeader("Content-Type", getMimeType(path));
 }
+
+
+//remove eventually
+  /*
+void Response::addToBytesSent(ssize_t adding){
+	_bytesSentSoFar += adding;
+}
+
+bool Response::allSent(){
+	if (_totalMsgBytes == _bytesSentSoFar)
+		return true;
+	return false;
+}
+
+const std::string& Response::getRawData() const{
+	return (_rawData);
+}
+
+ssize_t Response::getBytes() const{
+	return (_bytesSentSoFar);
+}*/
+

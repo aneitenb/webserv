@@ -55,11 +55,13 @@ public:
 
 	void initialize(const std::string& filename);
 
-	ServerBlock getServerBlock(size_t index) const;
+	const ServerBlock& getServerBlock(size_t index) const;
 	const ServerBlock& getServerBlockByIPPort(const std::string& ipAddress, const std::string& port) const;
 	std::vector<const ServerBlock*> getAllServerBlocksByIPPort(const std::string& ipAddress, const std::string& port) const;
 	const ServerBlock& getServerBlockByHostPortName(const std::string& ipAddress, const std::string& port, 
 				const std::string& serverName) const;
 	size_t getServerCount() const;
+	//get all server blocks func needed for webserv initialising
+	std::vector<ServerBlock>& getAllServerBlocks();
 };
 

@@ -31,6 +31,7 @@ class Request
 		std::string	_method;
 		std::string	_body;
 		std::string	_uri;
+		std::string _copyBuffer;
 
 		size_t	_contentLength;
 		size_t	_chunkSize;
@@ -58,6 +59,8 @@ class Request
 	public:
 		Request(void);
 		~Request(void);
+		Request(const Request& other);
+		Request& operator=(const Request& other); //need it for client
 
 		// public methods
 		void	append(const std::string &reqData);

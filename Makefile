@@ -12,6 +12,7 @@ NAME	=	webserv
 BUILD	=	normal
 
 CC				=	c++
+
 cflags.common	=	-Wall -Wextra -Werror -std=c++17
 cflags.debug	=	-g -D__DEBUG
 cflags.fsan		=	$(cflags.debug) -fsanitize=address,undefined
@@ -34,8 +35,8 @@ HTTPFILES	=	Request.cpp \
 SERVERFILES	=	Client.cpp \
 				Listener.cpp \
 				VirtualHost.cpp \
-				WebServer.cpp 
-				# EventLoop.cpp
+				WebServer.cpp \
+				EventLoop.cpp
 
 CONFIGFILES	=	ConfigErrors.cpp \
 				ConfigFile.cpp \

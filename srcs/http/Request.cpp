@@ -12,6 +12,34 @@
 #define _find(c, x)	(std::find(c.cbegin(), c.cend(), x))
 #define _trimLWS(s)	(s.erase(0, s.find_first_not_of(LWS)), s.erase(s.find_last_not_of(LWS) + 1))
 
+Request::Request(const Request& other){
+	_headers = other._headers;
+	_contentType = other._contentType;
+	_version = other._version;
+	_method = other._method;
+	_body = other._body;
+	_uri = other._uri;
+	_copyBuffer = other._copyBuffer;
+	_contentLength = other._contentLength;
+	_chunked = other._chunked;
+	_parsed = other._parsed;	
+}
+
+Request& Request::operator=(const Request& other){
+	if (this != &other){
+		_headers = other._headers;
+		_contentType = other._contentType;
+		_version = other._version;
+		_method = other._method;
+		_body = other._body;
+		_uri = other._uri;
+		_copyBuffer = other._copyBuffer;
+		_contentLength = other._contentLength;
+		_chunked = other._chunked;
+		_parsed = other._parsed;}
+	return (*this);
+}
+
 [[maybe_unused]] static inline std::string	_printRawRequest(const std::string &reqData);
 static inline bool							_getChunkSize(std::stringstream &bodySection, std::string &remainder, size_t &chunkSize);
 
@@ -23,6 +51,7 @@ Request::~Request(void) {}
 
 #define SGR_DEBUG	"\x1b[1;38;5;202m"
 #define SGR_RESET	"\x1b[m"
+
 
 // public methods
 void	Request::append(const std::string &reqData) {

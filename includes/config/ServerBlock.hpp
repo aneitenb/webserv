@@ -35,6 +35,8 @@ private:
 public:
 	ServerBlock();
 	~ServerBlock();
+	ServerBlock(const ServerBlock& other);
+	ServerBlock& operator=(const ServerBlock& other);
 
 	void clear();
 	

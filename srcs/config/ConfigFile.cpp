@@ -596,10 +596,10 @@ uint8_t ConfigurationFile::_parseHttpMethods(const std::string& methods) {
 	return result;
 }
 
-ServerBlock ConfigurationFile::getServerBlock(size_t index) const {
+const ServerBlock& ConfigurationFile::getServerBlock(size_t index) const {
 	if (index >= _servers.size())
 		throw std::out_of_range("Server index out of range");
-	return _servers[index];
+	return (_servers[index]);
 }
 
 //returns first server matching IP and port
@@ -668,4 +668,9 @@ const ServerBlock& ConfigurationFile::getServerBlockByHostPortName(
 
 size_t ConfigurationFile::getServerCount() const {
 	return _servers.size();
+}
+
+
+std::vector<ServerBlock>& ConfigurationFile::getAllServerBlocks(){
+	return _servers;
 }
