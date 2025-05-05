@@ -34,15 +34,12 @@ static const std::map<int, std::string> statusMessages = {
 
 Response::Response(){}
 
-Response::~Response() {}
-
 Response::Response(Response&& other) noexcept{
 	_statusCode = other._statusCode;
 	_statusMessage = other._statusMessage;
 	_headers = other._headers;
 	_body = other._body;
-	_bytesSentSoFar = other._bytesSentSoFar;
-	_totalMsgBytes = other._totalMsgBytes;
+	_bytesSent = other._bytesSent;
 	_serverBlock = other._serverBlock;
 	other._serverBlock = nullptr;
 	_locationBlock = other._locationBlock;
@@ -56,8 +53,7 @@ Response& Response::operator=(Response&& other) noexcept{
 		_statusMessage = other._statusMessage;
 		_headers = other._headers;
 		_body = other._body;
-		_bytesSentSoFar = other._bytesSentSoFar;
-		_totalMsgBytes = other._totalMsgBytes;
+		_bytesSent = other._bytesSent;
 		_serverBlock = other._serverBlock;
 		other._serverBlock = nullptr;
 		_locationBlock = other._locationBlock;
@@ -65,13 +61,14 @@ Response& Response::operator=(Response&& other) noexcept{
 		_mimeTypes = other._mimeTypes;		
 	}
 	return (*this);
+}
 
-Response::Response(const Request& request, ServerBlock* serverBlock)
+Response::Response(Request& request, ServerBlock* serverBlock)
 	: _statusCode(200), 
+	_bytesSent(0),
 	_request(request), 
-	_serverBlock(serverBlock), 
-	_locationBlock(NULL),
-	_bytesSent(0)
+	_serverBlock(serverBlock),
+	_locationBlock(NULL)
 {
 	initializeMimeTypes();
 }
@@ -85,10 +82,9 @@ void Response::clear() {
 	_fullResponse.clear();
 	_bytesSent = 0;
 	_locationBlock = NULL;
-	_request.clear();	//implement a clear in Request class
 }
 
-void Response::setRequest(const Request& request) {
+void Response::setRequest(Request& request) {
 	_request = request;
 }
 
@@ -137,7 +133,14 @@ void Response::handleResponse() {
 		_locationBlock = &_serverBlock->getLocationBlockRef(matchedLocation);
 
 	setHeader("Date", getCurrentDate());
-	
+	if (!_request.isValid())
+	{
+		_statusCode = 400;
+		setBody(getErrorPage(400));
+		setHeader("Content-Type", "text/html");
+		return;
+	}
+
 	if (!isMethodAllowed()) {
 		_statusCode = 405;
 		setBody(getErrorPage(405));
@@ -181,16 +184,16 @@ void  Response::prepareResponse() {
 }
 
 bool Response::isComplete() const {
-	return (_bytesSent >= _fullResponse.size());
+	return (_bytesSent == _fullResponse.size());
 }
 
 void Response::handleGet(){
 	std::string path = resolvePath(_request.getURI());
 
-	if (isCgiRequest(path)) {
-		//handleCgi(path);
-		return;
-	}
+	// if (isCgiRequest(path)) {
+	// 	//handleCgi(path);
+	// 	return;
+	// }
 
 	std::string absPath = path;
 	if (!absPath.empty() && absPath[absPath.length()-1] == '/' && 
@@ -610,11 +613,6 @@ const std::string& Response::getBody() const {
 	return _body;
 }
 
-
-void Response::setStatusCode(int code) {
-	_statusCode = code;
-}
-
 void Response::setHeader(const std::string& key, const std::string& value) {
 	_headers[key] = value;
 }
@@ -629,12 +627,13 @@ void Response::setContentType(const std::string& path) {
 	setHeader("Content-Type", getMimeType(path));
 }
 
+const std::string &Response::getFullResponse() {
+	return _fullResponse;
+}
 
 //remove eventually
   /*
-void Response::addToBytesSent(ssize_t adding){
-	_bytesSentSoFar += adding;
-}
+
 
 bool Response::allSent(){
 	if (_totalMsgBytes == _bytesSentSoFar)
@@ -645,8 +644,13 @@ bool Response::allSent(){
 const std::string& Response::getRawData() const{
 	return (_rawData);
 }
+*/
+
+void Response::addToBytesSent(ssize_t adding){
+	_bytesSent += adding;
+}
 
 ssize_t Response::getBytes() const{
-	return (_bytesSentSoFar);
-}*/
+	return (_bytesSent);
+}
 
