@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>POST Test</title>
+</head>
+<body>
+	<h1>POST Test Page</h1>
+	
+	<h2>Simple Form</h2>
+	<form action="/upload" method="POST">
+		<input type="text" name="data" placeholder="Enter text">
+		<button type="submit">Submit Form</button>
+	</form>
+	
+	<h2>File Upload</h2>
+	<form action="/upload" method="POST" enctype="multipart/form-data">
+		<input type="file" name="file">
+		<button type="submit">Upload File</button>
+	</form>
+	
+	<p><a href="/">Back to Home</a></p>
+</body>
+</html>
