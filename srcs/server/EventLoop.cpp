@@ -66,6 +66,7 @@ int EventLoop::run(std::vector<EventHandler*> listFds){
                     break;
             }
             std::cout << "After one loop\n";
+            curE = nullptr;
         }
         //timeout?
         resolvingClosing();
@@ -163,6 +164,9 @@ void EventLoop::resolvingClosing(){
             //update vectors
             std::size_t i = 0;
             EventHandler* curL = getListener(pair.first);
+            pair.second = curL->resolveAccept();
+            if (pair.second.empty() == true)
+                return ;
             for (auto it = pair.second.begin(); it != pair.second.end(); it++){
                 if (pair.second.at(i)->getState() == CLOSE){
                     //cleanup Request, Response, buffer

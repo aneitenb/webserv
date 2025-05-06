@@ -146,7 +146,7 @@ int Listener::handleEvent(uint32_t ev){
             curFd = accept(_sockFd, nullptr, nullptr); //think about taking in the client info for security reasons maybe
             if (curFd == -1){
                 if (errno == EAGAIN || errno == EWOULDBLOCK)
-                    return (0); //means there are no more clients that wait to be accepted, but can we use errno??
+                    return (0); //means there are no more clients that wait to be accepted
                 std::cerr << "Error: accept() failed: ";
                 std::cerr << strerror(errno) << "\n";
                 return (-1);
@@ -155,10 +155,6 @@ int Listener::handleEvent(uint32_t ev){
                 return (-1);
             if (curC.copySocketFd(&curFd) == -1) //pass the socket into Client
                 return (-1);
-            // EventLoop* curEL = &(this->getLoop()); //get the EventLoop
-            // curC.setLoop(*curEL); //set the EventLoop for the client
-            // if (curEL->addToEpoll(curC.getClFd(), EPOLLIN, &curC) == -1)
-            //     return (-1); //add the client fd to the epoll
             _activeClients.push_back(std::move(curC));
             closeFd(&curFd);
             // curEL->addClient(&(_activeClients.at(_activeClients.size() - 1)));
