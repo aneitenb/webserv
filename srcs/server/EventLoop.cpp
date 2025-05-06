@@ -173,10 +173,11 @@ void EventLoop::resolvingClosing(){
                     delEpoll(pair.second.at(i)->getSocketFd());
                     pair.second.at(i)->setState(TOCLOSE);
                 }
+                i++;
             }
             curL->resolveClose();
             pair.second = curL->resolveAccept();
-            std::cout << "updated clients: " << pair.second.empty() << "\n";
+            std::cout << "updated clients: " << static_cast<bool>(pair.second.empty()) << "\n";
         }
     }
 }

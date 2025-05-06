@@ -128,7 +128,7 @@ int Client::handleEvent(uint32_t ev){
         std::cout << "Receiving\n";
         if (receiving_stuff() == -1){
             _count++;
-            if (_count == 100)
+            if (_count == 10)
                 this->setState(CLOSE);
             std::cout << "Count: " << _count << std::endl;
         }
