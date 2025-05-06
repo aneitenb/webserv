@@ -23,7 +23,7 @@ private:
 	std::string							_fullResponse;
   size_t								_bytesSent;
 	
-	Request 		_request;
+	Request* 		_request;
 	ServerBlock*	_serverBlock;
 	LocationBlock*	_locationBlock;
 	
@@ -52,11 +52,11 @@ private:
 	void handleDelete();
 	
 public:
-	Response(Request& request, ServerBlock* serverBlock);
+	Response(Request* request, ServerBlock* serverBlock);
 	~Response();
-	Response();
-	Response(Response &&other) noexcept;
-	Response &operator=(Response &&other) noexcept;
+  	Response(); //add to cpp
+  	Response(Response &&other) noexcept; //add
+	Response &operator=(Response &&other) noexcept; //add
 	void clear();
 	void setRequest(Request& request);
 
@@ -64,12 +64,11 @@ public:
 
 	int getStatusCode() const;
 	const std::string& getBody() const;
-	const std::string &getFullResponse() ;
-  
+	std::string getFullResponse() const;
   
 	void addToBytesSent(ssize_t adding);  //check
-	bool allSent();             //check
-	const std::string& getRawData() const;  //check
+	// bool allSent();             //check
+	// const std::string& getRawData() const;  //check
 	ssize_t getBytes() const;     //check
 	
 	void setHeader(const std::string& key, const std::string& value);

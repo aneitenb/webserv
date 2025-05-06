@@ -14,7 +14,8 @@ ServerBlock::ServerBlock() :
 	_host(""),
 	_clientMaxBodySize(0),
 	_hasCustomErrorPages(false),
-	_defaultErrorDir("/default_errors")
+	_defaultErrorDir("/default_errors"),
+	_allowedMethods(0)
 {
 	_defaultErrorPages.emplace_back(400, _defaultErrorDir + "/400.html");
 	_defaultErrorPages.emplace_back(403, _defaultErrorDir + "/403.html");

@@ -116,7 +116,7 @@ int Client::saveRequest(){
 }
 
 void Client::saveResponse(){
-    Response curR(_requesting, getServerBlock());
+    Response curR(&_requesting, getServerBlock());
     _responding = std::move(curR);
 }
 
@@ -128,7 +128,7 @@ int Client::handleEvent(uint32_t ev){
         std::cout << "Receiving\n";
         if (receiving_stuff() == -1){
             _count++;
-            if (_count == 5)
+            if (_count == 10)
                 this->setState(CLOSE);
             std::cout << "Count: " << _count << std::endl;
         }
@@ -148,6 +148,8 @@ int Client::handleEvent(uint32_t ev){
         }
         if (_responding.isComplete() == true){
             this->setState(TOREAD); //EPOLLIN
+            std::cout << "switching sides\n";
+            //clear the request and response?
             _responding.clear();
             _count = 0;
         }
@@ -171,17 +173,24 @@ void Client::resolveClose(){}
 int Client::sending_stuff(){
     // response class that has totalBytesThatNeed2BSent + bytesSentSoFar
     //for allSent() check per buffer.size() - 1 maybe
-    //did I init _bytesSentSoFar and _totalMsgBytes?
-    if (_responding.getFullResponse().empty())
-        _responding.prepareResponse();
-    const std::string &buffer = _responding.getFullResponse();
+    //did I init _bytesSent and _totalMsgBytes?
+    std::string buffer = {0};
+    _responding.prepareResponse();
+    buffer = _responding.getFullResponse();
+    if (buffer.size() == 0)
+        return (-1);
+    std::cout << std::endl;
+    std::cout << std::endl;
+    std::cout << "BUFFER:    " << buffer << std::endl;
     while (_responding.isComplete() != true){
-        ssize_t len = send(_clFd, &buffer + _responding.getBytes(), buffer.size() - _responding.getBytes(), 0); //buffer + bytesSentSoFar, sizeof remaining bytes, 0
+        ssize_t len = send(_clFd, buffer.c_str() + _responding.getBytes(), buffer.size() - _responding.getBytes(), 0); //buffer + bytesSentSoFar, sizeof remaining bytes, 0
         if (len < 1){
+            std::cout << "Error coulld not send\n";
             return (-1);
         }
         else{ // len > 0
             _responding.addToBytesSent(len);
+            std::cout << "some data sent\n";
             //clear rawData?
         }
     }
