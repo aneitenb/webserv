@@ -7,26 +7,26 @@
 //
 // <<Request.cpp>> -- <<Aida, Ilmari, Milica>>
 
+#include <iostream>
 #include "http/Request.hpp"
+
+#define SGR_DEBUG	"\x1b[1;38;5;202m"
+#define SGR_RESET	"\x1b[m"
 
 #define _find(c, x)	(std::find(c.cbegin(), c.cend(), x))
 #define _trimLWS(s)	(s.erase(0, s.find_first_not_of(LWS)), s.erase(s.find_last_not_of(LWS) + 1))
 
-Request::Request(const Request& other){
-	_headers = other._headers;
-	_contentType = other._contentType;
-	_version = other._version;
-	_method = other._method;
-	_body = other._body;
-	_uri = other._uri;
-	_copyBuffer = other._copyBuffer;
-	_contentLength = other._contentLength;
-	_chunked = other._chunked;
-	_parsed = other._parsed;	
+[[maybe_unused]] static inline std::string	_printRawRequest(const std::string &reqData);
+static inline bool							_getChunkSize(std::stringstream &bodySection, std::string &remainder, size_t &chunkSize);
+
+Request::Request(void): _contentLength(0), _parsingStage(REQUESTLINE), _chunked(false), _valid(true) {}
+
+Request::Request(const Request &other) {
+	*this = other;
 }
 
-Request& Request::operator=(const Request& other){
-	if (this != &other){
+Request& Request::operator=(const Request &other) {
+	if (this != &other) {
 		_headers = other._headers;
 		_contentType = other._contentType;
 		_version = other._version;
@@ -36,22 +36,12 @@ Request& Request::operator=(const Request& other){
 		_copyBuffer = other._copyBuffer;
 		_contentLength = other._contentLength;
 		_chunked = other._chunked;
-		_parsed = other._parsed;}
-	return (*this);
+		_parsed = other._parsed;
+	}
+	return *this;
 }
 
-[[maybe_unused]] static inline std::string	_printRawRequest(const std::string &reqData);
-static inline bool							_getChunkSize(std::stringstream &bodySection, std::string &remainder, size_t &chunkSize);
-
-Request::Request(void): _contentLength(0), _parsingStage(REQUESTLINE), _chunked(false), _valid(true) {}
-
 Request::~Request(void) {}
-
-#include <iostream>
-
-#define SGR_DEBUG	"\x1b[1;38;5;202m"
-#define SGR_RESET	"\x1b[m"
-
 
 // public methods
 void	Request::append(const std::string &reqData) {
@@ -75,7 +65,7 @@ void	Request::append(const std::string &reqData) {
 			try {
 				this->_valid = true;
 				this->_parseRequestLine(this->_remainder.substr(0, end));
-			} catch (Request::InvalidRequestLineException &) { this->_valid = false; } // store error code (and return ?)
+			} catch (Request::InvalidRequestLineException &) { this->_valid = false; }
 			this->_remainder.erase(0, end);
 			this->_headers.clear();
 			this->_parsingStage = HEADERS;
@@ -90,7 +80,7 @@ void	Request::append(const std::string &reqData) {
 			end += 4;
 			try {
 				this->_parseHeaders(std::stringstream(this->_remainder.substr(0, end)));
-			} catch (Request::InvalidHeaderException &) { this->_valid = false; } // store error code (and return ?)
+			} catch (Request::InvalidHeaderException &) { this->_valid = false; }
 			this->_remainder.erase(0, end);
 			this->_body.clear();
 			this->_parsingStage = BODY;
@@ -107,21 +97,6 @@ void	Request::append(const std::string &reqData) {
 }
 
 // private methods
-std::string	Request::_decodeURI(const std::string &uri) {
-	std::string	hexStr;
-	std::string	_uri;
-
-	for (auto i = uri.cbegin(); i != uri.cend(); i++) {
-		if (*i == '%' && uri.cend() - i > 2) {
-			hexStr = uri.substr(i - uri.cbegin() + 1, 2);
-			_uri += static_cast<char>(std::stoi(hexStr, 0, 16));
-			i += 2;
-		} else
-			_uri += (*i == '+') ? ' ' : *i;
-	}
-	return _uri;
-}
-
 void	Request::_parseRequestLine(std::string line) {
 	static std::regex	validReqLine("(GET|POST|DELETE) +[^\\x00-\\x1F\"#<>{}|\\\\^[\\]`\\x7F]+ +HTTP\\/1\\.1\\r\\n");
 
@@ -131,7 +106,7 @@ void	Request::_parseRequestLine(std::string line) {
 	if (!std::regex_match(line, validReqLine))
 		throw Request::InvalidRequestLineException();
 	std::stringstream(line) >> this->_method >> this->_uri >> this->_version;
-	this->_uri = this->_decodeURI(this->_uri); // rework to just this->_decodeURI()
+	this->_decodeURI();
 }
 
 void	Request::_parseHeaders(std::stringstream rawHeaders) {
@@ -170,9 +145,24 @@ void	Request::_parseHeaders(std::stringstream rawHeaders) {
 	catch (Request::FieldNotFoundException &) { this->_contentType = "application/octet-stream"; } // 2616/7.2.1
 	try { this->_contentLength = std::stoul(this->getHeader("Content-Length")); }
 	catch (Request::FieldNotFoundException &) { this->_contentLength = 0; }
-	catch (std::exception &) { valid = false; } // set error code
+	catch (std::exception &) { valid = false; }
 	if (!valid)
 		throw Request::InvalidHeaderException();
+}
+
+void	Request::_decodeURI(void) {
+	std::string	hexStr;
+	std::string	_uri;
+
+	for (auto i = this->_uri.cbegin(); i != this->_uri.cend(); i++) {
+		if (*i == '%' && this->_uri.cend() - i > 2) {
+			hexStr = this->_uri.substr(i - this->_uri.cbegin() + 1, 2);
+			_uri += static_cast<char>(std::stoi(hexStr, 0, 16));
+			i += 2;
+		} else
+			_uri += (*i == '+') ? ' ' : *i;
+	}
+	this->_uri = _uri;
 }
 
 bool	Request::_processBody(const std::string &rawBody) {
@@ -227,8 +217,6 @@ bool	Request::_processChunkedBody(std::stringstream bodySection) {
 					this->_remainder = chunkData.c_str();
 					return false ;
 				}
-//				if (chunkData.length() != this->_chunkSize)
-//					return false;
 #ifdef __DEBUG
 				std::cerr << SGR_DEBUG << "_processChunkedBody: next chunk data: '" << chunkData << "'" << SGR_RESET << "\n";
 #endif /* __DEBUG */

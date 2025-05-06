@@ -45,13 +45,12 @@ class Request
 		bool	_trailers;
 		bool	_chunked;
 		bool	_parsed;
-		bool	_valid; // store error code somewhere
+		bool	_valid;
 
 		// private methods
-		std::string	_decodeURI(const std::string &uri);
-
 		void	_parseRequestLine(std::string line);
 		void	_parseHeaders(std::stringstream rawHeaders);
+		void	_decodeURI(void);
 
 		bool	_processBody(const std::string &rawBody);
 		bool	_processChunkedBody(std::stringstream bodySection);
@@ -59,8 +58,8 @@ class Request
 	public:
 		Request(void);
 		~Request(void);
-		Request(const Request& other);
-		Request& operator=(const Request& other); //need it for client
+		Request(const Request &other);
+		Request& operator=(const Request &other);
 
 		// public methods
 		void	append(const std::string &reqData);
