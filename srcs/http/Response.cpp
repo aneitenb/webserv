@@ -43,7 +43,6 @@ Response::Response(Response&& other) noexcept
 	_headers = other._headers;
 	_body = other._body;
 	_bytesSent = other._bytesSent;
-	// _totalMsgBytes = other._totalMsgBytes;
 	_serverBlock = other._serverBlock;
 	other._serverBlock = nullptr;
 	_locationBlock = other._locationBlock;
@@ -59,7 +58,6 @@ Response& Response::operator=(Response&& other) noexcept{
 		_headers = other._headers;
 		_body = other._body;
 		_bytesSent = other._bytesSent;
-		// _totalMsgBytes = other._totalMsgBytes;
 		_serverBlock = other._serverBlock;
 		other._serverBlock = nullptr;
 		_locationBlock = other._locationBlock;
@@ -138,7 +136,14 @@ void Response::handleResponse() {
 		_locationBlock = &_serverBlock->getLocationBlockRef(matchedLocation);
 
 	setHeader("Date", getCurrentDate());
-	
+	if (!_request.isValid())
+	{
+		_statusCode = 400;
+		setBody(getErrorPage(400));
+		setHeader("Content-Type", "text/html");
+		return;
+	}
+
 	if (!isMethodAllowed()) {
 		_statusCode = 405;
 		setBody(getErrorPage(405));
@@ -627,6 +632,9 @@ void Response::setContentType(const std::string& path) {
 	setHeader("Content-Type", getMimeType(path));
 }
 
+const std::string &Response::getFullResponse() {
+	return _fullResponse;
+}
 
 //remove eventually
 

@@ -57,7 +57,6 @@ public:
   	Response(); //add to cpp
   	Response(Response &&other) noexcept; //add
 	Response &operator=(Response &&other) noexcept; //add
-
 	void clear();
 	void setRequest(Request& request);
 
