@@ -136,7 +136,7 @@ void Response::handleResponse() {
 		_locationBlock = &_serverBlock->getLocationBlockRef(matchedLocation);
 
 	setHeader("Date", getCurrentDate());
-	if (!_request.isValid())
+	if (!_request->isValid())
 	{
 		_statusCode = 400;
 		setBody(getErrorPage(400));
@@ -630,10 +630,6 @@ void Response::setBody(const std::string& body) {
 
 void Response::setContentType(const std::string& path) {
 	setHeader("Content-Type", getMimeType(path));
-}
-
-const std::string &Response::getFullResponse() {
-	return _fullResponse;
 }
 
 //remove eventually
