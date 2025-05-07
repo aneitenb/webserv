@@ -47,6 +47,11 @@ class Client : public EventHandler {
         Request             _requesting;
         Response            _responding;
         //size_t? _lastActive;
+
+        int sending_stuff();
+        int receiving_stuff();
+        int saveRequest();
+        void saveResponse();
     public:
         Client();
         Client(ServerBlock* cur);
@@ -63,13 +68,9 @@ class Client : public EventHandler {
         // void setState(State newState);
         // int* getClFd(void);
         ServerBlock* getServerBlock() const;
-
         int copySocketFd(int* fd);
-        int sending_stuff();
-        int receiving_stuff();
-        int saveRequest();
-        void saveResponse();
-        
+
+
         int handleEvent(uint32_t ev) override;
         int* getSocketFd(void) override;
         std::vector<EventHandler*> resolveAccept(void) override;

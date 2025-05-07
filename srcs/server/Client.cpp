@@ -105,7 +105,7 @@ int Client::saveRequest(){
         _requesting.append(_buffer);
         //the thing is what if it's a partial request so not everything has been received? it needs to be updated without being marked as wrong
         if (_requesting.isParsed() == true){
-            std::cout << "PARSED\n";
+            std::cout << "PARSED\n"; //here check for cgi?
             return (0);
         }
     }
@@ -171,9 +171,6 @@ void Client::resolveClose(){}
 
 
 int Client::sending_stuff(){
-    // response class that has totalBytesThatNeed2BSent + bytesSentSoFar
-    //for allSent() check per buffer.size() - 1 maybe
-    //did I init _bytesSent and _totalMsgBytes?
     std::string buffer = {0};
     _responding.prepareResponse();
     buffer = _responding.getFullResponse();
@@ -185,7 +182,7 @@ int Client::sending_stuff(){
     while (_responding.isComplete() != true){
         ssize_t len = send(_clFd, buffer.c_str() + _responding.getBytes(), buffer.size() - _responding.getBytes(), 0); //buffer + bytesSentSoFar, sizeof remaining bytes, 0
         if (len < 1){
-            std::cout << "Error coulld not send\n";
+            std::cout << "Error could not send\n";
             return (-1);
         }
         else{ // len > 0

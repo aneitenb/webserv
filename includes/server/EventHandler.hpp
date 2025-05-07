@@ -69,12 +69,17 @@ class EventHandler{
             _event.events = EPOLLIN;
             _event.data.fd  = *((getSocketFd()));
             _event.data.ptr = static_cast<void*>(this);
-        }
+        };
         struct epoll_event* getEvent(){
             return (&_event);
-        }
+        };
         void changeEvent(uint32_t curE){
             _event.events = curE;
-        }
+        };
+        // void setEvent(struct epoll_event* cur, int *fd, uint32_t curE){
+        //     cur->events = curE;
+        //     cur->data.fd  = *fd;
+        //     cur->data.ptr = static_cast<void*>(this);
+        // };
         //might make sense to freeadrinfo after deleting
 };

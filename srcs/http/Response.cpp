@@ -569,8 +569,8 @@ bool Response::isCgiRequest(const std::string& path) {
 		return false;
 	}
 
-	size_t dotPos = path.find_last_of('.');
-	if (dotPos == std::string::npos) {
+	size_t scriptPos = path.find(".py");
+	if (scriptPos == std::string::npos) {
 		return false;
 	}
 	return true;

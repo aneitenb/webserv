@@ -1,5 +1,6 @@
 #pragma once
-#include "Webserv.hpp"
+
+#include "server/WebServer.hpp"
 
 // HTTP Method enum as bit flags for easier method checking
 enum HttpMethod {
