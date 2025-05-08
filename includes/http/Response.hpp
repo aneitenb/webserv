@@ -42,7 +42,7 @@ private:
 	bool fileExists(const std::string& path) const;
 	bool directoryExists(const std::string& path) const;
 	std::string resolvePath(const std::string& uri);
-    bool isCgiRequest(const std::string& path);
+    bool isCgiRequest(const std::string& path) const;
 	std::string findMatchingLocation(const std::string& uri);
     void readFile(const std::string& path);
 	void generateDirectoryListing(const std::string& path);
@@ -50,6 +50,7 @@ private:
 	void handleGet();
 	void handlePost();
 	void handleDelete();
+	void handleCgi(const std::string& path);
 	
 public:
 	Response(Request* request, ServerBlock* serverBlock);
@@ -67,8 +68,6 @@ public:
 	std::string getFullResponse() const;
   
 	void addToBytesSent(ssize_t adding);  //check
-	// bool allSent();             //check
-	// const std::string& getRawData() const;  //check
 	ssize_t getBytes() const;     //check
 	
 	void setHeader(const std::string& key, const std::string& value);
