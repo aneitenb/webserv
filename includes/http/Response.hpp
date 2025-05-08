@@ -35,15 +35,13 @@ private:
 	std::string getMimeType(const std::string& path) const;
 	std::string getErrorPage(int statusCode) const;
 	std::string getCurrentDate() const;
-
-	bool isMethodAllowed() const;
-	void setMethodNotAllowedResponse();
 	
-	// File and directory utility methods
 	bool hasReadPermission(const std::string& path) const;
 	bool hasWritePermission(const std::string& path) const;
 	bool fileExists(const std::string& path) const;
 	bool directoryExists(const std::string& path) const;
+	bool isMethodAllowed() const;
+	void setMethodNotAllowedResponse();
 	std::string resolvePath(const std::string& uri);
 	std::string findMatchingLocation(const std::string& uri);
 	
@@ -73,9 +71,9 @@ private:
 public:
 	Response(Request* request, ServerBlock* serverBlock);
 	~Response();
-  	Response(); //add to cpp
-  	Response(Response &&other) noexcept; //add
-	Response &operator=(Response &&other) noexcept; //add
+  	Response();
+  	Response(Response &&other) noexcept;
+	Response &operator=(Response &&other) noexcept;
 	void clear();
 	void setRequest(Request& request);
 
