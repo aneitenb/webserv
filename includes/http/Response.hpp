@@ -30,26 +30,45 @@ private:
 	std::map<std::string, std::string> _mimeTypes;
 	
 	void initializeMimeTypes();
-
 	std::string getStatusLine() const;
 	std::string getHeadersString() const;
 	std::string getMimeType(const std::string& path) const;
 	std::string getErrorPage(int statusCode) const;
 	std::string getCurrentDate() const;
+
 	bool isMethodAllowed() const;
+	void setMethodNotAllowedResponse();
+	
+	// File and directory utility methods
 	bool hasReadPermission(const std::string& path) const;
 	bool hasWritePermission(const std::string& path) const;
 	bool fileExists(const std::string& path) const;
 	bool directoryExists(const std::string& path) const;
 	std::string resolvePath(const std::string& uri);
-    bool isCgiRequest(const std::string& path);
 	std::string findMatchingLocation(const std::string& uri);
-    void readFile(const std::string& path);
-	void generateDirectoryListing(const std::string& path);
-
+	
 	void handleGet();
+	bool resourceExists(const std::string& path);
+	void getResource(const std::string& path);
+	void getDirectory(const std::string& dirPath);
+	void getFile(const std::string& filePath);
+	std::string findIndexFile(const std::string& dirPath);
+	bool isDirectoryListingEnabled();
+	void generateDirectoryListing(const std::string& path);
+	void readFile(const std::string& path);
+	
 	void handlePost();
+	std::string resolveUploadPath();
+	bool checkDir(const std::string& path);
+	void postResource(const std::string& path);
+	void handlePostRedirect();
+	
 	void handleDelete();
+	std::string resolveDeletePath();
+	bool checkDeletePermissions(const std::string& path);
+	void deleteResource(const std::string& path);
+
+	bool isCgiRequest(const std::string& path);
 	
 public:
 	Response(Request* request, ServerBlock* serverBlock);
@@ -66,10 +85,8 @@ public:
 	const std::string& getBody() const;
 	std::string getFullResponse() const;
   
-	void addToBytesSent(ssize_t adding);  //check
-	// bool allSent();             //check
-	// const std::string& getRawData() const;  //check
-	ssize_t getBytes() const;     //check
+	void addToBytesSent(ssize_t adding);
+	ssize_t getBytes() const;
 	
 	void setHeader(const std::string& key, const std::string& value);
 	void setBody(const std::string& body);
