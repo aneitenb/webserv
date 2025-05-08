@@ -14,7 +14,7 @@
 #include "http/Request.hpp"
 #include "http/Response.hpp"
 
-CgiHandler::CgiHandler(Request& req, int* fd) : _request(req), _fd(fd){
+CgiHandler::CgiHandler(Request& req, Response& res, int* fd) : _request(req), _response(res), _fd(fd){
     
     fromCGI._fd[0] = -1;
     fromCGI._fd[1] = -1;
@@ -47,6 +47,27 @@ int* CgiHandler::getOutFd(){
 }
 
 std::vector<EventHandler*> CgiHandler::resolveAccept(void){}
+int* CgiHandler::getCgiFd(int flag){ 
+    if (flag == 0){
+        return (getInFd());}
+    return (getOutFd());
+}
+
+bool CgiHandler::conditionMet(){
+    if (_request.getMethod() == "POST" && (_request.getBody()).size())
+        return true;
+    return false;
+}
+
+int* getCgiFd(int flag) {
+    if (flag == 0){
+        
+    }
+}
+
+EventHandler* CgiHandler::getCgi() {return {};} //not implemented
+
+bool CgiHandler::conditionMet() {return {};}
 
 void CgiHandler::resolveClose(){}
 
@@ -149,6 +170,7 @@ int CgiHandler::forking(){
         //close everything else, cleanup epoll
 
         //change directory to cgi root
+
         //check if file can be opened i guess
         argv[0] = CGI_EX;
         // argv[1] = (char*)_path.c_str(); needs fixing

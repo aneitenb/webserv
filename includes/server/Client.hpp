@@ -46,6 +46,7 @@ class Client : public EventHandler {
         RequestState        _curR;
         Request             _requesting;
         Response            _responding;
+        EventHandler*       _theCgi;
         //size_t? _lastActive;
 
         int sending_stuff();
@@ -70,12 +71,15 @@ class Client : public EventHandler {
         ServerBlock* getServerBlock() const;
         Request& getRequest();
         int copySocketFd(int* fd);
+        void setCgi();
 
 
         int handleEvent(uint32_t ev) override;
         int* getSocketFd(void) override;
         std::vector<EventHandler*> resolveAccept(void) override;
         void resolveClose() override;
+        EventHandler* getCgi() override;
+        bool conditionMet() override;
         
         //timeout??
 };

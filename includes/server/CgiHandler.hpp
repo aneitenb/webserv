@@ -27,6 +27,7 @@ class CgiHandler : public EventHandler{
         // const std::string& _path; //should be the full path? assuming already checked
         // Client& _client;
         Request& _request;
+        Response& _response;
         int*    _fd;
         pid_t   _pid;
         std::vector<char*> _envp;
@@ -41,13 +42,16 @@ class CgiHandler : public EventHandler{
 
         std::string getQueryPath(int side);
     public:
-        CgiHandler(Request& req, int* fd);
+        CgiHandler(Request& req, Response& res, int* fd);
         ~CgiHandler();
 
         int handleEvent(uint32_t ev) override;
         int* getSocketFd(void) override;
         std::vector<EventHandler*> resolveAccept(void) override;
         void resolveClose() override;
+        EventHandler* getCgi() override;
+        // int* getCgiFd(int flag) override;
+        bool conditionMet() override;
 
         int setupPipes();
         void setupEnv();

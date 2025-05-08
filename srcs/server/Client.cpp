@@ -13,15 +13,16 @@
 #include <sys/socket.h>
 #include <string.h>
 #include <fcntl.h>
+#include "CgiHandler.hpp"
 
-Client::Client(): _listfd(nullptr), _clFd(-1), _count(0), _curR(EMPTY){
+Client::Client(): _listfd(nullptr), _clFd(-1), _count(0), _curR(EMPTY), _theCgi(nullptr){
     ftMemset(&_result, sizeof(_result));
     setState(TOADD);
     // ftMemset(&_event, sizeof(_event)); //do I leave this like this?
 }
 
 Client::Client(ServerBlock* cur): _relevant(cur), _listfd(nullptr), \
-    _clFd(-1), _count(0), _curR(EMPTY){
+    _clFd(-1), _count(0), _curR(EMPTY), _theCgi(nullptr){
     ftMemset(&_result, sizeof(_result));
     setState(TOADD);
     // ftMemset(&_event, sizeof(_event)); //do I leave this like this?
@@ -70,6 +71,8 @@ Client::Client(Client&& other) noexcept{
     _curR = other._curR;
     this->setState(other.getState());
     _requesting = other._requesting;
+    _theCgi = other._theCgi;
+    other._theCgi = nullptr;
 }
 
 //this should never be used though
@@ -85,6 +88,8 @@ Client& Client::operator=(Client&& other) noexcept {
         other._result = nullptr;
         _curR = other._curR;
         this->setState(other.getState());
+        _theCgi = other._theCgi;
+        other._theCgi = nullptr;
     }
     return (*this);
 }
@@ -93,8 +98,8 @@ Client& Client::operator=(Client&& other) noexcept {
 bool Client::operator==(const Client& other){
     if (_relevant == other._relevant &&_listfd == other._listfd \
         && _clFd == other._clFd && _count == other._count \
-        && _result == other._result \
-        && this->getState() == other.getState() && _curR == other._curR)
+        && _result == other._result && this->getState() == other.getState() \
+        && _curR == other._curR && _theCgi == other._theCgi)
         return (true);
     return (false);
 }
@@ -123,6 +128,9 @@ void Client::saveResponse(){
     _responding = std::move(curR);
     //if not cgi do:
         _responding.prepareResponse();
+    /*else
+        setCgi();
+        */
 }
 
 int Client::handleEvent(uint32_t ev){
@@ -142,8 +150,8 @@ int Client::handleEvent(uint32_t ev){
             saveResponse(); //since the response will be formed on a complete request, maybe the constructor can call process request right away?
             _buffer.clear(); //or see how it's handled?
             //if cgi
-            //setstate(tocgi)
-            //count = -1
+            //setState(tocgi)
+            //count = -1000
             this->setState(TOWRITE); //EPOLLOUT
             _count = 0;
         }
@@ -226,6 +234,21 @@ int Client::receiving_stuff(){
     }
     return (0);
 }
+
+
+void Client::setCgi(){
+    _theCgi = new CgiHandler(_requesting, _responding, &_clFd);
+    static_cast<CgiHandler*>(_theCgi)->run();
+}
+
+EventHandler* Client::getCgi(){return (_theCgi);}
+
+bool Client::conditionMet(){
+    if (static_cast<CgiHandler*>(_theCgi)->forking() == 1)
+        return false;
+    return true;
+}
+
 
 // int Client::settingUp(int* fd){
 //     socklen_t addr_size = sizeof(struct sockaddr*);

@@ -48,6 +48,8 @@ class EventHandler{
         virtual int* getSocketFd(void) = 0; //add for the client too?
         virtual std::vector<EventHandler*> resolveAccept() = 0;
         virtual void resolveClose() = 0;
+        virtual EventHandler* getCgi() = 0;
+        virtual bool conditionMet() = 0;
         struct epoll_event _event;
         // void setLoop(EventLoop& curLoop){
         //     _loop = &curLoop;

@@ -15,6 +15,7 @@
 #include "VirtualHost.hpp"
 #include "EventHandler.hpp"
 #include "EventLoop.hpp"
+#include "Client.hpp"
 
 class Listener : public EventHandler {
     private:

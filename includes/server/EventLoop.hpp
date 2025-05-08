@@ -62,7 +62,7 @@ public:
     void resolvingModify(EventHandler* cur, uint32_t event);
     void resolvingClosing(void);
     void condemnClients(EventHandler* cur);
-    void prepareCgiResponse(EventHandler* cur);
+    void handleCGI(EventHandler* cur);
 
 
     //getters, setters

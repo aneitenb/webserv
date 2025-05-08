@@ -13,7 +13,7 @@
 #include <iostream> //cerr
 #include <unistd.h> //close
 #include <csignal>
-#include "CgiHandler.hpp"
+// #include "CgiHandler.hpp"
 
 extern sig_atomic_t gSignal;
 
@@ -67,7 +67,7 @@ int EventLoop::run(std::vector<EventHandler*> listFds){
                     addCGI(curE);
                     break;
                 case CGI:
-                    prepareCgiResponse(curE);
+                    handleCGI(curE);
                     break;
                 default:
                     break;
@@ -82,10 +82,21 @@ int EventLoop::run(std::vector<EventHandler*> listFds){
     return (0);   
 }
 
-void EventLoop::addCGI(EventHandler* cur){
-    EventHandler* theCGI = new CgiHandler(cur->getRequest(), cur->getSocketFd()); //might need a response too?
-    //add to the epoll if 
-}
+//add the CGI fds to the epoll
+// void EventLoop::addCGI(EventHandler* cur){
+//     EventHandler* theCGI = cur->getCgi();
+//     EventHandler::ICgi* theRealCgi = dynamic_cast<EventHandler::ICgi*>(theCGI);
+//     theCGI->setState(CGI);
+//     if (dynamic_cast<EventHandler::ICgi*>(theCGI)->conditionMet() == true){
+//         // addToEpoll(theCGI->getCgiFd(0), theCGI);
+//     }
+//     // addToEpoll(theCGI->getCgiFd(1), theCGI); //might not need this if sending response through client
+//     cur->conditionMet(); //to jumpstart the cgi, fork here
+// }
+
+// void EventLoop::handleCGI(EventHandler* cur){
+//     //epoll cgi in has returned something, needs to be received and then removed
+// }
 
 //create an epoll instance
 int EventLoop::startRun(void){
@@ -174,7 +185,7 @@ void EventLoop::resolvingClosing(){
     for (auto& pair : _activeFds){
         if (*pair.first != -1){
             //update vectors
-            std::size_t i = 0;
+            // std::size_t i = 0;
             EventHandler* curL = getListener(pair.first);
             pair.second = curL->resolveAccept();
             if (pair.second.empty() == true)
