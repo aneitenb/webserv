@@ -7,17 +7,19 @@
 	<h1>POST Test Page</h1>
 	
 	<h2>Simple Form</h2>
-	<form action="/upload" method="POST">
-		<input type="text" name="data" placeholder="Enter text">
+	<form action="/uploads/note.txt" method="POST">
+		<input type="text" name="data" placeholder="Enter text" required>
 		<button type="submit">Submit Form</button>
 	</form>
-	
+
 	<h2>File Upload</h2>
-	<form action="/upload" method="POST" enctype="multipart/form-data">
-		<input type="file" name="file">
-		<button type="submit">Upload File</button>
-	</form>
-	
-	<p><a href="/">Back to Home</a></p>
+    <form action="/uploads/custom_file.txt" method="POST" onsubmit="this.action = '/uploads/' + document.getElementById('filename').value + '.txt'">
+        <input type="text" id="filename" placeholder="Enter filename (without extension)" required>
+        <input type="text" name="content" placeholder="Enter content" required>
+        <button type="submit">Save File</button>
+        <p class="note">This will create a file with your chosen name in the uploads folder.</p>
+    </form>
+	<p><a href="/uploads/">View all uploads</a></p>
+	<p><a href="/">Back to Home Page</a></p>
 </body>
 </html>

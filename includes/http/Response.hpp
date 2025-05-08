@@ -21,7 +21,7 @@ private:
 	std::map<std::string, std::string>	_headers;
 	std::string							_body;
 	std::string							_fullResponse;
-  size_t								_bytesSent;
+	size_t								_bytesSent;
 	
 	Request* 		_request;
 	ServerBlock*	_serverBlock;

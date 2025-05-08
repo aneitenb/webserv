@@ -158,21 +158,38 @@ void Response::handleResponse() {
 		return;
 	}
 	
+	bool delayedRedirect = false;
+	std::pair<int, std::string> redirect;
+	
 	if (_locationBlock && _locationBlock->hasRedirect()) {
-		const auto& redirect = _locationBlock->getRedirect();
-		_statusCode = redirect.first;
-		setHeader("Location", redirect.second);
-		setBody("");
-		setHeader("Content-Type", "text/html");
-		return;
+		redirect = _locationBlock->getRedirect();
+
+		if (_request->getMethod() == "POST") {
+			delayedRedirect = true;
+		} else {
+			// for non-POST requests, handle redirect immediately
+			_statusCode = redirect.first;
+			setHeader("Location", redirect.second);
+			setBody("");
+			setHeader("Content-Type", "text/html");
+			return;
+		}
 	}
 	
 	const std::string& method = _request->getMethod();
 	if (method == "GET") {
+		std::cout << "GOING TOOOOOOOO handleGet..." << std::endl;
 		handleGet();
 	} else if (method == "POST") {
+		std::cout << "GOING TOOOOOOOO handlePost..." << std::endl;
 		handlePost();
+		if (delayedRedirect && (_statusCode == 200 || _statusCode == 201)) {
+			_statusCode = redirect.first;
+			setHeader("Location", redirect.second);
+			setBody("");
+		}
 	} else if (method == "DELETE") {
+		std::cout << "GOING TOOOOOOOO handleDelete..." << std::endl;
 		handleDelete();
 	} else {
 		_statusCode = 501;
@@ -246,6 +263,12 @@ void Response::handleGet(){
 void Response::handlePost(){
 	std::string path;
 
+	std::cout << "==== POST REQUEST DEBUG ====" << std::endl;
+	std::cout << "Request URI: " << _request->getURI() << std::endl;
+	std::cout << "Request body size: " << _request->getBody().size() << std::endl;
+	std::cout << "Request body content: '" << _request->getBody() << "'" << std::endl;
+	std::cout << "Request content-type: " << _request->getHeader("Content-Type") << std::endl;
+
 	//check for upload_store directive
 	if (_locationBlock && _locationBlock->hasUploadStore()) {
 		std::string filename = _request->getURI();
@@ -254,25 +277,43 @@ void Response::handlePost(){
 			filename = filename.substr(lastSlash + 1);
 		}
 		
-		// making sure upload dir ends with a slash
 		std::string uploadDir = _locationBlock->getUploadStore();
+		std::cout << "Original upload_store: " << uploadDir << std::endl;
+
+		//if upload_store is a relative path, add server root
+		if (!uploadDir.empty() && uploadDir[0] != '/') {
+			uploadDir = _serverBlock->getRoot() + "/" + uploadDir;
+		}
+		// making sure upload dir ends with a slash
 		if (!uploadDir.empty() && uploadDir[uploadDir.length()-1] != '/') {
 			uploadDir += '/';
 		}
 		
 		path = uploadDir + filename;
+		std::cout << "Full file path: " << path << std::endl;
 	} 
 	else {
 		path = resolvePath(_request->getURI());
+		std::cout << "Resolved path (no upload_store): " << path << std::endl;
 	}
 
 	std::string dirPath = path.substr(0, path.find_last_of('/'));
+
+	std::cout << "Directory path: " << dirPath << std::endl;
+	std::cout << "Directory exists: " << (directoryExists(dirPath) ? "yes" : "no") << std::endl;
+	
 	if (!directoryExists(dirPath)) {
-		_statusCode = 404;
-		setBody(getErrorPage(404));
-		setHeader("Content-Type", "text/html");
-		return;
+		if (mkdir(dirPath.c_str(), 0755) != 0) {	//ADDED
+			_statusCode = 404;
+			setBody(getErrorPage(404));
+			setHeader("Content-Type", "text/html");
+			return;
+		}
 	}
+
+	 // ADDED: Debug output
+	 std::cout << "Write permission: " << (hasWritePermission(path) ? "yes" : "no") << std::endl;
+	
 	
 	if (!hasWritePermission(path)) {
 		_statusCode = 403;
@@ -299,6 +340,8 @@ void Response::handlePost(){
 	
 	file.write(_request->getBody().c_str(), _request->getBody().size());
 	file.close();
+
+	std::cout << "File exists after writing: " << (fileExists(path) ? "yes" : "no") << std::endl;
 	
 	if (fileExisted)
 		_statusCode = 200;
@@ -307,26 +350,37 @@ void Response::handlePost(){
 		setHeader("Location", _request->getURI());
 		_statusCode = 201;
 	}
+
+	// only redirect after successful file processing
+	if ((_statusCode == 200 || _statusCode == 201) && 
+		_locationBlock && _locationBlock->hasRedirect()) 
+	{
+		std::string redirectUrl = _locationBlock->getRedirect().second;
+		int redirectStatus = _locationBlock->getRedirect().first;
+	
+		setHeader("Location", redirectUrl);
+		_statusCode = redirectStatus;
+	}
 	setBody("");
 }
 
 void Response::handleDelete(){
 	std::string path;
-    std::string root;
-    
-    if (_locationBlock && _locationBlock->hasRoot()) {
-        root = _locationBlock->getRoot();
-    } else {
-        root = _serverBlock->getRoot();
-    }
-    
-    // add slash between root and URI
-    if (!root.empty() && root[root.length()-1] != '/' && 
-        !_request->getURI().empty() && _request->getURI()[0] != '/') {
-        path = root + "/" + _request->getURI();
-    } else {
-        path = root + _request->getURI();
-    }
+	std::string root;
+	
+	if (_locationBlock && _locationBlock->hasRoot()) {
+		root = _locationBlock->getRoot();
+	} else {
+		root = _serverBlock->getRoot();
+	}
+	
+	// add slash between root and URI
+	if (!root.empty() && root[root.length()-1] != '/' && 
+		!_request->getURI().empty() && _request->getURI()[0] != '/') {
+		path = root + "/" + _request->getURI();
+	} else {
+		path = root + _request->getURI();
+	}
 
 	if (!fileExists(path)) {
 		_statusCode = 404;

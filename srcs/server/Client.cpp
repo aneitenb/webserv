@@ -175,6 +175,7 @@ int Client::sending_stuff(){
     //for allSent() check per buffer.size() - 1 maybe
     //did I init _bytesSent and _totalMsgBytes?
     std::string buffer = {0};
+    std::cout << "METHOD SENT TO RESPONSE: '" << _requesting.getMethod() << "'" << std::endl;
     _responding.prepareResponse();
     buffer = _responding.getFullResponse();
     if (buffer.size() == 0)
