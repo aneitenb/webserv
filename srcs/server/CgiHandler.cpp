@@ -47,11 +47,12 @@ int* CgiHandler::getOutFd(){
 }
 
 std::vector<EventHandler*> CgiHandler::resolveAccept(void){}
-int* CgiHandler::getCgiFd(int flag){ 
-    if (flag == 0){
-        return (getInFd());}
-    return (getOutFd());
-}
+
+// toAndFro* CgiHandler::getCgiFd(int flag){ 
+//     if (flag == 0){
+//         return (getInFd());}
+//     return (getOutFd());
+// }
 
 bool CgiHandler::conditionMet(){
     if (_request.getMethod() == "POST" && (_request.getBody()).size())
