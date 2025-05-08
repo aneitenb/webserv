@@ -12,6 +12,7 @@
 #include "http/Request.hpp"
 #include "http/Response.hpp"
 #include "EventHandler.hpp"
+// #include "Client.hpp"
 
 #define CGI_ROOT "/cgi"
 #define CGI_EX "/usr/bin/python3"
@@ -23,8 +24,9 @@ struct toAndFro {
 
 class CgiHandler : public EventHandler{
     private:
-        const std::string& _path; //should be the full path? assuming already checked
-        const Request& _request;
+        // const std::string& _path; //should be the full path? assuming already checked
+        // Client& _client;
+        Request& _request;
         int*    _fd;
         pid_t   _pid;
         std::vector<char*> _envp;
@@ -39,7 +41,7 @@ class CgiHandler : public EventHandler{
 
         std::string getQueryPath(int side);
     public:
-        CgiHandler(const std::string path, Request& request, int* fd);
+        CgiHandler(Request& req, int* fd);
         ~CgiHandler();
 
         int handleEvent(uint32_t ev) override;

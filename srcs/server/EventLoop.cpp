@@ -13,6 +13,7 @@
 #include <iostream> //cerr
 #include <unistd.h> //close
 #include <csignal>
+#include "CgiHandler.hpp"
 
 extern sig_atomic_t gSignal;
 
@@ -62,6 +63,12 @@ int EventLoop::run(std::vector<EventHandler*> listFds){
                 case TOREAD:
                     resolvingModify(curE, EPOLLIN); //handled event was sending, now it needs to be receiving 
                     break;
+                case TOCGI:
+                    addCGI(curE);
+                    break;
+                case CGI:
+                    prepareCgiResponse(curE);
+                    break;
                 default:
                     break;
             }
@@ -73,6 +80,11 @@ int EventLoop::run(std::vector<EventHandler*> listFds){
         std::cout << "After closing\n";
     }
     return (0);   
+}
+
+void EventLoop::addCGI(EventHandler* cur){
+    EventHandler* theCGI = new CgiHandler(cur->getRequest(), cur->getSocketFd()); //might need a response too?
+    //add to the epoll if 
 }
 
 //create an epoll instance
@@ -167,17 +179,19 @@ void EventLoop::resolvingClosing(){
             pair.second = curL->resolveAccept();
             if (pair.second.empty() == true)
                 return ;
-            for (auto it = pair.second.begin(); it != pair.second.end(); it++){
+            for (size_t i = 0; i < pair.second.size(); i++){
                 if (pair.second.at(i)->getState() == CLOSE){
                     //cleanup Request, Response, buffer
                     delEpoll(pair.second.at(i)->getSocketFd());
                     pair.second.at(i)->setState(TOCLOSE);
                 }
-                i++;
             }
             curL->resolveClose();
             pair.second = curL->resolveAccept();
-            std::cout << "updated clients: " << static_cast<bool>(pair.second.empty()) << "\n";
+            std::cout << std::boolalpha;
+            std::cout << "Clients empty: " << pair.second.empty() << "\n";
+            std::cout << std::noboolalpha;
+            std::cout << "Client vector size: " << pair.second.empty() << "\n";
         }
     }
 }
@@ -221,6 +235,7 @@ int EventLoop::delEpoll(int* fd){
         std::cerr << strerror(errno) << "\n";
         return (-1);
     }
+    std::cout << *fd << "got deleted from monitoring!\n";
     return (0);
 }
 

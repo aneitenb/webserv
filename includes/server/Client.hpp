@@ -68,6 +68,7 @@ class Client : public EventHandler {
         // void setState(State newState);
         // int* getClFd(void);
         ServerBlock* getServerBlock() const;
+        Request& getRequest();
         int copySocketFd(int* fd);
 
 

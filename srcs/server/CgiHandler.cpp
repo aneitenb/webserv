@@ -11,9 +11,10 @@
 #include "server/CgiHandler.hpp"
 #include <fcntl.h>
 #include <unistd.h> //for exit
+#include "http/Request.hpp"
+#include "http/Response.hpp"
 
-CgiHandler::CgiHandler(const std::string path, Request& request, int* fd) : 
-_path(path), _request(request), _fd(fd){
+CgiHandler::CgiHandler(Request& req, int* fd) : _request(req), _fd(fd){
     
     fromCGI._fd[0] = -1;
     fromCGI._fd[1] = -1;
@@ -53,6 +54,7 @@ void CgiHandler::run(){
     if (setupPipes() == -1)
         return ;//error
     setupEnv();
+    //register to epoll outside then
 }
 
 int CgiHandler::setupPipes(){
@@ -90,6 +92,7 @@ int CgiHandler::setupPipes(){
 //query: after the ? (without it) or ""
 //filename = root + / + uri before ? until /
 std::string CgiHandler::getQueryPath(int side){
+    // Request& cur = _client.getRequest();
     std::string URI = _request.getURI();
     size_t brPos = URI.find('?');
     if (brPos != std::string::npos){
@@ -108,14 +111,14 @@ std::string CgiHandler::getQueryPath(int side){
 //envp.data()
 void CgiHandler::setupEnv(){
     std::vector <std::string> envS;
-
+    // Request& _request = _client.getRequest();
 
     envS.push_back("SERVER_PROTOCOL=HTTP/1.1");
     envS.push_back("GATEWAY_INTERFACE=CGI/1.1");
     envS.push_back("REQUEST_METHOD=" + _request.getMethod());
     // envS.push_back("QUERY_STRING=" + _request.get()); //ask Ilmari to add + the next one
     // envS.push_back("SCRIPT_FILENAME=" + _path); //not path but the name of the string from the request?
-    envS.push_back("PATH_INFO=" + _path); //see if needs fixing
+    // envS.push_back("PATH_INFO=" + _path); //see if needs fixing, need path anyway
     if (_request.getMethod() == "POST"){
         envS.push_back("CONTENT_LENGTH=" + std::to_string(_request.getContentLength()));
         envS.push_back("CONTENT_TYPE=" + _request.getContentType());
@@ -148,7 +151,7 @@ int CgiHandler::forking(){
         //change directory to cgi root
         //check if file can be opened i guess
         argv[0] = CGI_EX;
-        argv[1] = (char*)_path.c_str();
+        // argv[1] = (char*)_path.c_str(); needs fixing
         argv[2] = 0;
 
         //execve

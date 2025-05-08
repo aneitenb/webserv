@@ -28,6 +28,7 @@ Client::Client(ServerBlock* cur): _relevant(cur), _listfd(nullptr), \
 }
 
 Client::~Client(){
+    std::cout << "Client destructor called:" << _clFd << std::endl;
     if (_clFd != -1){
         close (_clFd);
         _clFd = -1;
@@ -53,6 +54,8 @@ int Client::copySocketFd(int* fd){
 int* Client::getSocketFd(void) {
     return(&_clFd);
 }
+
+Request& Client::getRequest(){ return (_requesting);}
 
 Client::Client(Client&& other) noexcept{
     _relevant = other._relevant;
@@ -118,6 +121,8 @@ int Client::saveRequest(){
 void Client::saveResponse(){
     Response curR(&_requesting, getServerBlock());
     _responding = std::move(curR);
+    //if not cgi do:
+        _responding.prepareResponse();
 }
 
 int Client::handleEvent(uint32_t ev){
@@ -128,7 +133,7 @@ int Client::handleEvent(uint32_t ev){
         std::cout << "Receiving\n";
         if (receiving_stuff() == -1){
             _count++;
-            if (_count == 10)
+            if (_count == 100)
                 this->setState(CLOSE);
             std::cout << "Count: " << _count << std::endl;
         }
@@ -136,14 +141,17 @@ int Client::handleEvent(uint32_t ev){
         if (saveRequest() == 0){
             saveResponse(); //since the response will be formed on a complete request, maybe the constructor can call process request right away?
             _buffer.clear(); //or see how it's handled?
+            //if cgi
+            //setstate(tocgi)
+            //count = -1
             this->setState(TOWRITE); //EPOLLOUT
             _count = 0;
         }
     }
     if (ev & EPOLLOUT){
-        if (sending_stuff() == -1){
+        if (_count != -1 && sending_stuff() == -1){
             _count++;
-            if (_count == 5)
+            if (_count == 100)
                 this->setState(CLOSE);
         }
         if (_responding.isComplete() == true){
@@ -172,7 +180,6 @@ void Client::resolveClose(){}
 
 int Client::sending_stuff(){
     std::string buffer = {0};
-    _responding.prepareResponse();
     buffer = _responding.getFullResponse();
     if (buffer.size() == 0)
         return (-1);

@@ -23,7 +23,9 @@ enum State {
     LISTENER, //socket is a listening socket
     TOADD, //fd needs to be added
     CLOSED, //fd has been closed
-    TOCLOSE //deleted from epoll, not yet from vector
+    TOCLOSE, //deleted from epoll, not yet from vector
+    TOCGI, //is waiting for a CGI to respond
+    CGI //is cgi
 }; 
 
 /*if epollin && towrite
