@@ -29,6 +29,7 @@ private:
 	std::string _index;
 	std::map<std::string, LocationBlock> _locationBlocks;
 	bool _hasCustomErrorPages;
+	bool _maxBodySizeSet;
 	std::string _defaultErrorDir;
 	uint8_t _allowedMethods;
 

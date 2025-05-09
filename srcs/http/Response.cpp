@@ -470,6 +470,9 @@ void Response::handlePost() {
 		setMethodNotAllowedResponse();
 		return;
 	}
+	std::cout << "HEY ! LOOK OVER HERE !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << std::endl;
+	std::cout << "request content length: " << _request->getContentLength() << std::endl;
+	std::cout << "client max body size: " << _serverBlock->getClientMaxBodySize() << std::endl;
 	if (_request->getContentLength() > _serverBlock->getClientMaxBodySize()) {
 		_statusCode = 413;
 		setBody(getErrorPage(413));

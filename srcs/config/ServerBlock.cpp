@@ -12,8 +12,9 @@
 ServerBlock::ServerBlock() :
 	_listen(),
 	_host(""),
-	_clientMaxBodySize(0),
+	_clientMaxBodySize(1024 * 1024),	//1 megabyte as default value
 	_hasCustomErrorPages(false),
+	_maxBodySizeSet(false),
 	_defaultErrorDir("/default_errors"),
 	_allowedMethods(0)
 {
@@ -73,12 +74,13 @@ void ServerBlock::clear() {
 	_host = "";
 	_serverName = "";
 	_root = "";
-	_clientMaxBodySize = 0;
+	_clientMaxBodySize = 1024 * 1024;
 	_errorPages.clear();
 	_locationBlocks.clear();
 	_index = "";
 	_hasCustomErrorPages = false;
 	_defaultErrorDir = "/default_errors";
+	_allowedMethods = 0;
 
 	_defaultErrorPages.clear();
 	_defaultErrorPages.emplace_back(400, _defaultErrorDir + "/400.html");
@@ -273,7 +275,7 @@ void ServerBlock::setRoot(const std::string& root) {
 }
 
 bool ServerBlock::hasClientMaxBodySize() const {
-	return _clientMaxBodySize > 0;
+	return _maxBodySizeSet;
 }
 
 size_t ServerBlock::getClientMaxBodySize() const {
@@ -282,6 +284,7 @@ size_t ServerBlock::getClientMaxBodySize() const {
 
 void ServerBlock::setClientMaxBodySize(size_t size) {
 	this->_clientMaxBodySize = size;
+	this->_maxBodySizeSet = true;
 }
 
 bool ServerBlock::hasIndex() const {
