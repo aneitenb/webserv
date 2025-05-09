@@ -55,7 +55,7 @@ class Listener : public EventHandler {
         void resolveClose() override;
         EventHandler* getCgi() override;
         bool conditionMet() override;
-        struct epoll_event* getCgiEvent() override;
+        struct epoll_event& getCgiEvent(int flag) override;
 
         void addClient(Client& cur);
         const std::vector<Client>& getClients(void) const;

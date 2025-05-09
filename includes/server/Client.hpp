@@ -81,7 +81,7 @@ class Client : public EventHandler {
         void resolveClose() override;
         EventHandler* getCgi() override;
         bool conditionMet() override;
-        struct epoll_event* getCgiEvent() override;
+        struct epoll_event& getCgiEvent(int flag) override;
         
         //timeout??
 };

@@ -51,7 +51,7 @@ class EventHandler{
         virtual void resolveClose() = 0;
         virtual EventHandler* getCgi() = 0;
         virtual bool conditionMet() = 0;
-        virtual struct epoll_event* getCgiEvent() = 0;
+        virtual struct epoll_event& getCgiEvent(int flag) = 0;
     
         // void setLoop(EventLoop& curLoop){
         //     _loop = &curLoop;

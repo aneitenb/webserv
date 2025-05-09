@@ -16,9 +16,9 @@
 
 /*Constructors and Destructor and Operators*/
 
-CgiHandler::CgiHandler() : _request(nullptr), _response(nullptr), _fd(nullptr), _pid(-1){}  
+CgiHandler::CgiHandler() : _request(nullptr), _response(nullptr), _fd(nullptr), _pid(-1), _isDone(false){}  
 
-CgiHandler::CgiHandler(Request* req, Response* res, int* fd) : _request(req), _response(res), _fd(fd){
+CgiHandler::CgiHandler(Request* req, Response* res, int* fd) : _request(req), _response(res), _fd(fd), _isDone(false){
     fromCGI._fd[0] = -1;
     fromCGI._fd[1] = -1;
     fromCGI._event = {.events = 0, .data = { .u64 = 0 }};
@@ -36,6 +36,7 @@ CgiHandler::CgiHandler(CgiHandler&& other) : _request(other._request), \
         _envp = other._envp;
         fromCGI = other.fromCGI;
         toCGI = other.toCGI;
+        _isDone = other._isDone;
 }
 
 CgiHandler& CgiHandler::operator=(CgiHandler&& other){
@@ -50,6 +51,7 @@ CgiHandler& CgiHandler::operator=(CgiHandler&& other){
         _envp = other._envp;
         fromCGI = other.fromCGI;
         toCGI = other.toCGI;        
+        _isDone = other._isDone;
     }
     return (*this);
 }
@@ -74,7 +76,8 @@ bool CgiHandler::compareStructs(const CgiHandler& other){
 bool CgiHandler::operator==(const CgiHandler& other){
     if (_request && other._request && _response && other._response \
             && _fd && other._fd && *_request == *(other._request) && _response == other._response \
-            && _fd == other._fd && _pid == other._pid && _envp == other._envp){
+            && _fd == other._fd && _pid == other._pid && _envp == other._envp \
+            && _isDone == other._isDone){
         if (compareStructs(other) == true)
             return true;
             }
@@ -85,12 +88,16 @@ CgiHandler::~CgiHandler(){}
 
 /*Helpers & co.*/
 
-int* CgiHandler::getInFd(){
+int* CgiHandler::getInFd(){ //notused yet?
     return (&fromCGI._fd[0]);
 }
 
-int* CgiHandler::getOutFd(){
+int* CgiHandler::getOutFd(){ //notused yet?
     return (&toCGI._fd[1]);
+}
+
+bool CgiHandler::isItDone(){
+    return (_isDone);
 }
 
 void CgiHandler::run(){
@@ -179,18 +186,22 @@ int CgiHandler::forking(){
     if (_pid == 0){ //child
         char* argv[3] = {0};
 
+        //close everything else, cleanup epoll
+        closeFd(&fromCGI._fd[0]);
+        closeFd(&toCGI._fd[1]);
+
         if (dup2(toCGI._fd[0], STDIN_FILENO) == -1){
             //error, cleanup
             return 1;
         }
         if (dup2(fromCGI._fd[1], STDIN_FILENO) == -1){
             //error, cleanup
+            closeFd(&toCGI._fd[0]);
             return 1;
         }
-        closeFd(&fromCGI._fd[0]);
-        closeFd(&toCGI._fd[1]);
+        closeFd(&toCGI._fd[0]);
+        closeFd(&fromCGI._fd[1]);
 
-        //close everything else, cleanup epoll
 
         //change directory to cgi root
 
@@ -240,9 +251,13 @@ int* CgiHandler::getSocketFd(void){
 }
 
 struct epoll_event& CgiHandler::getEvent(int flag){
-    if (flag != 0)
+    if (flag == 0)
         return (fromCGI._event);
     return (toCGI._event);
+}
+
+bool CgiHandler::conditionMet() { 
+    this->forking();
 }
 
 std::vector<EventHandler*> CgiHandler::resolveAccept(void){ return {};}
@@ -251,6 +266,4 @@ void CgiHandler::resolveClose(){}
 
 EventHandler* CgiHandler::getCgi() { return {};}
 
-bool CgiHandler::conditionMet() { return false; }
-
-struct epoll_event* CgiHandler::getCgiEvent() { return &fromCGI._event;}
+struct epoll_event& CgiHandler::getCgiEvent(int flag) { return fromCGI._event;}

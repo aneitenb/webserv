@@ -33,6 +33,7 @@ class CgiHandler : public EventHandler{
         std::vector<char*> _envp;
         toAndFro fromCGI;
         toAndFro toCGI;
+        bool _isDone;
 
         std::string getQueryPath(int side);
         CgiHandler(const CgiHandler& other) = delete;
@@ -53,9 +54,10 @@ class CgiHandler : public EventHandler{
         void resolveClose() override;
         EventHandler* getCgi() override;
         bool conditionMet() override;
-        struct epoll_event* getCgiEvent() override;
+        struct epoll_event& getCgiEvent(int flag) override;
 
         bool compareStructs(const CgiHandler& other);
+        bool isItDone();
         int setupPipes();
         void setupEnv();
         int forking();

@@ -115,7 +115,11 @@ std::vector<EventHandler*> Client::resolveAccept(void) { return {}; }
 
 void Client::resolveClose(){}
 
-struct epoll_event* Client::getCgiEvent() { return {}; }
+struct epoll_event& Client::getCgiEvent(int flag) { 
+    (void)flag;
+    struct epoll_event wontBeUsed;
+    return (wontBeUsed); 
+}
 
 EventHandler* Client::getCgi(){
     _theCgi.run();
@@ -134,6 +138,10 @@ int Client::handleEvent(uint32_t ev){
         return (-1);
     }
     if (ev & EPOLLIN){
+        if (this->getState() == TOCGI){
+            if (_theCgi.isItDone() == true)
+                this->setState(TOWRITE);
+        }
         std::cout << "Receiving\n";
         if (receiving_stuff() == -1){
             _count++;
@@ -143,6 +151,10 @@ int Client::handleEvent(uint32_t ev){
         }
         //is it complete, check and set
         if (saveRequest() == 0){
+            if (_requesting.getURI().find(".py") != std::string::npos) {//check if CGI
+                this->setState(TOCGI);
+                _count = -1000; //see if this is ok
+            }
             saveResponse(); //since the response will be formed on a complete request, maybe the constructor can call process request right away?
             _buffer.clear(); //or see how it's handled?
             //if cgi
@@ -224,7 +236,7 @@ int Client::receiving_stuff(){
 }
 
 int Client::saveRequest(){
-    try{
+    try{ //do I need the try catch with the revamping?
         _requesting.append(_buffer);
         //the thing is what if it's a partial request so not everything has been received? it needs to be updated without being marked as wrong
         if (_requesting.isParsed() == true){
@@ -241,8 +253,7 @@ int Client::saveRequest(){
 void Client::saveResponse(){
     Response curR(&_requesting, getServerBlock());
     _responding = std::move(curR);
-    //if not cgi do:
-        _responding.prepareResponse();
+    _responding.prepareResponse();
 }
 
 //SIGNAL HANDLING???

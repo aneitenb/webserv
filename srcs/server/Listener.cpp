@@ -212,7 +212,11 @@ EventHandler* Listener::getCgi() { return {}; }
 
 bool Listener::conditionMet() { return false; }
 
-struct epoll_event* Listener::getCgiEvent() { return {};}
+struct epoll_event& Listener::getCgiEvent(int flag) { 
+    (void)flag;
+    struct epoll_event wontBeUsed;
+    return (wontBeUsed); 
+}
 
 //FOR LISTENERS
 // void EventLoop::addClient(Client* cur){

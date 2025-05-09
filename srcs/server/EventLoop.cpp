@@ -67,7 +67,7 @@ int EventLoop::run(std::vector<EventHandler*> listFds){
                     addCGI(curE);
                     break;
                 // case CGI:
-                //     handleCGI(curE);
+                //     handleCGI(curE); //when you send and receive
                 //     break;
                 default:
                     break;
@@ -84,19 +84,20 @@ int EventLoop::run(std::vector<EventHandler*> listFds){
 
 void EventLoop::addCGI(EventHandler* cur){
     EventHandler* theCGI = cur->getCgi();
-    struct epoll_event* curE;
+    struct epoll_event& curOut = theCGI->getCgiEvent(1);
 
     theCGI->setState(CGI);
-    if (cur->conditionMet() == true){
-        curE = theCGI->getCgiEvent();
-        if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, *theCGI->getSocketFd(), curE) == -1){ //not correct
+    if (cur->conditionMet() == true){ //pass the activefds so they can close in the child
+        struct epoll_event& curIn = theCGI->getCgiEvent(0);
+        if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, curIn.data.fd, &curIn) == -1){ //not correct
             //set response
             return ;
         }
     }
-        //add stdin to epoll
-    
-    //add to the epoll if d
+    if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, curOut.data.fd, &curOut) == -1){ //not correct
+        //set response
+        return ;
+    }
 }
 
 //create an epoll instance
