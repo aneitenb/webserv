@@ -21,10 +21,10 @@ CgiHandler::CgiHandler() : _request(nullptr), _response(nullptr), _fd(nullptr), 
 CgiHandler::CgiHandler(Request* req, Response* res, int* fd) : _request(req), _response(res), _fd(fd){
     fromCGI._fd[0] = -1;
     fromCGI._fd[1] = -1;
-    fromCGI._event = {0};
+    fromCGI._event = {.events = 0, .data = { .u64 = 0 }};
     toCGI._fd[0] = -1;
     toCGI._fd[1] = -1;
-    toCGI._event = {0};
+    toCGI._event = {.events = 0, .data = { .u64 = 0 }};
 }
 
 CgiHandler::CgiHandler(CgiHandler&& other) : _request(other._request), \
@@ -83,21 +83,7 @@ bool CgiHandler::operator==(const CgiHandler& other){
 
 CgiHandler::~CgiHandler(){}
 
-/*Overriden*/
-
-int CgiHandler::handleEvent(uint32_t ev){
-    //write
-}
-
-int* CgiHandler::getSocketFd(void){
-    return (_fd);//for writing to the original client
-}
-
-struct epoll_event& CgiHandler::getEvent(int flag){
-    if (flag != 0)
-        return (fromCGI._event);
-    return (toCGI._event);
-}
+/*Helpers & co.*/
 
 int* CgiHandler::getInFd(){
     return (&fromCGI._fd[0]);
@@ -107,11 +93,6 @@ int* CgiHandler::getOutFd(){
     return (&toCGI._fd[1]);
 }
 
-std::vector<EventHandler*> CgiHandler::resolveAccept(void){ return {};}
-
-void CgiHandler::resolveClose(){}
-
-/*The Main Scene*/
 void CgiHandler::run(){
     if (setupPipes() == -1)
         return ;//error
@@ -214,7 +195,8 @@ int CgiHandler::forking(){
         //change directory to cgi root
 
         //check if file can be opened i guess
-        argv[0] = CGI_EX;
+        std::string temparg = CGI_EX;
+        argv[0] = (char*)temparg.c_str();
         // argv[1] = (char*)_path.c_str(); needs fixing
         argv[2] = 0;
 
@@ -244,3 +226,31 @@ int CgiHandler::forking(){
     }
     return 0;
 }
+
+/*Overriden*/
+
+int CgiHandler::handleEvent(uint32_t ev){
+    //write
+    (void)ev;
+    return 0;
+}
+
+int* CgiHandler::getSocketFd(void){
+    return (_fd);//for writing to the original client
+}
+
+struct epoll_event& CgiHandler::getEvent(int flag){
+    if (flag != 0)
+        return (fromCGI._event);
+    return (toCGI._event);
+}
+
+std::vector<EventHandler*> CgiHandler::resolveAccept(void){ return {};}
+
+void CgiHandler::resolveClose(){}
+
+EventHandler* CgiHandler::getCgi() { return {};}
+
+bool CgiHandler::conditionMet() { return false; }
+
+struct epoll_event* CgiHandler::getCgiEvent() { return &fromCGI._event;}

@@ -9,12 +9,11 @@
 
 #include "server/Client.hpp"
 #include "CommonFunctions.hpp"
-#include "CgiHandler.hpp"
 #include <unistd.h>
 #include <sys/socket.h>
 #include <string.h>
 #include <fcntl.h>
-#include "CgiHandler.hpp"
+#include "server/CgiHandler.hpp"
 
 /*Orthodox Cannonical Form*/
 Client::Client(): _listfd(nullptr), _clFd(-1), _count(0), _curR(EMPTY), _theCgi(&_requesting, &_responding, &_clFd){
@@ -76,7 +75,7 @@ bool Client::operator==(const Client& other){
     if (_relevant == other._relevant &&_listfd == other._listfd \
         && _clFd == other._clFd && _count == other._count \
         && _result == other._result && this->getState() == other.getState() \
-        && _curR == other._curR && _theCgi == other._theCgi)
+        && _curR == other._curR && _theCgi == other._theCgi
         && _result == other._result && this->getState() == other.getState() \
         && _curR == other._curR && _theCgi == other._theCgi)
         return (true);
@@ -116,7 +115,7 @@ std::vector<EventHandler*> Client::resolveAccept(void) { return {}; }
 
 void Client::resolveClose(){}
 
-struct epoll_event* getCgiEvent() { return {}; }
+struct epoll_event* Client::getCgiEvent() { return {}; }
 
 EventHandler* Client::getCgi(){
     _theCgi.run();

@@ -19,7 +19,7 @@
 
 struct toAndFro {
     int _fd[2] = {0};
-    struct epoll_event _event = {0};
+    struct epoll_event _event = { .events = 0, .data = { .u64 = 0 } };
 };
 
 class CgiHandler : public EventHandler{

@@ -66,9 +66,9 @@ int EventLoop::run(std::vector<EventHandler*> listFds){
                 case TOCGI:
                     addCGI(curE);
                     break;
-                case CGI:
-                    handleCGI(curE);
-                    break;
+                // case CGI:
+                //     handleCGI(curE);
+                //     break;
                 default:
                     break;
             }
@@ -88,7 +88,11 @@ void EventLoop::addCGI(EventHandler* cur){
 
     theCGI->setState(CGI);
     if (cur->conditionMet() == true){
-        curE = theCGI->getEvent();
+        curE = theCGI->getCgiEvent();
+        if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, *theCGI->getSocketFd(), curE) == -1){ //not correct
+            //set response
+            return ;
+        }
     }
         //add stdin to epoll
     

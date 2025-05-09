@@ -10,13 +10,12 @@
 #pragma once
 
 #include <sys/epoll.h>
-#include "EventHandler.hpp"
-#include "EventLoop.hpp"
+#include "server/EventHandler.hpp"
+#include "server/EventLoop.hpp"
 #include "http/Request.hpp"
 #include "http/Response.hpp"
 #include "config/ServerBlock.hpp"
-#include "CgiHandler.hpp"
-
+#include "server/CgiHandler.hpp"
 
 
 // enum State {

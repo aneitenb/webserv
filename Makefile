@@ -36,7 +36,8 @@ SERVERFILES	=	Client.cpp \
 				Listener.cpp \
 				VirtualHost.cpp \
 				WebServer.cpp \
-				EventLoop.cpp
+				EventLoop.cpp \
+				CgiHandler.cpp
 
 CONFIGFILES	=	ConfigErrors.cpp \
 				ConfigFile.cpp \

@@ -80,6 +80,70 @@ void Listener::setHost(const std::string& host){
     _host = host;
 }
 
+/*Helper functions*/
+int setuping(int *fd){
+    // int sock_err = 0;
+    //setsockopt: manipulate options for the socket 
+    //CONSIDER: SO_RCVBUF / SO_SNDBUF, SO_LINGER, SO_KEEPALIVE, TCP_NODELAY
+    //get socket error
+    // if ((setsockopt(*fd, SOL_SOCKET, SO_ERROR, &sock_err, sizeof(sock_err))) == -1){
+    //     std::cerr << "Error: setsockopt() failed: SO_ERROR: " << sock_err << "\n";
+    //     std::cerr << strerror(errno) << "\n";
+    //     return (-1);
+    // }
+    if ((fcntl(*fd, F_SETFL, O_NONBLOCK)) == -1){
+        std::cerr << "Error: fcntl() failed\n";
+        std::cerr << strerror(errno) << "\n";
+        return (-1);
+    }
+    return (0);
+}
+
+int Listener::setSocketFd(void){
+    if (_sockFd != -1){
+        close(_sockFd);
+        _sockFd = -1;}
+    if ((_sockFd = socket(PF_INET, SOCK_STREAM, 0)) == -1){
+        std::cerr << "Error: socket() failed\n";
+        std::cerr << strerror(errno) << "\n";
+        return (-1);
+    }
+    if ((setuping(&_sockFd)) == -1)
+        return (-1);
+    return (0);
+}
+
+int Listener::copySocketFd(const int& fd){
+        if (_sockFd != -1){
+            close(_sockFd);
+            _sockFd = -1;}
+        if (fd == -1)
+            return (_sockFd);
+        _sockFd = dup(fd);
+        if (_sockFd == -1)
+            std::cout << "Error: dup() failed\n";
+        // close(fd);
+        return (_sockFd);
+}
+
+void Listener::addClient(Client& cur){
+    _activeClients.push_back(std::move(cur));
+}
+
+const std::vector<Client>& Listener::getClients(void) const{
+    return (_activeClients);
+}
+
+void Listener::delClient(Client* cur){
+    if (!cur)
+        return ;
+    for (std::size_t i = 0; i < _activeClients.size(); i++){
+        if (_activeClients.at(i) == *cur){
+            _activeClients.erase(_activeClients.begin() + i);
+            return ;}
+    }
+}
+
 /*Overriden*/
 int* Listener::getSocketFd(void){
     return(&_sockFd);
@@ -149,71 +213,6 @@ EventHandler* Listener::getCgi() { return {}; }
 bool Listener::conditionMet() { return false; }
 
 struct epoll_event* Listener::getCgiEvent() { return {};}
-
-
-/*Helper functions*/
-int setuping(int *fd){
-    // int sock_err = 0;
-    //setsockopt: manipulate options for the socket 
-    //CONSIDER: SO_RCVBUF / SO_SNDBUF, SO_LINGER, SO_KEEPALIVE, TCP_NODELAY
-    //get socket error
-    // if ((setsockopt(*fd, SOL_SOCKET, SO_ERROR, &sock_err, sizeof(sock_err))) == -1){
-    //     std::cerr << "Error: setsockopt() failed: SO_ERROR: " << sock_err << "\n";
-    //     std::cerr << strerror(errno) << "\n";
-    //     return (-1);
-    // }
-    if ((fcntl(*fd, F_SETFL, O_NONBLOCK)) == -1){
-        std::cerr << "Error: fcntl() failed\n";
-        std::cerr << strerror(errno) << "\n";
-        return (-1);
-    }
-    return (0);
-}
-
-int Listener::setSocketFd(void){
-    if (_sockFd != -1){
-        close(_sockFd);
-        _sockFd = -1;}
-    if ((_sockFd = socket(PF_INET, SOCK_STREAM, 0)) == -1){
-        std::cerr << "Error: socket() failed\n";
-        std::cerr << strerror(errno) << "\n";
-        return (-1);
-    }
-    if ((setuping(&_sockFd)) == -1)
-        return (-1);
-    return (0);
-}
-
-int Listener::copySocketFd(const int& fd){
-        if (_sockFd != -1){
-            close(_sockFd);
-            _sockFd = -1;}
-        if (fd == -1)
-            return (_sockFd);
-        _sockFd = dup(fd);
-        if (_sockFd == -1)
-            std::cout << "Error: dup() failed\n";
-        // close(fd);
-        return (_sockFd);
-}
-
-void Listener::addClient(Client& cur){
-    _activeClients.push_back(std::move(cur));
-}
-
-const std::vector<Client>& Listener::getClients(void) const{
-    return (_activeClients);
-}
-
-void Listener::delClient(Client* cur){
-    if (!cur)
-        return ;
-    for (std::size_t i = 0; i < _activeClients.size(); i++){
-        if (_activeClients.at(i) == *cur){
-            _activeClients.erase(_activeClients.begin() + i);
-            return ;}
-    }
-}
 
 //FOR LISTENERS
 // void EventLoop::addClient(Client* cur){
