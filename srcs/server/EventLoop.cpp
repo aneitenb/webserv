@@ -82,21 +82,18 @@ int EventLoop::run(std::vector<EventHandler*> listFds){
     return (0);   
 }
 
-//add the CGI fds to the epoll
-// void EventLoop::addCGI(EventHandler* cur){
-//     EventHandler* theCGI = cur->getCgi();
-//     EventHandler::ICgi* theRealCgi = dynamic_cast<EventHandler::ICgi*>(theCGI);
-//     theCGI->setState(CGI);
-//     if (dynamic_cast<EventHandler::ICgi*>(theCGI)->conditionMet() == true){
-//         // addToEpoll(theCGI->getCgiFd(0), theCGI);
-//     }
-//     // addToEpoll(theCGI->getCgiFd(1), theCGI); //might not need this if sending response through client
-//     cur->conditionMet(); //to jumpstart the cgi, fork here
-// }
+void EventLoop::addCGI(EventHandler* cur){
+    EventHandler* theCGI = cur->getCgi();
+    struct epoll_event* curE;
 
-// void EventLoop::handleCGI(EventHandler* cur){
-//     //epoll cgi in has returned something, needs to be received and then removed
-// }
+    theCGI->setState(CGI);
+    if (cur->conditionMet() == true){
+        curE = theCGI->getEvent();
+    }
+        //add stdin to epoll
+    
+    //add to the epoll if d
+}
 
 //create an epoll instance
 int EventLoop::startRun(void){

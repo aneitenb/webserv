@@ -18,31 +18,33 @@
 #define CGI_EX "/usr/bin/python3"
 
 struct toAndFro {
-    int _fd[2];
-    struct epoll_event _event;
+    int _fd[2] = {0};
+    struct epoll_event _event = {0};
 };
 
 class CgiHandler : public EventHandler{
     private:
         // const std::string& _path; //should be the full path? assuming already checked
         // Client& _client;
-        Request& _request;
-        Response& _response;
+        Request* _request;
+        Response* _response;
         int*    _fd;
         pid_t   _pid;
         std::vector<char*> _envp;
-
         toAndFro fromCGI;
         toAndFro toCGI;
 
-        std::vector<char*> envp;
-
+        std::string getQueryPath(int side);
         CgiHandler(const CgiHandler& other) = delete;
         CgiHandler& operator=(const CgiHandler& other) = delete;
-
-        std::string getQueryPath(int side);
     public:
-        CgiHandler(Request& req, Response& res, int* fd);
+        CgiHandler(Request* req, Response* res, int* fd);
+        CgiHandler();
+
+        CgiHandler( CgiHandler&& other);
+        CgiHandler& operator=( CgiHandler&& other);
+        bool operator==(const CgiHandler& other);
+
         ~CgiHandler();
 
         int handleEvent(uint32_t ev) override;
@@ -50,9 +52,10 @@ class CgiHandler : public EventHandler{
         std::vector<EventHandler*> resolveAccept(void) override;
         void resolveClose() override;
         EventHandler* getCgi() override;
-        // int* getCgiFd(int flag) override;
         bool conditionMet() override;
+        struct epoll_event* getCgiEvent() override;
 
+        bool compareStructs(const CgiHandler& other);
         int setupPipes();
         void setupEnv();
         int forking();

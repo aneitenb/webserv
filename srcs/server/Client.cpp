@@ -9,20 +9,23 @@
 
 #include "server/Client.hpp"
 #include "CommonFunctions.hpp"
+#include "CgiHandler.hpp"
 #include <unistd.h>
 #include <sys/socket.h>
 #include <string.h>
 #include <fcntl.h>
 #include "CgiHandler.hpp"
 
-Client::Client(): _listfd(nullptr), _clFd(-1), _count(0), _curR(EMPTY), _theCgi(nullptr){
+/*Orthodox Cannonical Form*/
+Client::Client(): _listfd(nullptr), _clFd(-1), _count(0), _curR(EMPTY), _theCgi(&_requesting, &_responding, &_clFd){
     ftMemset(&_result, sizeof(_result));
     setState(TOADD);
     // ftMemset(&_event, sizeof(_event)); //do I leave this like this?
 }
 
 Client::Client(ServerBlock* cur): _relevant(cur), _listfd(nullptr), \
-    _clFd(-1), _count(0), _curR(EMPTY), _theCgi(nullptr){
+    _clFd(-1), _count(0), _curR(EMPTY), \
+    _theCgi(CgiHandler(&_requesting, &_responding, &_clFd)){
     ftMemset(&_result, sizeof(_result));
     setState(TOADD);
     // ftMemset(&_event, sizeof(_event)); //do I leave this like this?
@@ -36,6 +39,51 @@ Client::~Client(){
     }
 }
 
+Client::Client(Client&& other) noexcept : _clFd(-1), _requesting(other._requesting), \
+    _responding(std::move(other._responding)), _theCgi(std::move(other._theCgi)){
+    _relevant = other._relevant;
+    other._relevant = nullptr;
+    _listfd = other._listfd;
+    other._listfd = nullptr;
+    this->copySocketFd(&other._clFd);
+    _count = other._count;
+    _result = other._result;
+    other._result = nullptr;
+    _curR = other._curR;
+    this->setState(other.getState());
+}
+
+//this should never be used though
+Client& Client::operator=(Client&& other) noexcept{
+    if (this != &other){
+        _relevant = other._relevant;
+        other._relevant = nullptr;
+        _listfd = other._listfd;
+        other._listfd = nullptr;
+        this->copySocketFd(&other._clFd); 
+        _count = other._count;
+        _result = other._result;
+        other._result = nullptr;
+        _curR = other._curR;
+        this->setState(other.getState());
+        _theCgi = std::move(other._theCgi);
+    }
+    return (*this);
+}
+
+// add variables; response and request == operators
+bool Client::operator==(const Client& other){
+    if (_relevant == other._relevant &&_listfd == other._listfd \
+        && _clFd == other._clFd && _count == other._count \
+        && _result == other._result && this->getState() == other.getState() \
+        && _curR == other._curR && _theCgi == other._theCgi)
+        && _result == other._result && this->getState() == other.getState() \
+        && _curR == other._curR && _theCgi == other._theCgi)
+        return (true);
+    return (false);
+}
+
+/* Helpers */
 int Client::copySocketFd(int* fd){
     if (this->_clFd != -1){
         close(_clFd);
@@ -52,85 +100,34 @@ int Client::copySocketFd(int* fd){
     return (0);
 }
 
-int* Client::getSocketFd(void) {
-    return(&_clFd);
-}
-
-Request& Client::getRequest(){ return (_requesting);}
-
-Client::Client(Client&& other) noexcept{
-    _relevant = other._relevant;
-    other._relevant = nullptr;
-    _listfd = other._listfd;
-    other._listfd = nullptr;
-    this->_clFd = -1;
-    this->copySocketFd(&other._clFd);
-    _count = other._count;
-    _result = other._result;
-    other._result = nullptr;
-    _curR = other._curR;
-    this->setState(other.getState());
-    _requesting = other._requesting;
-    _theCgi = other._theCgi;
-    other._theCgi = nullptr;
-}
-
-//this should never be used though
-Client& Client::operator=(Client&& other) noexcept {
-    if (this != &other){
-        _relevant = other._relevant;
-        other._relevant = nullptr;
-        _listfd = other._listfd;
-        other._listfd = nullptr;
-        this->copySocketFd(&other._clFd);
-        _count = other._count;
-        _result = other._result;
-        other._result = nullptr;
-        _curR = other._curR;
-        this->setState(other.getState());
-        _theCgi = other._theCgi;
-        other._theCgi = nullptr;
-    }
-    return (*this);
-}
-
-//add variables; response and request == operators
-bool Client::operator==(const Client& other){
-    if (_relevant == other._relevant &&_listfd == other._listfd \
-        && _clFd == other._clFd && _count == other._count \
-        && _result == other._result && this->getState() == other.getState() \
-        && _curR == other._curR && _theCgi == other._theCgi)
-        return (true);
-    return (false);
-}
+/*Getters and Setters*/
+// Request& Client::getRequest(){ return (_requesting);}
 
 ServerBlock* Client::getServerBlock() const{
     return (_relevant);
 }
 
-int Client::saveRequest(){
-    try{
-        _requesting.append(_buffer);
-        //the thing is what if it's a partial request so not everything has been received? it needs to be updated without being marked as wrong
-        if (_requesting.isParsed() == true){
-            std::cout << "PARSED\n"; //here check for cgi?
-            return (0);
-        }
-    }
-    catch(std::exception& e){
-        return (-1);
-    }
-    return (-1);
+/* Overriden*/
+int* Client::getSocketFd(void) {
+    return(&_clFd);
 }
 
-void Client::saveResponse(){
-    Response curR(&_requesting, getServerBlock());
-    _responding = std::move(curR);
-    //if not cgi do:
-        _responding.prepareResponse();
-    /*else
-        setCgi();
-        */
+std::vector<EventHandler*> Client::resolveAccept(void) { return {}; }
+
+void Client::resolveClose(){}
+
+struct epoll_event* getCgiEvent() { return {}; }
+
+EventHandler* Client::getCgi(){
+    _theCgi.run();
+    return (dynamic_cast<EventHandler*>(&_theCgi));
+}
+
+bool Client::conditionMet(){
+    //check if the method is post and if the POST body is not empty
+    if (_requesting.getMethod() == "POST" && _requesting.getBody().size() != 0)
+        return true;
+    return false;
 }
 
 int Client::handleEvent(uint32_t ev){
@@ -177,15 +174,8 @@ int Client::handleEvent(uint32_t ev){
     }
     return (0);
 }
-//timeout checks
 
-std::vector<EventHandler*> Client::resolveAccept(void) {
-    return {};
-}
-
-void Client::resolveClose(){}
-
-
+/*Handle Event Helpers*/
 int Client::sending_stuff(){
     std::string buffer = {0};
     buffer = _responding.getFullResponse();
@@ -208,7 +198,6 @@ int Client::sending_stuff(){
     }
     return (0);
 }
-
 
 int Client::receiving_stuff(){
     ssize_t len = 0;
@@ -235,39 +224,27 @@ int Client::receiving_stuff(){
     return (0);
 }
 
-
-void Client::setCgi(){
-    _theCgi = new CgiHandler(_requesting, _responding, &_clFd);
-    static_cast<CgiHandler*>(_theCgi)->run();
+int Client::saveRequest(){
+    try{
+        _requesting.append(_buffer);
+        //the thing is what if it's a partial request so not everything has been received? it needs to be updated without being marked as wrong
+        if (_requesting.isParsed() == true){
+            std::cout << "PARSED\n"; //here check for cgi?
+            return (0);
+        }
+    }
+    catch(std::exception& e){
+        return (-1);
+    }
+    return (-1);
 }
 
-EventHandler* Client::getCgi(){return (_theCgi);}
-
-bool Client::conditionMet(){
-    if (static_cast<CgiHandler*>(_theCgi)->forking() == 1)
-        return false;
-    return true;
+void Client::saveResponse(){
+    Response curR(&_requesting, getServerBlock());
+    _responding = std::move(curR);
+    //if not cgi do:
+        _responding.prepareResponse();
 }
-
-
-// int Client::settingUp(int* fd){
-//     socklen_t addr_size = sizeof(struct sockaddr*);
-//     //this should maybe be handled by a listener?
-//     if ((_clFd = accept(*fd, _result, &addr_size) == -1)){
-//         std::cerr << "Error: accept() failed; could not accept client\n";
-//         std::cerr << strerror(errno) << "\n";
-//         return (-1);
-//     }
-//     if (fcntl(_clFd, F_SETFL, O_NONBLOCK) == -1){
-//         std::cerr << "Error: difailed to manipulate client flags\n";
-//         std::cerr << strerror(errno) << "\n";
-//         return (-1);        
-//     }   
-//     return (0);
-// }
-
-
-
 
 //SIGNAL HANDLING???
 // static void sigint_handler(int signo)

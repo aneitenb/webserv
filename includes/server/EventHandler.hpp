@@ -24,7 +24,7 @@ enum State {
     TOADD, //fd needs to be added
     CLOSED, //fd has been closed
     TOCLOSE, //deleted from epoll, not yet from vector
-    TOCGI, //is waiting for a CGI to respond
+    TOCGI, //is creating and starting the CGI
     CGI //is cgi
 }; 
 
@@ -42,6 +42,7 @@ class EventHandler{
     private:
         // EventLoop* _loop;
         State      _cur;
+        struct epoll_event _event;
     public:
         virtual ~EventHandler(){};
         virtual int handleEvent(uint32_t ev) = 0;
@@ -50,7 +51,8 @@ class EventHandler{
         virtual void resolveClose() = 0;
         virtual EventHandler* getCgi() = 0;
         virtual bool conditionMet() = 0;
-        struct epoll_event _event;
+        virtual struct epoll_event* getCgiEvent() = 0;
+    
         // void setLoop(EventLoop& curLoop){
         //     _loop = &curLoop;
         // };

@@ -41,6 +41,19 @@ Request& Request::operator=(const Request &other) {
 	return *this;
 }
 
+bool Request::operator==(const Request& other) const{
+	if (_headers == other._headers && _contentType == other._contentType \
+			&& _remainder == other._remainder && _version == other._version \
+			&& _method == other._method && _body == other._body \
+			&& _uri == other._uri && _copyBuffer == other._copyBuffer \
+			&& _contentLength == other._contentLength && _chunkSize == other._chunkSize \
+			&& _parsingStage == other._parsingStage && _trailers == other._trailers \
+			&& _chunked == other._chunked && _parsed == other._parsed \
+			&& _valid == other._valid)
+			return true;
+	return false;
+}
+
 Request::~Request(void) {}
 
 // public methods

@@ -15,6 +15,7 @@
 #include "http/Request.hpp"
 #include "http/Response.hpp"
 #include "config/ServerBlock.hpp"
+#include "CgiHandler.hpp"
 
 
 
@@ -46,7 +47,7 @@ class Client : public EventHandler {
         RequestState        _curR;
         Request             _requesting;
         Response            _responding;
-        EventHandler*       _theCgi;
+        CgiHandler          _theCgi;
         //size_t? _lastActive;
 
         int sending_stuff();
@@ -69,7 +70,8 @@ class Client : public EventHandler {
         // void setState(State newState);
         // int* getClFd(void);
         ServerBlock* getServerBlock() const;
-        Request& getRequest();
+        // Request& getRequest();
+        // Response& getResponse();
         int copySocketFd(int* fd);
         void setCgi();
 
@@ -80,6 +82,7 @@ class Client : public EventHandler {
         void resolveClose() override;
         EventHandler* getCgi() override;
         bool conditionMet() override;
+        struct epoll_event* getCgiEvent() override;
         
         //timeout??
 };
