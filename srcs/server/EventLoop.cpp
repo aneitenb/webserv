@@ -66,9 +66,10 @@ int EventLoop::run(std::vector<EventHandler*> listFds){
                 case TOCGI:
                     addCGI(curE);
                     break;
-                // case CGI:
-                //     handleCGI(curE); //when you send and receive
-                //     break;
+                case CGITOREAD:
+                case CGIREAD:
+                    handleCGI(curE); //when you send and receive
+                    break;
                 default:
                     break;
             }
@@ -82,6 +83,19 @@ int EventLoop::run(std::vector<EventHandler*> listFds){
     return (0);   
 }
 
+void EventLoop::handleCGI(EventHandler* cur){
+    if (cur->getState() == CGITOREAD){
+        if (cur->ready2Switch() == false) //might loop here, timeout
+            return ;
+        cur->setState(CGIREAD);
+        delEpoll(cur->getSocketFd());
+        cur->closeFd(cur->getSocketFd());
+        return ;
+    }
+    delEpoll(cur->getSocketFd());
+    cur->closeFd(cur->getSocketFd());
+}
+
 void EventLoop::addCGI(EventHandler* cur){
     EventHandler* theCGI = cur->getCgi();
     if (!theCGI){
@@ -89,18 +103,19 @@ void EventLoop::addCGI(EventHandler* cur){
         cur->setState(WRITING);
         return ;
     }
-    struct epoll_event& curOut = theCGI->getCgiEvent(1);
+    struct epoll_event& curGet = theCGI->getCgiEvent(1);
 
-    theCGI->setState(CGI);
+    theCGI->setState(CGIREAD);
     if (cur->conditionMet(_activeFds, _epollFd) == true){ //pass the activefds so they can close in the child
-        struct epoll_event& curIn = theCGI->getCgiEvent(0);
-        if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, curIn.data.fd, &curIn) == -1){ //not correct
+        struct epoll_event& curSend = theCGI->getCgiEvent(0);
+        theCGI->setState(CGITOREAD);
+        if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, curSend.data.fd, &curSend) == -1){ //not correct
             //set response
             cur->setState(WRITING);
             return ;
         }
     }
-    if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, curOut.data.fd, &curOut) == -1){ //not correct
+    if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, curGet.data.fd, &curGet) == -1){ //not correct
         //set response
         cur->setState(WRITING);
         return ;
@@ -109,6 +124,7 @@ void EventLoop::addCGI(EventHandler* cur){
         //set response to 500 or 404
         cur->setState(WRITING);
     }
+    cur->setState(FORCGI);
 }
 
 //create an epoll instance

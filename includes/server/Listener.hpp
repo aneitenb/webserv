@@ -55,6 +55,7 @@ class Listener : public EventHandler {
         void resolveClose() override;
         EventHandler* getCgi() override;
         bool conditionMet(std::unordered_map<int*, std::vector<EventHandler*>>& _activeFds, int& epollFd) override;
+        bool ready2Switch() override;
         struct epoll_event& getCgiEvent(int flag) override;
 
         void addClient(Client& cur);

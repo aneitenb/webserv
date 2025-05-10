@@ -117,9 +117,10 @@ void Client::resolveClose(){}
 
 struct epoll_event& Client::getCgiEvent(int flag) { 
     (void)flag;
-    struct epoll_event wontBeUsed;
-    return (wontBeUsed); 
+    return (*this->getEvent()); //wont be used
 }
+
+bool Client::ready2Switch() { return false; }
 
 EventHandler* Client::getCgi(){
     if (_theCgi.run() == 1){
@@ -142,8 +143,8 @@ int Client::handleEvent(uint32_t ev){
         return (-1);
     }
     if (ev & EPOLLIN){
-        if (this->getState() == TOCGI){
-            if (_theCgi.isItDone() == true)
+        if (this->getState() == FORCGI){
+            if (_theCgi.cgiDone() == true)
                 this->setState(TOWRITE);
         }
         std::cout << "Receiving\n";

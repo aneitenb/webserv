@@ -218,10 +218,10 @@ bool Listener::conditionMet(std::unordered_map<int*, std::vector<EventHandler*>>
 
 struct epoll_event& Listener::getCgiEvent(int flag) { 
     (void)flag;
-    struct epoll_event wontBeUsed;
-    return (wontBeUsed); 
+    return (*this->getEvent()); //wont be used
 }
 
+bool Listener::ready2Switch() { return false; }
 //FOR LISTENERS
 // void EventLoop::addClient(Client* cur){
 //     _activeClients.push_back(cur);

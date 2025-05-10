@@ -22,6 +22,13 @@ struct toAndFro {
     struct epoll_event _event = { .events = 0, .data = { .u64 = 0 } };
 };
 
+enum Progress{
+    SWITCH,
+    RECEIVING,
+    SENDING,
+    DONE
+};
+
 class CgiHandler : public EventHandler{
     private:
         // const std::string& _path; //should be the full path? assuming already checked
@@ -33,10 +40,12 @@ class CgiHandler : public EventHandler{
         std::vector<char*> _envp;
         toAndFro fromCGI;
         toAndFro toCGI;
-        bool _isDone;
+        std::size_t _offset;
+        Progress _curr;
         std::string _absPath;
         std::string _scriptPath;
         std::string _query;
+        std::string _rawdata; //for what's received from the script
 
         
         std::string getQueryPath(int side);
@@ -59,10 +68,11 @@ class CgiHandler : public EventHandler{
         void resolveClose() override;
         EventHandler* getCgi() override;
         bool conditionMet(std::unordered_map<int*, std::vector<EventHandler*>>& _activeFds, int& epollFd) override;
+        bool ready2Switch() override;
         struct epoll_event& getCgiEvent(int flag) override;
 
         bool compareStructs(const CgiHandler& other);
-        bool isItDone();
+        bool cgiDone();
         int setupPipes();
         int setupEnv();
         int forking(std::unordered_map<int*, std::vector<EventHandler*>>& _activeFds, int& epollFd);

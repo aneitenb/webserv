@@ -27,7 +27,7 @@ that contains just the declaration of the function*/
 
 extern "C" void signalHandler(int signum){
 	gSignal = 0;
-	std::cout << gSignal << std::endl;
+	std::cout << signum << std::endl; //delete
 	return;
 }
 

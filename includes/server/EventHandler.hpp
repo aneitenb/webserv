@@ -12,6 +12,7 @@
 #include <sys/epoll.h>
 #include <vector>
 #include <unistd.h>
+#include <unordered_map>
 // #include "EventLoop.hpp"
 
 enum State {
@@ -25,7 +26,9 @@ enum State {
     CLOSED, //fd has been closed
     TOCLOSE, //deleted from epoll, not yet from vector
     TOCGI, //is creating and starting the CGI
-    CGI //is cgi
+    FORCGI, //this is client waiting for cgi
+    CGITOREAD, //is cgi, needs to read
+    CGIREAD //is cgi, has read
 }; 
 
 /*if epollin && towrite
@@ -51,6 +54,7 @@ class EventHandler{
         virtual void resolveClose() = 0;
         virtual EventHandler* getCgi() = 0;
         virtual bool conditionMet(std::unordered_map<int*, std::vector<EventHandler*>>& _activeFds, int& epollFd) = 0;
+        virtual bool ready2Switch() = 0;
         virtual struct epoll_event& getCgiEvent(int flag) = 0;
     
         // void setLoop(EventLoop& curLoop){
