@@ -50,7 +50,7 @@ class EventHandler{
         virtual std::vector<EventHandler*> resolveAccept() = 0;
         virtual void resolveClose() = 0;
         virtual EventHandler* getCgi() = 0;
-        virtual bool conditionMet() = 0;
+        virtual bool conditionMet(std::unordered_map<int*, std::vector<EventHandler*>>& _activeFds, int& epollFd) = 0;
         virtual struct epoll_event& getCgiEvent(int flag) = 0;
     
         // void setLoop(EventLoop& curLoop){

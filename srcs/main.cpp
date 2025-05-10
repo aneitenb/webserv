@@ -17,7 +17,7 @@
 (that is, within a single thread of execution, volatile accesses cannot be optimized out or reordered with 
 another visible side effect that is sequenced-before or sequenced-after the volatile access. 
 This makes volatile objects suitable for communication with a signal handler, but not with another thread of execution*/
-volatile sig_atomic_t gSignal = 0;
+volatile sig_atomic_t gSignal = 1;
 
 void displayServerInfo(const ConfigurationFile& config);
 
@@ -26,7 +26,7 @@ so that client C code can link to (use) the function using a C compatible header
 that contains just the declaration of the function*/
 
 extern "C" void signalHandler(int signum){
-	gSignal = signum;
+	gSignal = 0;
 	std::cout << gSignal << std::endl;
 	return;
 }
@@ -72,7 +72,8 @@ int main(int ac, char **av)
 {
 	std::signal(SIGINT, signalHandler);
 	// std::signal(SIGPIPE, signalHandler);
-	// std::signal(SIGCHLD, signalHandler);
+	std::signal(SIGCHLD, signalHandler);
+	signal(SIGPIPE, SIG_IGN);  // Ignore SIGPIPE globally so if pipe fails program doesn't crash
 
 	if (ac != 2 || av[1] == nullptr || av[1][0] == '\0')
 	{

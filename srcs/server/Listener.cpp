@@ -210,7 +210,11 @@ void Listener::resolveClose(){
 
 EventHandler* Listener::getCgi() { return {}; }
 
-bool Listener::conditionMet() { return false; }
+bool Listener::conditionMet(std::unordered_map<int*, std::vector<EventHandler*>>& _activeFds, int& epollFd) { 
+    (void)_activeFds;
+    (void)epollFd;
+    return false; 
+}
 
 struct epoll_event& Listener::getCgiEvent(int flag) { 
     (void)flag;

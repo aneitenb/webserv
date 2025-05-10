@@ -100,10 +100,12 @@ bool CgiHandler::isItDone(){
     return (_isDone);
 }
 
-void CgiHandler::run(){
-    if (setupPipes() == -1)
-        return ;//error
-    setupEnv();
+int CgiHandler::run(){
+    if (setupPipes() == 1)
+        return 1;//error
+    if (setupEnv() == 1)
+        return 1;
+    return 0;
     //register to epoll outside then
 }
 
@@ -158,17 +160,41 @@ std::string CgiHandler::getQueryPath(int side){
     return (nullptr);
 }
 
-//envp.data()
-void CgiHandler::setupEnv(){
-    std::vector <std::string> envS;
-    // Request& _request = _client.getRequest();
+int CgiHandler::check_paths(){
+    size_t found = _request->getURI().find_last_of('/');
+    if (found == std::string::npos)
+        return 1; //invalid path
+    _absPath = _request->getURI().substr(0, found);
+    if (access(_absPath.c_str(), F_OK | X_OK) != 0){
+        //directory not accessible 500 or 404
+        return 1;
+    }
+    found = _request->getURI().find_last_of('?');
+    if (found == std::string::npos)
+    return 1; //invalid path
+    _scriptPath = _request->getURI().substr(0, found);
+    if (access(_scriptPath.c_str(), F_OK | R_OK) != 0){
+        //script not accessible/readable 500 or 404
+        return 1;
+    }
+    _query = _request->getURI().substr(found, _request->getURI().size() - found);
+    return 0;
+}
 
+//envp.data()
+int CgiHandler::setupEnv(){
+    std::vector <std::string> envS;
+
+    //check if file can be opened i guess
+    if (check_paths() == 1)
+        return 1;
+    _absPath = CGI_ROOT + _absPath;
     envS.push_back("SERVER_PROTOCOL=HTTP/1.1");
     envS.push_back("GATEWAY_INTERFACE=CGI/1.1");
     envS.push_back("REQUEST_METHOD=" + _request->getMethod());
-    // envS.push_back("QUERY_STRING=" + _request.get()); //ask Ilmari to add + the next one
-    // envS.push_back("SCRIPT_FILENAME=" + _path); //not path but the name of the string from the request?
-    // envS.push_back("PATH_INFO=" + _path); //see if needs fixing, need path anyway
+    envS.push_back("QUERY_STRING=" + _query); //ask Ilmari to add + the next one
+    envS.push_back("SCRIPT_FILENAME=" + _scriptPath); //not path but the name of the string from the request?
+    envS.push_back("PATH_INFO=" + _absPath); //see if needs fixing, need path anyway
     if (_request->getMethod() == "POST"){
         envS.push_back("CONTENT_LENGTH=" + std::to_string(_request->getContentLength()));
         envS.push_back("CONTENT_TYPE=" + _request->getContentType());
@@ -177,44 +203,59 @@ void CgiHandler::setupEnv(){
     for (size_t i = 0; i < envS.size(); i++){
         _envp.push_back(const_cast<char*>(envS.at(i).c_str()));
     }
+
     _envp.push_back(NULL);
+
+    return 0;
 }
 
-int CgiHandler::forking(){
+int CgiHandler::forking(std::unordered_map<int*, std::vector<EventHandler*>>& _activeFds, int& epollFd){
     _pid = fork();
 
     if (_pid == 0){ //child
         char* argv[3] = {0};
 
         //close everything else, cleanup epoll
+        for(auto& pair : _activeFds){
+            for (size_t i = 0; i < pair.second.size(); i++){
+                closeFd(pair.second.at(i)->getSocketFd());
+            }
+            closeFd(pair.first);
+        }
+
+        closeFd(&epollFd);
+
         closeFd(&fromCGI._fd[0]);
         closeFd(&toCGI._fd[1]);
 
         if (dup2(toCGI._fd[0], STDIN_FILENO) == -1){
             //error, cleanup
+            closeFd(&toCGI._fd[0]);
+            closeFd(&fromCGI._fd[1]);
             return 1;
         }
         if (dup2(fromCGI._fd[1], STDIN_FILENO) == -1){
             //error, cleanup
             closeFd(&toCGI._fd[0]);
+            closeFd(&fromCGI._fd[1]);
             return 1;
         }
         closeFd(&toCGI._fd[0]);
         closeFd(&fromCGI._fd[1]);
 
+        //change into the correct directory
+        if (chdir(_absPath.c_str()) != 0)
+            return 1;
 
-        //change directory to cgi root
-
-        //check if file can be opened i guess
         std::string temparg = CGI_EX;
-        argv[0] = (char*)temparg.c_str();
-        // argv[1] = (char*)_path.c_str(); needs fixing
+        argv[0] = (char *)temparg.c_str();
+        argv[1] = (char*)_absPath.c_str(); //needs fixing
         argv[2] = 0;
 
         //execve
-        execve(CGI_EX, argv, _envp.data());
+        execve(temparg.c_str(), const_cast<char* const*>(argv), _envp.data());
         //will continue only if exit
-        ::exit(1); //to avoid flushing parent I/O buffers
+        _exit(1); //to avoid flushing parent I/O buffers
     }
     else if (_pid > 0){ //parent
         closeFd(&fromCGI._fd[1]);
@@ -256,8 +297,9 @@ struct epoll_event& CgiHandler::getEvent(int flag){
     return (toCGI._event);
 }
 
-bool CgiHandler::conditionMet() { 
-    this->forking();
+bool CgiHandler::conditionMet(std::unordered_map<int*, std::vector<EventHandler*>>& _activeFds, int& epollFd) { 
+    if (this->forking(_activeFds, epollFd)== 1)
+        false;
 }
 
 std::vector<EventHandler*> CgiHandler::resolveAccept(void){ return {};}

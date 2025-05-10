@@ -37,7 +37,7 @@ int EventLoop::run(std::vector<EventHandler*> listFds){
         return (-1);
     this->addListeners(listFds);
 
-    while(gSignal == 0){
+    while(gSignal){
         int events2Resolve = epoll_wait(_epollFd, _events, MAX_EVENTS, -1);
         for (int i = 0; i < events2Resolve; i++){
             EventHandler* curE = static_cast<EventHandler*>(_events[i].data.ptr);
@@ -84,19 +84,30 @@ int EventLoop::run(std::vector<EventHandler*> listFds){
 
 void EventLoop::addCGI(EventHandler* cur){
     EventHandler* theCGI = cur->getCgi();
+    if (!theCGI){
+        //set response to 500 or 404
+        cur->setState(WRITING);
+        return ;
+    }
     struct epoll_event& curOut = theCGI->getCgiEvent(1);
 
     theCGI->setState(CGI);
-    if (cur->conditionMet() == true){ //pass the activefds so they can close in the child
+    if (cur->conditionMet(_activeFds, _epollFd) == true){ //pass the activefds so they can close in the child
         struct epoll_event& curIn = theCGI->getCgiEvent(0);
         if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, curIn.data.fd, &curIn) == -1){ //not correct
             //set response
+            cur->setState(WRITING);
             return ;
         }
     }
     if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, curOut.data.fd, &curOut) == -1){ //not correct
         //set response
+        cur->setState(WRITING);
         return ;
+    }
+    if (theCGI->conditionMet(_activeFds, _epollFd) == false){
+        //set response to 500 or 404
+        cur->setState(WRITING);
     }
 }
 
@@ -114,11 +125,7 @@ int EventLoop::startRun(void){
 //add listeners to the epoll monitoring
 void EventLoop::addListeners(std::vector<EventHandler*> listFds){
     for (std::size_t i = 0; i < listFds.size(); i++){
-        // struct epoll_event curE;
         listFds.at(i)->initEvent();
-        // this->_event.events = EPOLLIN;
-        // curE.data.fd = *listFds.at(i)->getSocketFd();
-        // curE.data.ptr = static_cast<void*>(&listFds.at(i));
 
         if (*(listFds.at(i)->getSocketFd()) == -1 || epoll_ctl(_epollFd, EPOLL_CTL_ADD, *listFds.at(i)->getSocketFd(), listFds.at(i)->getEvent()) == -1){
             std::cerr << "Error: Could not add the listening socket to the epoll instance: ";

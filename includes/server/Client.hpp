@@ -80,7 +80,7 @@ class Client : public EventHandler {
         std::vector<EventHandler*> resolveAccept(void) override;
         void resolveClose() override;
         EventHandler* getCgi() override;
-        bool conditionMet() override;
+        bool conditionMet(std::unordered_map<int*, std::vector<EventHandler*>>& _activeFds, int& epollFd) override;
         struct epoll_event& getCgiEvent(int flag) override;
         
         //timeout??

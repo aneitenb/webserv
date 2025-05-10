@@ -122,12 +122,16 @@ struct epoll_event& Client::getCgiEvent(int flag) {
 }
 
 EventHandler* Client::getCgi(){
-    _theCgi.run();
+    if (_theCgi.run() == 1){
+        return (nullptr);
+    }
     return (dynamic_cast<EventHandler*>(&_theCgi));
 }
 
-bool Client::conditionMet(){
+bool Client::conditionMet(std::unordered_map<int*, std::vector<EventHandler*>>& _activeFds, int& epollFd){
     //check if the method is post and if the POST body is not empty
+    (void)_activeFds;
+    (void)epollFd;
     if (_requesting.getMethod() == "POST" && _requesting.getBody().size() != 0)
         return true;
     return false;
@@ -221,6 +225,8 @@ int Client::receiving_stuff(){
     while(1){
         len = recv(_clFd, &temp_buff[0], temp_buff.size(), 0); //sizeof(buffer) - 1?
         if (len < 1){ //either means that there is no more data to read or error or client closed connection (len == 0)
+            std::cerr << "Error: delete this after\n";
+            std::cerr << strerror(errno) << "\n";
             return (-1);
         }
         else{ // means something was returned
