@@ -194,10 +194,10 @@ bool Response::isComplete() const {
 void Response::handleGet(){
 	std::string path = resolvePath(_request->getURI());
 
-	// if (isCgiRequest(path)) {
-	// 	//handleCgi(path);
-	// 	return;
-	// }
+	if (isCgiRequest(path)) {
+		handleCgi(path);
+		return;
+	}
 
 	std::string absPath = path;
 	if (!absPath.empty() && absPath[absPath.length()-1] == '/' && 
@@ -264,6 +264,11 @@ void Response::handlePost(){
 	} 
 	else {
 		path = resolvePath(_request->getURI());
+	}
+
+	if (isCgiRequest(path)) {
+		handleCgi(path);
+		return;
 	}
 
 	std::string dirPath = path.substr(0, path.find_last_of('/'));
@@ -564,16 +569,50 @@ bool Response::hasWritePermission(const std::string& path) const {
 	return access(dir.c_str(), W_OK) == 0;
 }
 
-bool Response::isCgiRequest(const std::string& path) {
-	if (!_locationBlock->hasCgiPass()) {
-		return false;
-	}
+bool Response::isCgiRequest(const std::string& path) const {
+    if (!_locationBlock || !_locationBlock->hasCgiPass()) {
+        return false;
+    }
 
-	size_t scriptPos = path.find(".py");
-	if (scriptPos == std::string::npos) {
-		return false;
-	}
-	return true;
+    // checking that file extension is (.py)
+    size_t dotPos = path.find_last_of('.');
+    if (dotPos == std::string::npos) {
+        return false;
+    }
+    
+    std::string extension = path.substr(dotPos);
+    return (extension == CGI_EXTENSION);
+}
+
+void Response::handleCgi(const std::string& path) {    
+    std::string scriptPath = path;
+    std::string cgiExecutable = _locationBlock->getCgiPass();
+    
+    if (!fileExists(scriptPath)) {
+        _statusCode = 404;
+        setBody(getErrorPage(404));
+        setHeader("Content-Type", "text/html");
+        return;
+    }
+    
+    if (!hasReadPermission(scriptPath)) {
+        _statusCode = 403;
+        setBody(getErrorPage(403));
+        setHeader("Content-Type", "text/html");
+        return;
+    }
+    
+    // TODO: Implement actual CGI execution
+    // 1. Setting up environment variables
+    // 2. Creating pipes for stdin/stdout
+    // 3. Forking a process
+    // 4. Executing the CGI script
+    // 5. Reading the response
+    // 6. Parsing headers from the response
+
+    _statusCode = 501;
+    setBody(getErrorPage(501));
+    setHeader("Content-Type", "text/html");
 }
 
 std::string Response::getStatusLine() const {

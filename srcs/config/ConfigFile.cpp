@@ -377,11 +377,10 @@ void ConfigurationFile::_parseLocationDirective(ServerBlock& server, LocationBlo
 	else if (key == "cgi_pass") {
 		if (locBlock.hasCgiPass())
 			throw ErrorInvalidConfig("Duplicate 'cgi_pass' directive in location block");
-		if (!_isValidPathFormat(value))
-			throw ErrorInvalidConfig("Invalid CGI executable path: " + value);
-		if (value.length() > MAX_ROOT_PATH_LENGTH)
-			throw ErrorInvalidConfig("CGI path too long (max " + std::to_string(MAX_ROOT_PATH_LENGTH) + " characters)");
-			
+		if (value != CGI_INTERPRETER)
+        	throw ErrorInvalidConfig("Invalid CGI interpreter path. Only " + std::string(CGI_INTERPRETER) + " is supported");
+		if (access(value.c_str(), X_OK) != 0)
+			throw ErrorInvalidConfig("CGI interpreter path is not executable");
 		locBlock.setCgiPass(value);
 	}
 	else if (key == "allowed_methods") {
