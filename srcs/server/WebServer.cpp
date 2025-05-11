@@ -31,7 +31,7 @@ int bind_listen(VirtualHost* cur, int* fd){
         return (-1);   
     }
     cur->setup_fd(fd);
-    // std::cout << "testing fd set up: " << cur->getFD() << std::endl;
+    std::cout << "testing fd set up: " << cur->getFD() << std::endl;
     return (0);
 }
 
@@ -65,7 +65,9 @@ int WebServer::resolveListener(std::string port, std::string host, ServerBlock& 
         if (curL.setSocketFd() == -1)
             return (-1);
         _theLList.push_back(curL);
-        curL.closeFd(curL.getSocketFd());
+        std::cout << *(_theLList.back().getSocketFd()) << "    this is the listeners true fd\n";
+        std::cout << *(curL.getSocketFd()) << "       this is the fd you want to close\n\n";
+        curL.closeFd(curL.getSocketFd()); //should not be closing this, right?
     }
     for(std::size_t m = 0; m < _theLList.size(); m++){
         if (_theLList.at(m).getPort() == port)
@@ -82,9 +84,11 @@ int WebServer::initialize(std::vector<ServerBlock>& serBlocks){
     int countL = 0;
 
     for (std::size_t countS = 0; countS < serBlocks.size(); countS++){
-        // std::cout << "serverNamesCheck " << serBlocks.at(countS).getServerName() << std::endl;
+        std::cout << "serverNamesCheck " << serBlocks.at(countS).getServerName() << std::endl;
         curPorts = serBlocks.at(countS).getListen();
+        std::cout << curPorts.at(0) << std::endl;
         maxPorts = curPorts.size();
+        std::cout << curPorts.size() << std::endl;
         curHost = serBlocks.at(countS).getHost();
         for (std::size_t countP = 0; countP < maxPorts; countP++){
             if ((countL = this->resolveListener(curPorts.at(countP), curHost, serBlocks.at(countS))) == -1)
@@ -99,7 +103,7 @@ int WebServer::initialize(std::vector<ServerBlock>& serBlocks){
                 }
             }
             _theVHList[_theLList.at(countL).getSocketFd()].push_back(std::move(curVH));
-            // std::cout << "testing: " << curVH.getIP() << std::endl;
+            std::cout << "testing: " << curVH.getIP() << std::endl;
         }
     }
     return (0);

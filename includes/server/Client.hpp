@@ -63,6 +63,7 @@ class Client : public EventHandler {
         Client(Client&& other) noexcept;
         Client& operator=(Client&& other) noexcept;
         bool operator==(const Client& other);
+        int setFd(int fd);
         // void    setFlag(int newState);
         // int     settingUp(int* fd);
         // State getState() const;
@@ -71,8 +72,7 @@ class Client : public EventHandler {
         ServerBlock* getServerBlock() const;
         // Request& getRequest();
         // Response& getResponse();
-        int copySocketFd(int* fd);
-        void setCgi();
+        // void setCgi();
 
 
         int handleEvent(uint32_t ev) override;

@@ -13,6 +13,7 @@
 #include <vector>
 #include <unistd.h>
 #include <unordered_map>
+#include <iostream> //delete after
 // #include "EventLoop.hpp"
 
 enum State {
@@ -77,8 +78,9 @@ class EventHandler{
         };
         void initEvent(){
             _event.events = EPOLLIN;
-            _event.data.fd  = *((getSocketFd()));
+            _event.data.fd  = *(getSocketFd());
             _event.data.ptr = static_cast<void*>(this);
+            std::cout << "Listener with fd " << *(getSocketFd()) << " got their event initialised\n";
         };
         struct epoll_event* getEvent(){
             return (&_event);

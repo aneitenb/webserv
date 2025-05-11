@@ -44,7 +44,8 @@ Client::Client(Client&& other) noexcept : _clFd(-1), _requesting(other._requesti
     other._relevant = nullptr;
     _listfd = other._listfd;
     other._listfd = nullptr;
-    this->copySocketFd(&other._clFd);
+    this->_clFd = other._clFd;
+    other._clFd = -1;
     _count = other._count;
     _result = other._result;
     other._result = nullptr;
@@ -59,7 +60,8 @@ Client& Client::operator=(Client&& other) noexcept{
         other._relevant = nullptr;
         _listfd = other._listfd;
         other._listfd = nullptr;
-        this->copySocketFd(&other._clFd); 
+        this->_clFd = other._clFd;
+        other._clFd = -1;
         _count = other._count;
         _result = other._result;
         other._result = nullptr;
@@ -83,21 +85,31 @@ bool Client::operator==(const Client& other){
 }
 
 /* Helpers */
-int Client::copySocketFd(int* fd){
+int Client::setFd(int fd){
     if (this->_clFd != -1){
         close(_clFd);
         _clFd = -1;}
-    if (*fd == -1)
+    if (fd == -1)
         return (-1);
-    this->_clFd = dup(*fd);
-    if (this->_clFd == -1){
-        std::cout << "Error: dup() failed\n"; //exit?
-        return (-1);
-    }
-    close(*fd);
-    *fd = -1;
+    this->_clFd = fd;
     return (0);
 }
+
+// int Client::copySocketFd(int* fd){
+//     if (this->_clFd != -1){
+//         close(_clFd);
+//         _clFd = -1;}
+//     if (*fd == -1)
+//         return (-1);
+//     this->_clFd = dup(*fd);
+//     if (this->_clFd == -1){
+//         std::cout << "Error: dup() failed\n"; //exit?
+//         return (-1);
+//     }
+//     close(*fd);
+//     *fd = -1;
+//     return (0);
+// }
 
 /*Getters and Setters*/
 // Request& Client::getRequest(){ return (_requesting);}

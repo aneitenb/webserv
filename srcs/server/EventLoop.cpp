@@ -36,9 +36,14 @@ int EventLoop::run(std::vector<EventHandler*> listFds){
     if (this->startRun() == -1)
         return (-1);
     this->addListeners(listFds);
+	std::cout << "should be listener (5): " << listFds.at(0)->getState() << std::endl;
 
     while(gSignal){
+        std::cout << "Entered the loop\n";
         int events2Resolve = epoll_wait(_epollFd, _events, MAX_EVENTS, -1);
+        if (events2Resolve < 0){
+            std::cout << "Error, or no events to resolve: " << events2Resolve << std::endl;
+        }
         for (int i = 0; i < events2Resolve; i++){
             EventHandler* curE = static_cast<EventHandler*>(_events[i].data.ptr);
             std::cout << "After receiving events\n";
@@ -135,6 +140,7 @@ int EventLoop::startRun(void){
         std::cerr << strerror(errno) << "\n";
         return (-1);
     }
+    std::cout << "Epoll instance created: " << _epollFd << "\n\n";
     return (0);
 }
 

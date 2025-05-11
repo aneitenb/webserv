@@ -19,8 +19,8 @@ Listener::Listener() : _sockFd(-1){};
 Listener::Listener(std::string port, std::string host) : _sockFd(-1), _port(port), _host(host) {}
 
 Listener::Listener(const Listener& obj){
-    _sockFd = -1;
-    this->copySocketFd(obj._sockFd);
+    _sockFd = obj._sockFd;
+    // this->copySocketFd(obj._sockFd);
     _port = obj._port;
     _host = obj._host;
     _relevant = obj._relevant;
@@ -28,7 +28,8 @@ Listener::Listener(const Listener& obj){
 //remember to close the previous fd
 Listener& Listener::operator=(const Listener& obj) {
     if (this != &obj){
-        this->copySocketFd(obj._sockFd);
+        // this->copySocketFd(obj._sockFd);
+        _sockFd = obj._sockFd;
         _port = obj._port;
         _host = obj._host;
         _relevant = obj._relevant;
@@ -80,6 +81,8 @@ void Listener::setHost(const std::string& host){
     _host = host;
 }
 
+
+
 /*Helper functions*/
 int setuping(int *fd){
     // int sock_err = 0;
@@ -91,11 +94,39 @@ int setuping(int *fd){
     //     std::cerr << strerror(errno) << "\n";
     //     return (-1);
     // }
+    /*TEST TO SEE IF THE NONBLOCKING HAS BEEN SET UP FOR THE LISTENER, DELETE AFTER*/
     if ((fcntl(*fd, F_SETFL, O_NONBLOCK)) == -1){
         std::cerr << "Error: fcntl() failed\n";
         std::cerr << strerror(errno) << "\n";
         return (-1);
     }
+    // // After socket(), before bind()/listen():
+    // int flags = fcntl(*fd, F_GETFL, 0);
+    // if (flags < 0) {
+    //     perror("fcntl F_GETFL");
+    //     exit(1);
+    // }
+
+    // // Turn on non-blocking if it wasn’t already:
+    // if (!(flags & O_NONBLOCK)) {
+    //     if (fcntl(*fd, F_SETFL, flags | O_NONBLOCK) < 0) {
+    //         perror("fcntl F_SETFL O_NONBLOCK");
+    //         exit(1);
+    //     }
+    //     printf("enabled O_NONBLOCK on fd %d\n", *fd);
+    // }
+
+    // // Verify:
+    // flags = fcntl(*fd, F_GETFL, 0);
+    // printf("listen_fd access mode: ");
+    // switch (flags & O_ACCMODE) {
+    // case O_RDONLY:  printf("read-only");  break;
+    // case O_WRONLY:  printf("write-only"); break;
+    // case O_RDWR:    printf("read/write"); break;
+    // default:        printf("unknown");    break;
+    // }
+    // printf("\nstatus flags: %sO_NONBLOCK\n",
+    //     (flags & O_NONBLOCK) ? "" : "(!) ");
     return (0);
 }
 
@@ -108,23 +139,24 @@ int Listener::setSocketFd(void){
         std::cerr << strerror(errno) << "\n";
         return (-1);
     }
+    std::cout << "This socket has the fd: " << _sockFd << std::endl;
     if ((setuping(&_sockFd)) == -1)
         return (-1);
     return (0);
 }
 
-int Listener::copySocketFd(const int& fd){
-        if (_sockFd != -1){
-            close(_sockFd);
-            _sockFd = -1;}
-        if (fd == -1)
-            return (_sockFd);
-        _sockFd = dup(fd);
-        if (_sockFd == -1)
-            std::cout << "Error: dup() failed\n";
-        // close(fd);
-        return (_sockFd);
-}
+// int Listener::copySocketFd(const int& fd){
+//         if (_sockFd != -1){
+//             close(_sockFd);
+//             _sockFd = -1;}
+//         if (fd == -1)
+//             return (_sockFd);
+//         _sockFd = dup(fd);
+//         if (_sockFd == -1)
+//             std::cout << "Error: dup() failed\n";
+//         // close(fd);
+//         return (_sockFd);
+// }
 
 void Listener::addClient(Client& cur){
     _activeClients.push_back(std::move(cur));
@@ -171,10 +203,10 @@ int Listener::handleEvent(uint32_t ev){
             }
             if (setuping(&curFd) == -1) //set as nonblocking
                 return (-1);
-            if (curC.copySocketFd(&curFd) == -1) //pass the socket into Client
+            if (curC.setFd(curFd) == -1) //pass the socket into Client
                 return (-1);
             _activeClients.push_back(std::move(curC));
-            closeFd(&curFd);
+            curFd = -1; //i think this won't keep the fds open haha
             // curEL->addClient(&(_activeClients.at(_activeClients.size() - 1)));
         }
     }

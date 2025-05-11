@@ -47,7 +47,7 @@ class Listener : public EventHandler {
         const std::string& getHost(void) const; 
         void setHost(const std::string& host);
 
-        int copySocketFd(const int& fd);//dup not needed, should i get rid of it and use a fd wrapper?
+        // int copySocketFd(const int& fd);//dup not needed, should i get rid of it and use a fd wrapper?
 
         int handleEvent(uint32_t ev) override;
         int* getSocketFd(void) override;
