@@ -37,6 +37,7 @@ class Listener : public EventHandler {
 
         //getters and setters
         int  setSocketFd(void);
+        void setFd(int fd);
         // std::vector<VirtualHost> getHosts(void) const;
 
         // void addHost(VirtualHost& cur);

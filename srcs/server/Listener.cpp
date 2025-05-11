@@ -55,6 +55,10 @@ Listener::~Listener(){
 //     _knownVHs.push_back(cur);
 // }
 
+void Listener::setFd(int fd){
+    _sockFd = fd;
+}
+
 void Listener::addServBlock(ServerBlock& cur){
     _relevant = cur;
 }
@@ -142,6 +146,10 @@ int Listener::setSocketFd(void){
     std::cout << "This socket has the fd: " << _sockFd << std::endl;
     if ((setuping(&_sockFd)) == -1)
         return (-1);
+    int status = fcntl(_sockFd, F_GETFD); //delete
+    if (status == -1) {
+        perror("File descriptor is not valid");
+    }
     return (0);
 }
 

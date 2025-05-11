@@ -10,6 +10,7 @@
 #include "server/WebServer.hpp"
 #include <string.h>
 #include <netdb.h> //getaddrinfo
+#include <fcntl.h> //delete after
 
 WebServer::WebServer(){}
 WebServer::~WebServer(){}
@@ -19,7 +20,11 @@ WebServer::~WebServer(){}
 /*use bind and listen for listening sockets*/
 int bind_listen(VirtualHost* cur, int* fd){
     //for the listening socket bind and listen
-    // std::cout << "cehcking: " << cur->getIP() << std::endl;
+    std::cout << "fd is: " << *fd << " and the host is " << cur->getAddress()->sa_family << std::endl;
+    int status = fcntl(*fd, F_GETFD); //delete
+    if (status == -1) {
+        perror("File descriptor is not valid");
+    }
     if ((bind(*fd, cur->getAddress(), sizeof(struct sockaddr)) == -1)){
         std::cerr << "Error: bind() failed\n";
         std::cerr << strerror(errno) << "\n";
@@ -36,9 +41,9 @@ int bind_listen(VirtualHost* cur, int* fd){
 }
 
 bool WebServer::doesExist(std::string port, std::string host){
-    // std::cout << "entered doesExist\n";
+    std::cout << "entered doesExist\n";
     if (_theSList.count(port) == FALSE){
-        // std::cout << "this shouldve happened\n";
+        std::cout << "this shouldve happened\n";
         _theSList[port].push_back(host);
         return FALSE;
     }
@@ -67,7 +72,7 @@ int WebServer::resolveListener(std::string port, std::string host, ServerBlock& 
         _theLList.push_back(curL);
         std::cout << *(_theLList.back().getSocketFd()) << "    this is the listeners true fd\n";
         std::cout << *(curL.getSocketFd()) << "       this is the fd you want to close\n\n";
-        curL.closeFd(curL.getSocketFd()); //should not be closing this, right?
+        curL.setFd(-1); //should not be closing this, right?
     }
     for(std::size_t m = 0; m < _theLList.size(); m++){
         if (_theLList.at(m).getPort() == port)

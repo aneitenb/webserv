@@ -39,7 +39,7 @@ int VirtualHost::addressInfo(void){
         std::cerr << "Error: getaddrinfo failed but unclear why.\n";
         return (-1);
     }
-    // std::cout << "Virtual Host address set up!\n";
+    std::cout << "Virtual Host address set up!\n";
     return (0);
 }
 
