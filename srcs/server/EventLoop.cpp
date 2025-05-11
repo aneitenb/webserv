@@ -233,7 +233,7 @@ void EventLoop::resolvingClosing(){
             std::cout << std::boolalpha;
             std::cout << "Clients empty: " << pair.second.empty() << "\n";
             std::cout << std::noboolalpha;
-            std::cout << "Client vector size: " << pair.second.empty() << "\n";
+            std::cout << "Client vector size: " << pair.second.size() << "\n";
         }
     }
 }

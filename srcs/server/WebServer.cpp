@@ -40,75 +40,88 @@ int bind_listen(VirtualHost* cur, int* fd){
     return (0);
 }
 
-bool WebServer::doesExist(std::string port, std::string host){
+bool WebServer::doesExist(std::string port, std::string host){ //check
     std::cout << "entered doesExist\n";
-    if (_theSList.count(port) == FALSE){
+    if (_theSList.count(port) == 0){
         std::cout << "this shouldve happened\n";
         _theSList[port].push_back(host);
-        return FALSE;
+        return false;
     }
-    if (_theSList.at(port).empty() == FALSE){
+    if (_theSList.at(port).empty() == true){
         for (size_t i = 0; i < _theSList.at(port).size(); i++)
             if (_theSList.at(port).at(i) == port)
-                return TRUE;
+                return true;
     }
     _theSList.at(port).push_back(host);
-    return TRUE;
+    return true;
 }
 
 /*check if the [port : host] combination exists and add it if it doesn't*/
-bool WebServer::doesExistPort(std::string port){
+bool WebServer::doesListenerExist(std::string port, std::string host){
     // std::cout << "entered doesExistPort\n";
-    return (_theSList.count(port));
+    if (_portHost.count(port) > 0){
+        for (std::size_t i = 0; i < _portHost.at(port).size(); i++){
+            if (_portHost.at(port).at(i) == host)
+                return true;
+        }
+    }
+    _portHost[port].push_back(host);
+    return false;
 }
 
 int WebServer::resolveListener(std::string port, std::string host, ServerBlock& serBlock){
-    if (doesExistPort(port) == FALSE){
-        // std::cout << "this shouldve happened\n";
+    //check if port exists, if yes go to the next check
+    if (doesListenerExist(port, host) == false) //exists
+    {
+        for (std::size_t j = 0; j < _theLList.size(); j++){
+            if (_theLList.at(j).getHost() == host)
+                _theLList.at(j).addServBlock(serBlock, serBlock.getServerName());
+        }
+    }
+    else{
+        std::cout << "PortHost doesn't exits, adding\n";
         Listener curL(port, host);
-        curL.addServBlock(serBlock);
+        curL.addServBlock(serBlock, serBlock.getServerName());
         if (curL.setSocketFd() == -1)
             return (-1);
+        //setup bind, listen, etc, error check
         _theLList.push_back(curL);
         std::cout << *(_theLList.back().getSocketFd()) << "    this is the listeners true fd\n";
         std::cout << *(curL.getSocketFd()) << "       this is the fd you want to close\n\n";
-        curL.setFd(-1); //should not be closing this, right?
+        curL.setFd(-1);
     }
-    for(std::size_t m = 0; m < _theLList.size(); m++){
-        if (_theLList.at(m).getPort() == port)
-            return (m);
-    }
-    return (-1);
+    return (0);
 }
 
 //shorten?
 int WebServer::initialize(std::vector<ServerBlock>& serBlocks){
-    std::vector<std::string> curPorts;
+    std::vector<std::string> curPorts; //can have more than one port in a server block
     std::size_t maxPorts;
-    std::string curHost;
+    std::string curHost; //IP
     int countL = 0;
 
-    for (std::size_t countS = 0; countS < serBlocks.size(); countS++){
+    for (std::size_t countS = 0; countS < serBlocks.size(); countS++){ //counter for serverblocks
         std::cout << "serverNamesCheck " << serBlocks.at(countS).getServerName() << std::endl;
-        curPorts = serBlocks.at(countS).getListen();
-        std::cout << curPorts.at(0) << std::endl;
-        maxPorts = curPorts.size();
-        std::cout << curPorts.size() << std::endl;
-        curHost = serBlocks.at(countS).getHost();
+        curPorts = serBlocks.at(countS).getListen(); //get all the ports from the server block
+        std::cout << "checking the first port in a server block " << curPorts.at(0) << std::endl;
+        maxPorts = curPorts.size(); //get the number of ports in the server block
+        std::cout << "how many ports in a server block " <<curPorts.size() << std::endl;
+        curHost = serBlocks.at(countS).getHost(); //get the current IP address
+
         for (std::size_t countP = 0; countP < maxPorts; countP++){
             if ((countL = this->resolveListener(curPorts.at(countP), curHost, serBlocks.at(countS))) == -1)
                 return (-1);
             VirtualHost curVH(serBlocks.at(countS), curPorts.at(countP));
-            if (curVH.addressInfo() == -1)
+            if (curVH.addressInfo() == -1) //shift to listener
                     return (-1);
-            if (doesExist(curPorts.at(countP), curHost) == FALSE){
+            if (doesExist(curPorts.at(countP), curHost) == false){ //shift to listener
                 if ((bind_listen(&curVH, _theLList.at(countL).getSocketFd())) == -1){
                         curVH.freeAddress();
                         return(-1);
                 }
             }
-            _theVHList[_theLList.at(countL).getSocketFd()].push_back(std::move(curVH));
-            std::cout << "testing: " << curVH.getIP() << std::endl;
+            // _theVHList[_theLList.at(countL).getSocketFd()].push_back(std::move(curVH));
+            // std::cout << "testing: " << curVH.getIP() << std::endl;
         }
     }
     return (0);

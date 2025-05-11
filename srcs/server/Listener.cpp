@@ -23,7 +23,8 @@ Listener::Listener(const Listener& obj){
     // this->copySocketFd(obj._sockFd);
     _port = obj._port;
     _host = obj._host;
-    _relevant = obj._relevant;
+    _allServerNames = obj._allServerNames;
+    // _relevant = obj._relevant;
 }
 //remember to close the previous fd
 Listener& Listener::operator=(const Listener& obj) {
@@ -32,7 +33,8 @@ Listener& Listener::operator=(const Listener& obj) {
         _sockFd = obj._sockFd;
         _port = obj._port;
         _host = obj._host;
-        _relevant = obj._relevant;
+        _allServerNames = obj._allServerNames;
+        // _relevant = obj._relevant;
     }
     return (*this);
 }
@@ -59,12 +61,17 @@ void Listener::setFd(int fd){
     _sockFd = fd;
 }
 
-void Listener::addServBlock(ServerBlock& cur){
-    _relevant = cur;
+const std::string& Listener::getFirstKey() const{
+    return (_firstKey);
 }
 
-ServerBlock* Listener::getServBlock(){
-    return (&_relevant);
+void Listener::addServBlock(ServerBlock& cur, std::string name){
+    _allServerNames[name] = cur;
+    // _relevant = cur;
+}
+
+std::unordered_map<std::string, ServerBlock> Listener::getServBlock(){
+    return (_allServerNames);
 }
 
 const std::string& Listener::getPort(void) const{
@@ -169,6 +176,15 @@ int Listener::setSocketFd(void){
 void Listener::addClient(Client& cur){
     _activeClients.push_back(std::move(cur));
 }
+
+// void Listener::addServName(std::string name){
+//     if (_allServerNames.empty() != true){
+//         if (_allServerNames.count(name) > 0)
+//             return;
+//     }
+//     _allServerNames[name];
+// }
+
 
 const std::vector<Client>& Listener::getClients(void) const{
     return (_activeClients);

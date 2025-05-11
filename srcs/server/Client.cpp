@@ -16,14 +16,14 @@
 #include "server/CgiHandler.hpp"
 
 /*Orthodox Cannonical Form*/
-Client::Client(): _listfd(nullptr), _clFd(-1), _count(0), _curR(EMPTY), _theCgi(&_requesting, &_responding, &_clFd){
+Client::Client(): _listfd(nullptr), _clFd(-1), _count(0), /*_curR(EMPTY),*/ _theCgi(&_requesting, &_responding, &_clFd){
     ftMemset(&_result, sizeof(_result));
     setState(TOADD);
     // ftMemset(&_event, sizeof(_event)); //do I leave this like this?
 }
 
-Client::Client(ServerBlock* cur): _relevant(cur), _listfd(nullptr), \
-    _clFd(-1), _count(0), _curR(EMPTY), \
+Client::Client(std::unordered_map<std::string, ServerBlock> cur): _allServerNames(cur), _listfd(nullptr), \
+    _clFd(-1), _count(0), /*_curR(EMPTY),*/ \
     _theCgi(CgiHandler(&_requesting, &_responding, &_clFd)){
     ftMemset(&_result, sizeof(_result));
     setState(TOADD);
@@ -40,8 +40,9 @@ Client::~Client(){
 
 Client::Client(Client&& other) noexcept : _clFd(-1), _requesting(other._requesting), \
     _responding(std::move(other._responding)), _theCgi(std::move(other._theCgi)){
-    _relevant = other._relevant;
-    other._relevant = nullptr;
+    _allServerNames = other._allServerNames;
+    // _relevant = other._relevant;
+    // other._relevant = nullptr;
     _listfd = other._listfd;
     other._listfd = nullptr;
     this->_clFd = other._clFd;
@@ -49,15 +50,16 @@ Client::Client(Client&& other) noexcept : _clFd(-1), _requesting(other._requesti
     _count = other._count;
     _result = other._result;
     other._result = nullptr;
-    _curR = other._curR;
+    /*_curR = other._curR;*/
     this->setState(other.getState());
 }
 
 //this should never be used though
 Client& Client::operator=(Client&& other) noexcept{
     if (this != &other){
-        _relevant = other._relevant;
-        other._relevant = nullptr;
+        _allServerNames = other._allServerNames;
+        // _relevant = other._relevant;
+        // other._relevant = nullptr;
         _listfd = other._listfd;
         other._listfd = nullptr;
         this->_clFd = other._clFd;
@@ -65,7 +67,7 @@ Client& Client::operator=(Client&& other) noexcept{
         _count = other._count;
         _result = other._result;
         other._result = nullptr;
-        _curR = other._curR;
+        /*_curR = other._curR;*/
         this->setState(other.getState());
         _theCgi = std::move(other._theCgi);
     }
@@ -74,12 +76,10 @@ Client& Client::operator=(Client&& other) noexcept{
 
 // add variables; response and request == operators
 bool Client::operator==(const Client& other){
-    if (_relevant == other._relevant &&_listfd == other._listfd \
+    if (_allServerNames == other._allServerNames &&_listfd == other._listfd \
         && _clFd == other._clFd && _count == other._count \
         && _result == other._result && this->getState() == other.getState() \
-        && _curR == other._curR && _theCgi == other._theCgi
-        && _result == other._result && this->getState() == other.getState() \
-        && _curR == other._curR && _theCgi == other._theCgi)
+        && /*_curR == other._curR &&*/ _theCgi == other._theCgi)
         return (true);
     return (false);
 }
@@ -114,9 +114,20 @@ int Client::setFd(int fd){
 /*Getters and Setters*/
 // Request& Client::getRequest(){ return (_requesting);}
 
-ServerBlock* Client::getServerBlock() const{
-    return (_relevant);
+std::unordered_map<std::string, ServerBlock> Client::getServerBlocks() const{
+    return (_allServerNames);
 }
+
+ServerBlock* Client::getSBforResponse(std::string name){
+    try{
+        if (_allServerNames.count(name) > 0)
+            return (&(_allServerNames.at(name)));
+    }
+    catch(std::exception& e){
+        return (&(_allServerNames.at(_firstKey)));
+    }
+}
+
 
 /* Overriden*/
 int* Client::getSocketFd(void) {
@@ -162,24 +173,25 @@ int Client::handleEvent(uint32_t ev){
         std::cout << "Receiving\n";
         if (receiving_stuff() == -1){
             _count++;
-            if (_count == 100)
+            if (_count == 50)
                 this->setState(CLOSE);
             std::cout << "Count: " << _count << std::endl;
         }
         //is it complete, check and set
-        if (saveRequest() == 0){
-            if (_requesting.getURI().find(".py") != std::string::npos) {//check if CGI
-                this->setState(TOCGI);
-                _count = -1000; //see if this is ok
-            }
-            saveResponse(); //since the response will be formed on a complete request, maybe the constructor can call process request right away?
-            _buffer.clear(); //or see how it's handled?
-            //if cgi
-            //setState(tocgi)
-            //count = -1000
-            this->setState(TOWRITE); //EPOLLOUT
-            _count = 0;
+        if (saveRequest() == -1)
+            return (0);
+        if (_requesting.getURI().find(".py") != std::string::npos) {//check if CGI
+            this->setState(TOCGI);
+            _count = -1000; //see if this is ok
         }
+        saveResponse(); //since the response will be formed on a complete request, maybe the constructor can call process request right away?
+        _buffer.clear(); //or see how it's handled?
+        _buffer = "";
+        //if cgi
+        //setState(tocgi)
+        //count = -1000
+        this->setState(TOWRITE); //EPOLLOUT
+        _count = 0;
     }
     if (ev & EPOLLOUT){
         if (_count != -1 && sending_stuff() == -1){
@@ -232,8 +244,8 @@ int Client::receiving_stuff(){
     std::string temp_buff;
     temp_buff.resize(4096);
     // temp_buff.clear(); //maybe I don't need this?
-    if (_curR == CLEAR)
-        _buffer.clear(); //maybe can't do this if the request is not complete
+    /*if (_curR == CLEAR)
+        _buffer.clear(); //maybe can't do this if the request is not complete*/
 
     while(1){
         len = recv(_clFd, &temp_buff[0], temp_buff.size(), 0); //sizeof(buffer) - 1?
@@ -256,6 +268,9 @@ int Client::receiving_stuff(){
 
 int Client::saveRequest(){
     try{ //do I need the try catch with the revamping?
+        if (_buffer.empty() == true)
+            return (-1);
+        std::cout << "Congrats, the buffer was not empty\n\n";
         _requesting.append(_buffer);
         //the thing is what if it's a partial request so not everything has been received? it needs to be updated without being marked as wrong
         if (_requesting.isParsed() == true){
@@ -270,7 +285,8 @@ int Client::saveRequest(){
 }
 
 void Client::saveResponse(){
-    Response curR(&_requesting, getServerBlock());
+    std::string name = _requesting.getHeader("Host");
+    Response curR(&_requesting, getSBforResponse(name));
     _responding = std::move(curR);
     _responding.prepareResponse();
 }

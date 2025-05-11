@@ -26,16 +26,17 @@
 //     TOWRITE
 // };
 
-enum RequestState {
-    PARTIAL,
-    EMPTY,
-    COMPLETE,
-    CLEAR
-}; //only clear buffer when there is CLEAR marked
+// enum RequestState {
+//     PARTIAL,
+//     EMPTY,
+//     COMPLETE,
+//     CLEAR
+// }; //only clear buffer when there is CLEAR marked
 
 class Client : public EventHandler {
     private:
-        ServerBlock*        _relevant;
+        std::unordered_map<std::string, ServerBlock> _allServerNames;
+        std::string _firstKey;
         int*                _listfd; //do i need this
         int                 _clFd;
         int                 _count;
@@ -43,7 +44,7 @@ class Client : public EventHandler {
         // struct epoll_event  _event;
         // State               _curS;
         std::string         _buffer;
-        RequestState        _curR;
+        // RequestState        _curR;
         Request             _requesting;
         Response            _responding;
         CgiHandler          _theCgi;
@@ -55,7 +56,7 @@ class Client : public EventHandler {
         void saveResponse();
     public:
         Client();
-        Client(ServerBlock* cur);
+        Client(std::unordered_map<std::string, ServerBlock> cur);
         ~Client();
         Client(const Client& other) = delete;
         Client& operator=(const Client& other) = delete;        // int     getFlag(void) const;
@@ -69,7 +70,8 @@ class Client : public EventHandler {
         // State getState() const;
         // void setState(State newState);
         // int* getClFd(void);
-        ServerBlock* getServerBlock() const;
+        std::unordered_map<std::string, ServerBlock> getServerBlocks() const;
+        ServerBlock* getSBforResponse(std::string name);
         // Request& getRequest();
         // Response& getResponse();
         // void setCgi();

@@ -15,13 +15,13 @@
 #include "VirtualHost.hpp"
 #include "config/ServerBlock.hpp"
 
-#define TRUE 1
-#define FALSE 0
+// #define TRUE 1
+// #define FALSE 0
 
 class	WebServer{
 	private:
-		std::unordered_map<int*, std::vector<VirtualHost>> _theVHList;
-		std::unordered_map<std::string, std::vector<std::string>> _theSList;
+		// std::unordered_map<int*, std::vector<VirtualHost>> _theVHList;
+		std::unordered_map<std::string, std::vector<std::string>> _portHost;
 		std::vector<Listener>       _theLList;
 		// std::vector<VirtualHost>	_virtualHosts;
 		// std::vector<int>			_fds;
@@ -39,7 +39,7 @@ class	WebServer{
 		std::vector<Listener>& getListeners(void);
 		std::vector<VirtualHost> getVHosts(void) const;
 		bool doesExist(std::string port, std::string host);
-		bool doesExistPort(std::string port);
+		bool doesListenerExist(std::string port, std::string host);
 		int resolveListener(std::string port, std::string host, ServerBlock& serBlock);
 };
 

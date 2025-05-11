@@ -9,7 +9,7 @@
 
 #pragma once
 
-#include <map>
+#include <unordered_map>
 #include <iostream>
 #include <vector>
 #include "VirtualHost.hpp"
@@ -24,7 +24,10 @@ class Listener : public EventHandler {
         std::string _port;
         std::string _host;
         std::vector<Client> _activeClients;
-        ServerBlock _relevant;
+        std::unordered_map<std::string, ServerBlock> _allServerNames;
+        std::string _firstKey;
+        struct addrinfo*    _result; //needs to be freed freeaddrinfo() but be careful because when copying, pointing to the same address
+        // ServerBlock _relevant;
     public:
         Listener();
         Listener(std::string _port, std::string _host);
@@ -41,12 +44,14 @@ class Listener : public EventHandler {
         // std::vector<VirtualHost> getHosts(void) const;
 
         // void addHost(VirtualHost& cur);
-        void addServBlock(ServerBlock& cur);
-        ServerBlock* getServBlock();
+        void addServBlock(ServerBlock& cur, std::string name);
+        std::unordered_map<std::string, ServerBlock> getServBlock();
         const std::string& getPort(void) const; 
         void setPort(const std::string& port);
         const std::string& getHost(void) const; 
         void setHost(const std::string& host);
+        const std::string& getFirstKey() const;
+        // void addServName(std::string name);
 
         // int copySocketFd(const int& fd);//dup not needed, should i get rid of it and use a fd wrapper?
 

@@ -131,9 +131,17 @@ int CgiHandler::setupPipes(){
     if (fcntl(fromCGI._fd[0], F_SETFL, O_NONBLOCK) == -1 ){
         //error
         //massive close?
+        closeFd (&toCGI._fd[0]);
+        closeFd (&fromCGI._fd[0]);
+        closeFd (&toCGI._fd[1]);
+        closeFd (&fromCGI._fd[1]);
         return 1;
     }
     if (_curr == SENDING && fcntl(toCGI._fd[1], F_SETFL, O_NONBLOCK) == -1 ){
+        closeFd (&toCGI._fd[0]);
+        closeFd (&fromCGI._fd[0]);
+        closeFd (&toCGI._fd[1]);
+        closeFd (&fromCGI._fd[1]);       
         //error
         return 1;
     }
@@ -146,6 +154,7 @@ int CgiHandler::setupPipes(){
     fromCGI._event.data.fd = fromCGI._fd[0];
     fromCGI._event.data.ptr = static_cast<void*>(this); //this shouldnt be an issue, right?
 
+    std::cout << "Cgi: Pipe setup complete!\n";
     return 0;
 }
 
@@ -170,9 +179,11 @@ std::string CgiHandler::getQueryPath(int side){ //NOT USED?
 
 int CgiHandler::check_paths(){
     size_t found = _request->getURI().find_last_of('/');
+    std::cout << "Cgi: URI: " << _request->getURI() << "\n";
     if (found == std::string::npos)
         return 1; //invalid path
     _absPath = _request->getURI().substr(0, found);
+    std::cout << "Cgi: abspath: " << _absPath << "\n";
     if (access(_absPath.c_str(), F_OK | X_OK) != 0){
         //directory not accessible 500 or 404
         return 1;
@@ -181,11 +192,13 @@ int CgiHandler::check_paths(){
     if (found == std::string::npos)
     return 1; //invalid path
     _scriptPath = _request->getURI().substr(0, found);
+    std::cout << "Cgi: script: " << _scriptPath << "\n";
     if (access(_scriptPath.c_str(), F_OK | R_OK) != 0){
         //script not accessible/readable 500 or 404
         return 1;
     }
     _query = _request->getURI().substr(found, _request->getURI().size() - found);
+    std::cout << "Cgi: query: " << _query << "\n";
     return 0;
 }
 
@@ -214,6 +227,7 @@ int CgiHandler::setupEnv(){
 
     _envp.push_back(NULL);
 
+    std::cout << "Cgi: Environment setup complete!\n";
     return 0;
 }
 
@@ -223,6 +237,7 @@ int CgiHandler::forking(std::unordered_map<int*, std::vector<EventHandler*>>& _a
     if (_pid == 0){ //child
         char* argv[3] = {0};
 
+        std::cout << "CGI: This is the child!\n";
         //close everything else, cleanup epoll
         for(auto& pair : _activeFds){
             for (size_t i = 0; i < pair.second.size(); i++){
@@ -267,6 +282,7 @@ int CgiHandler::forking(std::unordered_map<int*, std::vector<EventHandler*>>& _a
         _exit(1); //to avoid flushing parent I/O buffers
     }
     else if (_pid > 0){ //parent
+        std::cout << "Cgi: This is the parent!\n";
         closeFd(&fromCGI._fd[1]);
         closeFd(&toCGI._fd[0]);
         /*
@@ -298,7 +314,7 @@ int CgiHandler::handleEvent(uint32_t ev){
     if (ev & EPOLLIN){
         buffer.clear();
         buffer.resize(4096);
-
+        std::cout << "Cgi: Receiving\n";
         while(1){
             ssize_t len = recv(fromCGI._fd[0], &buffer[0], buffer.size(), 0); //sizeof(buffer) - 1?
             if (len < 1){ //either means that there is no more data to read or error or client closed connection (len == 0)
@@ -323,6 +339,7 @@ int CgiHandler::handleEvent(uint32_t ev){
         }
     }
     else if (ev & EPOLLOUT){
+        std::cout << "Cgi: Sending\n";
         buffer = _request->getBody();
         if (buffer.size() == 0)
             return (-1);
