@@ -19,7 +19,7 @@
 [[maybe_unused]] static inline std::string	_printRawRequest(const std::string &reqData);
 static inline bool							_getChunkSize(std::stringstream &bodySection, std::string &remainder, size_t &chunkSize);
 
-Request::Request(void): _remainder(""), _contentLength(0), _chunkSize(0), _parsingStage(REQUESTLINE), _trailers(false), _chunked(false), _parsed(false), _valid(true) {}
+Request::Request(void): _contentLength(0), _chunkSize(0), _parsingStage(REQUESTLINE), _trailers(false), _chunked(false), _parsed(false), _valid(false) {}
 
 Request::Request(const Request &other) {
 	*this = other;

@@ -72,7 +72,7 @@ class Listener : public EventHandler {
         bool ready2Switch() override;
         struct epoll_event& getCgiEvent(int flag) override;
 
-        void addClient(Client& cur);
+        // void addClient(Client& cur);
         const std::vector<Client>& getClients(void) const;
         void delClient(Client* cur);
 

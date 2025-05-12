@@ -37,7 +37,7 @@ class Client : public EventHandler {
     private:
         std::unordered_map<std::string, ServerBlock*> _allServerNames;
         std::string _firstKey;
-        int*                _listfd; //do i need this
+        // int*                _listfd; //do i need this
         int                 _clFd;
         int                 _count;
         struct sockaddr*    _result; //do i need this if when i accept i just take the fd?
@@ -64,7 +64,9 @@ class Client : public EventHandler {
         Client(Client&& other) noexcept;
         Client& operator=(Client&& other) noexcept;
         bool operator==(const Client& other) const;
-        int setFd(int fd);
+        int setFd(int *fd);
+        // void setSockFd(int* fd);
+        void setKey(std::string key);
         // void    setFlag(int newState);
         // int     settingUp(int* fd);
         // State getState() const;

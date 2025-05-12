@@ -129,6 +129,7 @@ int WebServer::initialize(std::vector<ServerBlock>& serBlocks){
 void WebServer::freeStuff(void){
     for (std::size_t i = 0; i < _theLList.size(); i++) {
         _theLList.at(i).freeAddress();
+        std::cout << "Did the free\n";
     }
 }
 

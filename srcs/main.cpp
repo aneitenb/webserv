@@ -45,8 +45,9 @@ int program(char** av){
 		std::vector<EventHandler*> listPtrs;
 
 		//use ServerBlocks to init webserver instance
-		if (instance.initialize(config.getAllServerBlocks()) == -1)
-			return 1; //free addresses?
+		if (instance.initialize(config.getAllServerBlocks()) == -1){
+			instance.freeStuff();
+			return 1;} //free addresses?
 
 		//Listener -> EventHandler* so I can pass it to EventLoop
 		std::vector<Listener>& listeners = instance.getListeners();

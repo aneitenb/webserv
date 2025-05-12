@@ -256,9 +256,9 @@ int Listener::setSocketFd(void){
 //         return (_sockFd);
 // }
 
-void Listener::addClient(Client& cur){
-    _activeClients.push_back(std::move(cur));
-}
+// void Listener::addClient(Client& cur){
+//     _activeClients.push_back(std::move(cur));
+// }
 
 // void Listener::addServName(std::string name){
 //     if (_allServerNames.empty() != true){
@@ -292,9 +292,9 @@ int Listener::handleEvent(uint32_t ev){
     if (ev & EPOLLIN){ //accept incoming clients while there are clients to be accepted
         while (1){
             std::cout << "ACCEPTING CLIENTS\n";
-            Client curC(this->getServBlock());
             int curFd = -1;
             curFd = accept(_sockFd, nullptr, nullptr); //think about taking in the client info for security reasons maybe
+            std::cout << curFd << " newly made fd\n";
             if (curFd == -1){
                 if (errno == EAGAIN || errno == EWOULDBLOCK)
                     return (0); //means there are no more clients that wait to be accepted
@@ -303,12 +303,15 @@ int Listener::handleEvent(uint32_t ev){
                 return (-1);
             }
             //separate setuping into making it nonblocking
-            if (setuping(&curFd) == -1) //set as nonblocking
+            if (makeNonBlock(&curFd) == -1) //set as nonblocking
                 return (-1);
-            if (curC.setFd(curFd) == -1) //pass the socket into Client
+            Client curC(this->getServBlock());
+            curC.setKey(_firstKey);
+            std::cout << curC.getState() << " newly made client state\n";
+            if (curC.setFd(&curFd) == -1) //pass the socket into Client
                 return (-1);
             _activeClients.push_back(std::move(curC));
-            curFd = -1; //i think this won't keep the fds open haha
+            // curFd = -1; //i think this won't keep the fds open haha
             // curEL->addClient(&(_activeClients.at(_activeClients.size() - 1)));
         }
     }
