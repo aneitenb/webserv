@@ -136,8 +136,11 @@ std::unordered_map<std::string, ServerBlock*> Client::getServerBlocks() const{
 }
 
 ServerBlock* Client::getSBforResponse(std::string name){
-    if (_allServerNames.count(name) > 0)
-        return (_allServerNames.at(name));
+    auto it = name.find(':'); //should I have a check if it fails?
+    std::string nameNoPort = name.substr(0, it);
+    std::cout << nameNoPort << ": should be name without the port\n";
+    if (_allServerNames.count(nameNoPort) > 0)
+        return (_allServerNames.at(nameNoPort));
     std::cout << "Going to local host hopefully: " <<_firstKey << "\n check also: " << _allServerNames.at(_firstKey)->getHost() << std::endl;
     return (_allServerNames.at(_firstKey));
 }

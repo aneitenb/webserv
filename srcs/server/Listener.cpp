@@ -57,6 +57,7 @@ Listener::~Listener(){
         _sockFd = -1;
         // std::cout << "closed fd\n";
     }
+    freeAddress(); //check if double free but it shouldn't be
 }
 
 /*Getters and Setters*/
@@ -311,6 +312,11 @@ int Listener::handleEvent(uint32_t ev){
             if (curC.setFd(&curFd) == -1) //pass the socket into Client
                 return (-1);
             _activeClients.push_back(std::move(curC));
+            //delete
+            int status = fcntl(*_activeClients.back().getSocketFd(), F_GETFD);
+            if (status == -1) {
+                perror("File descriptor is not valid");
+            }
             // curFd = -1; //i think this won't keep the fds open haha
             // curEL->addClient(&(_activeClients.at(_activeClients.size() - 1)));
         }
