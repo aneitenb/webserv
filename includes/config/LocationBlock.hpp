@@ -35,7 +35,8 @@ private:
 public:
 	LocationBlock();
 	LocationBlock(const LocationBlock& other);
-	LocationBlock& operator=(const LocationBlock& other); 
+	LocationBlock& operator=(const LocationBlock& other);
+	bool operator==(const LocationBlock& other) const;
 	~LocationBlock();
 
 	void clear();

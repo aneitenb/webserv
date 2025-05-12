@@ -58,7 +58,7 @@ class CgiHandler : public EventHandler{
 
         CgiHandler( CgiHandler&& other);
         CgiHandler& operator=( CgiHandler&& other);
-        bool operator==(const CgiHandler& other);
+        bool operator==(const CgiHandler& other) const;
 
         ~CgiHandler();
 
@@ -71,7 +71,7 @@ class CgiHandler : public EventHandler{
         bool ready2Switch() override;
         struct epoll_event& getCgiEvent(int flag) override;
 
-        bool compareStructs(const CgiHandler& other);
+        bool compareStructs(const CgiHandler& other) const;
         bool cgiDone();
         int setupPipes();
         int setupEnv();

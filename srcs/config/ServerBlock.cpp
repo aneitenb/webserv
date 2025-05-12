@@ -68,6 +68,23 @@ ServerBlock& ServerBlock::operator=(const ServerBlock& other){
 	return (*this);
 }
 
+bool ServerBlock::operator==(const ServerBlock& other) const{
+	if (this->_listen == other._listen \
+	&& this->_host == other._host \
+	&& this->_serverName == other._serverName \
+	&& this->_root == other._root \
+	&& this->_clientMaxBodySize == other._clientMaxBodySize \
+	&& this->_errorPages == other._errorPages \
+	&& this->_defaultErrorPages == other._defaultErrorPages \
+	&& this->_index == other._index \
+	&& this->_locationBlocks == other._locationBlocks \
+	&& this->_hasCustomErrorPages == other._hasCustomErrorPages \
+	&& this->_defaultErrorDir == other._defaultErrorDir \
+	&& this->_allowedMethods == other._allowedMethods)
+		return (true);
+	return (false);
+}
+
 void ServerBlock::clear() {
 	_listen.clear();
 	_host = "";

@@ -74,9 +74,23 @@ Client& Client::operator=(Client&& other) noexcept{
     return (*this);
 }
 
+bool Client::areServBlocksEq(const Client& other) const{
+    if (_allServerNames.size() == other._allServerNames.size()){
+        for (auto& pair : _allServerNames){
+            auto check = other._allServerNames.find(pair.first);
+            if (check == other._allServerNames.end())
+                break ;
+            auto& checkAgainst = other._allServerNames.at(pair.first);
+            if (pair.second == checkAgainst)
+                return true;
+        }
+    }
+    return false;
+}
+
 // add variables; response and request == operators
-bool Client::operator==(const Client& other){
-    if (_allServerNames == other._allServerNames &&_listfd == other._listfd \
+bool Client::operator==(const Client& other) const{
+    if (areServBlocksEq(other) && _listfd == other._listfd \
         && _clFd == other._clFd && _count == other._count \
         && _result == other._result && this->getState() == other.getState() \
         && /*_curR == other._curR &&*/ _theCgi == other._theCgi)
@@ -123,9 +137,8 @@ ServerBlock* Client::getSBforResponse(std::string name){
         if (_allServerNames.count(name) > 0)
             return (&(_allServerNames.at(name)));
     }
-    catch(std::exception& e){
-        return (&(_allServerNames.at(_firstKey)));
-    }
+    catch(std::exception& e){}
+    return (&(_allServerNames.at(_firstKey)));
 }
 
 

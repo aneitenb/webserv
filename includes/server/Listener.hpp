@@ -12,7 +12,12 @@
 #include <unordered_map>
 #include <iostream>
 #include <vector>
-#include "VirtualHost.hpp"
+#include <arpa/inet.h> //uints, sockaddr_in
+#include <string> //std::string
+#include <sys/epoll.h> //struct epoll_event
+#include <config/ServerBlock.hpp> //to become serverblock
+#include <utility> //for std::move
+// #include "VirtualHost.hpp"
 #include "EventHandler.hpp"
 #include "EventLoop.hpp"
 #include "Client.hpp"
@@ -51,6 +56,7 @@ class Listener : public EventHandler {
         const std::string& getHost(void) const; 
         void setHost(const std::string& host);
         const std::string& getFirstKey() const;
+        void setFirst(std::string key);
         // void addServName(std::string name);
 
         // int copySocketFd(const int& fd);//dup not needed, should i get rid of it and use a fd wrapper?
@@ -67,4 +73,23 @@ class Listener : public EventHandler {
         void addClient(Client& cur);
         const std::vector<Client>& getClients(void) const;
         void delClient(Client* cur);
+
+        //from VH
+        // void setup_fd(int* fd);
+        // // int get_type() const;
+        // struct addrinfo* getRes() const;
+        struct sockaddr* getAddress() const;
+        // socklen_t getAddressLength() const;
+        // std::string getIP(void) const;
+        // // std::string getPort(void) const;
+        // std::string getServName(void) const;
+        // int getFD(void) const;
+        // // void setIP(const char* IntPro) ;
+        // // void setPort(const char* port) ;
+        // // void setServName(const char* servName) ;
+        int addressInfo(void);
+        int setuping(int* fd);
+        int makeNonBlock(int* fd);
+        void freeAddress(void);
+        void cleanResult(void);
     };

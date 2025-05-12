@@ -63,7 +63,7 @@ class Client : public EventHandler {
         //move constructor
         Client(Client&& other) noexcept;
         Client& operator=(Client&& other) noexcept;
-        bool operator==(const Client& other);
+        bool operator==(const Client& other) const;
         int setFd(int fd);
         // void    setFlag(int newState);
         // int     settingUp(int* fd);
@@ -72,6 +72,7 @@ class Client : public EventHandler {
         // int* getClFd(void);
         std::unordered_map<std::string, ServerBlock> getServerBlocks() const;
         ServerBlock* getSBforResponse(std::string name);
+        bool areServBlocksEq(const Client& other) const;
         // Request& getRequest();
         // Response& getResponse();
         // void setCgi();

@@ -60,7 +60,7 @@ CgiHandler& CgiHandler::operator=(CgiHandler&& other){
     return (*this);
 }
 
-bool CgiHandler::compareStructs(const CgiHandler& other){
+bool CgiHandler::compareStructs(const CgiHandler& other) const{
     if (fromCGI._event.data.fd == other.fromCGI._event.data.fd \
         && fromCGI._event.data.ptr && other.fromCGI._event.data.ptr \
         && fromCGI._event.data.ptr == other.fromCGI._event.data.ptr \
@@ -77,7 +77,7 @@ bool CgiHandler::compareStructs(const CgiHandler& other){
     return false;
 }
 
-bool CgiHandler::operator==(const CgiHandler& other){
+bool CgiHandler::operator==(const CgiHandler& other) const{
     if (_request && other._request && _response && other._response \
             && _fd && other._fd && *_request == *(other._request) && _response == other._response \
             && _fd == other._fd && _pid == other._pid && _envp == other._envp \

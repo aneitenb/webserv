@@ -18,43 +18,43 @@ WebServer::~WebServer(){}
 
 
 /*use bind and listen for listening sockets*/
-int bind_listen(VirtualHost* cur, int* fd){
-    //for the listening socket bind and listen
-    std::cout << "fd is: " << *fd << " and the host is " << cur->getAddress()->sa_family << std::endl;
-    int status = fcntl(*fd, F_GETFD); //delete
-    if (status == -1) {
-        perror("File descriptor is not valid");
-    }
-    if ((bind(*fd, cur->getAddress(), sizeof(struct sockaddr)) == -1)){
-        std::cerr << "Error: bind() failed\n";
-        std::cerr << strerror(errno) << "\n";
-        return (-1);        
-    }
-    if ((listen(*fd, 20) == -1)){
-        std::cerr << "Error: listen() failed\n";
-        std::cerr << strerror(errno) << "\n";
-        return (-1);   
-    }
-    cur->setup_fd(fd);
-    std::cout << "testing fd set up: " << cur->getFD() << std::endl;
-    return (0);
-}
+// int WebServer::bind_listen(Listener* cur, int* fd){
+//     //for the listening socket bind and listen
+//     std::cout << "fd is: " << *fd << " and the host is " << cur->getAddress()->sa_family << std::endl;
+//     int status = fcntl(*fd, F_GETFD); //delete
+//     if (status == -1) {
+//         perror("File descriptor is not valid");
+//     }
+//     if ((bind(*fd, cur->getAddress(), sizeof(struct sockaddr)) == -1)){
+//         std::cerr << "Error: bind() failed\n";
+//         std::cerr << strerror(errno) << "\n";
+//         return (-1);        
+//     }
+//     if ((listen(*fd, 20) == -1)){
+//         std::cerr << "Error: listen() failed\n";
+//         std::cerr << strerror(errno) << "\n";
+//         return (-1);   
+//     }
+//     cur->setup_fd(fd);
+//     std::cout << "testing fd set up: " << cur->getFD() << std::endl;
+//     return (0);
+// }
 
-bool WebServer::doesExist(std::string port, std::string host){ //check
-    std::cout << "entered doesExist\n";
-    if (_theSList.count(port) == 0){
-        std::cout << "this shouldve happened\n";
-        _theSList[port].push_back(host);
-        return false;
-    }
-    if (_theSList.at(port).empty() == true){
-        for (size_t i = 0; i < _theSList.at(port).size(); i++)
-            if (_theSList.at(port).at(i) == port)
-                return true;
-    }
-    _theSList.at(port).push_back(host);
-    return true;
-}
+// bool WebServer::doesExist(std::string port, std::string host){ //check
+//     std::cout << "entered doesExist\n";
+//     if (_theSList.count(port) == 0){
+//         std::cout << "this shouldve happened\n";
+//         _theSList[port].push_back(host);
+//         return false;
+//     }
+//     if (_theSList.at(port).empty() == true){
+//         for (size_t i = 0; i < _theSList.at(port).size(); i++)
+//             if (_theSList.at(port).at(i) == port)
+//                 return true;
+//     }
+//     _theSList.at(port).push_back(host);
+//     return true;
+// }
 
 /*check if the [port : host] combination exists and add it if it doesn't*/
 bool WebServer::doesListenerExist(std::string port, std::string host){
@@ -75,20 +75,21 @@ int WebServer::resolveListener(std::string port, std::string host, ServerBlock& 
     {
         for (std::size_t j = 0; j < _theLList.size(); j++){
             if (_theLList.at(j).getHost() == host)
-                _theLList.at(j).addServBlock(serBlock, serBlock.getServerName());
+                _theLList.at(j).addServBlock(serBlock, serBlock.getServerName()); //add down too
         }
     }
     else{
         std::cout << "PortHost doesn't exits, adding\n";
         Listener curL(port, host);
         curL.addServBlock(serBlock, serBlock.getServerName());
+        curL.setFirst(serBlock.getServerName());
         if (curL.setSocketFd() == -1)
             return (-1);
-        //setup bind, listen, etc, error check
         _theLList.push_back(curL);
         std::cout << *(_theLList.back().getSocketFd()) << "    this is the listeners true fd\n";
         std::cout << *(curL.getSocketFd()) << "       this is the fd you want to close\n\n";
         curL.setFd(-1);
+        curL.cleanResult();
     }
     return (0);
 }
@@ -111,15 +112,6 @@ int WebServer::initialize(std::vector<ServerBlock>& serBlocks){
         for (std::size_t countP = 0; countP < maxPorts; countP++){
             if ((countL = this->resolveListener(curPorts.at(countP), curHost, serBlocks.at(countS))) == -1)
                 return (-1);
-            VirtualHost curVH(serBlocks.at(countS), curPorts.at(countP));
-            if (curVH.addressInfo() == -1) //shift to listener
-                    return (-1);
-            if (doesExist(curPorts.at(countP), curHost) == false){ //shift to listener
-                if ((bind_listen(&curVH, _theLList.at(countL).getSocketFd())) == -1){
-                        curVH.freeAddress();
-                        return(-1);
-                }
-            }
             // _theVHList[_theLList.at(countL).getSocketFd()].push_back(std::move(curVH));
             // std::cout << "testing: " << curVH.getIP() << std::endl;
         }
@@ -134,12 +126,8 @@ int WebServer::initialize(std::vector<ServerBlock>& serBlocks){
 
 
 void WebServer::freeStuff(void){
-    for (auto& pair : _theVHList) {
-        std::vector<VirtualHost>& curVH = pair.second;
-    
-        for (auto& obj : curVH) {
-            obj.freeAddress();
-        }
+    for (auto& obj : _theLList) {
+        obj.freeAddress();
     }
 }
 

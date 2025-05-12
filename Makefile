@@ -34,10 +34,10 @@ HTTPFILES	=	Request.cpp \
 
 SERVERFILES	=	Client.cpp \
 				Listener.cpp \
-				VirtualHost.cpp \
 				WebServer.cpp \
 				EventLoop.cpp \
 				CgiHandler.cpp
+# VirtualHost.cpp
 
 CONFIGFILES	=	ConfigErrors.cpp \
 				ConfigFile.cpp \

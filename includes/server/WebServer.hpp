@@ -35,10 +35,11 @@ class	WebServer{
 		int	initialize(std::vector<ServerBlock>& serBlocks); //create listening and virtual hosts, set them
 		// void	run(void); //epoll + accepting connections + event handling
 		void freeStuff(void);
+		// int bind_listen(Listener* cur, int* fd); //private method?
 
 		std::vector<Listener>& getListeners(void);
-		std::vector<VirtualHost> getVHosts(void) const;
-		bool doesExist(std::string port, std::string host);
+		// std::vector<VirtualHost> getVHosts(void) const;
+		// bool doesExist(std::string port, std::string host);
 		bool doesListenerExist(std::string port, std::string host);
 		int resolveListener(std::string port, std::string host, ServerBlock& serBlock);
 };

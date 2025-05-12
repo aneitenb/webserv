@@ -51,6 +51,20 @@ LocationBlock& LocationBlock::operator=(const LocationBlock& other) {
 	return *this;
 }
 
+bool LocationBlock::operator==(const LocationBlock& other) const{
+	if (this->redirect == other.redirect \
+		&& this->autoindex == other.autoindex \
+		&& this->autoindexSet == other.autoindexSet \
+		&& this->cgi_pass == other.cgi_pass \
+		&& this->allowed_methods == other.allowed_methods \
+		&& this->upload_store == other.upload_store \
+		&& this->alias == other.alias \
+		&& this->index == other.index \
+		&& this->root == other.root)
+		return true;
+	return false;	
+}
+
 void LocationBlock::clear() {
 	redirect = std::make_pair(0, "");
 	autoindex = false;

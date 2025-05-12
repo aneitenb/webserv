@@ -12,6 +12,9 @@
 #include <unistd.h>
 #include <string.h>
 #include <fcntl.h>
+#include <netdb.h> //getaddrinfo
+#include <cstring> //memset
+
 
 /*Constructors and Destructor and Operators*/
 Listener::Listener() : _sockFd(-1){};
@@ -65,6 +68,10 @@ const std::string& Listener::getFirstKey() const{
     return (_firstKey);
 }
 
+void Listener::setFirst(std::string key){
+    _firstKey = key;
+}
+
 void Listener::addServBlock(ServerBlock& cur, std::string name){
     _allServerNames[name] = cur;
     // _relevant = cur;
@@ -92,10 +99,64 @@ void Listener::setHost(const std::string& host){
     _host = host;
 }
 
+// struct addrinfo* Listener::getRes() const{
+//     return(_result);
+// }
 
+struct sockaddr* Listener::getAddress() const{
+    return(_result->ai_addr);
+}
+
+// socklen_t Listener::getAddressLength() const{
+//     return(_result->ai_addrlen);
+// }
+
+void Listener::freeAddress(void){
+    if (_result){
+        freeaddrinfo(_result);
+        _result = nullptr;
+    }
+}
+        
+void Listener::cleanResult(void){
+    _result = nullptr;
+}
 
 /*Helper functions*/
-int setuping(int *fd){
+int Listener::addressInfo(void){
+    struct addrinfo hints;
+    int status;
+
+    ftMemset(&hints, sizeof(hints));
+    hints.ai_family = AF_INET; //IPv4
+    hints.ai_socktype = SOCK_STREAM; //TCP
+    hints.ai_flags = AI_PASSIVE; //for binding (listening) maybe not needed if we always provide an IP or hostname
+    if ((status = getaddrinfo(_host.c_str(), _port.c_str(), &hints, &_result)) != 0){
+        std::cerr << "Error: getaddrinfo() failed: ";
+        if (status == EAI_SYSTEM)
+            std::cerr << strerror(errno) << "\n";
+        else
+            std::cerr << gai_strerror(status) << "\n";
+        return (-1);
+    }
+    if (_result && _result->ai_family != AF_INET){
+        std::cerr << "Error: getaddrinfo failed but unclear why.\n";
+        return (-1);
+    }
+    std::cout << "Listener address set up!\n";
+    return (0);
+}
+
+int Listener::makeNonBlock(int* fd){
+    if ((fcntl(*fd, F_SETFL, O_NONBLOCK)) == -1){
+        std::cerr << "Error: fcntl() failed\n";
+        std::cerr << strerror(errno) << "\n";
+        return (-1);
+    }
+    return (0);
+}
+
+int Listener::setuping(int *fd){
     // int sock_err = 0;
     //setsockopt: manipulate options for the socket 
     //CONSIDER: SO_RCVBUF / SO_SNDBUF, SO_LINGER, SO_KEEPALIVE, TCP_NODELAY
@@ -106,10 +167,17 @@ int setuping(int *fd){
     //     return (-1);
     // }
     /*TEST TO SEE IF THE NONBLOCKING HAS BEEN SET UP FOR THE LISTENER, DELETE AFTER*/
-    if ((fcntl(*fd, F_SETFL, O_NONBLOCK)) == -1){
-        std::cerr << "Error: fcntl() failed\n";
-        std::cerr << strerror(errno) << "\n";
+    if (makeNonBlock(fd) == -1)
         return (-1);
+    if ((bind(*fd, this->getAddress(), sizeof(struct sockaddr)) == -1)){
+        std::cerr << "Error: bind() failed\n";
+        std::cerr << strerror(errno) << "\n";
+        return (-1);        
+    }
+    if ((listen(*fd, 20) == -1)){
+        std::cerr << "Error: listen() failed\n";
+        std::cerr << strerror(errno) << "\n";
+        return (-1);   
     }
     // // After socket(), before bind()/listen():
     // int flags = fcntl(*fd, F_GETFL, 0);
@@ -150,6 +218,8 @@ int Listener::setSocketFd(void){
         std::cerr << strerror(errno) << "\n";
         return (-1);
     }
+    if (this->addressInfo() == -1)
+        return (-1);
     std::cout << "This socket has the fd: " << _sockFd << std::endl;
     if ((setuping(&_sockFd)) == -1)
         return (-1);
@@ -225,6 +295,7 @@ int Listener::handleEvent(uint32_t ev){
                 std::cerr << strerror(errno) << "\n";
                 return (-1);
             }
+            //separate setuping into making it nonblocking
             if (setuping(&curFd) == -1) //set as nonblocking
                 return (-1);
             if (curC.setFd(curFd) == -1) //pass the socket into Client

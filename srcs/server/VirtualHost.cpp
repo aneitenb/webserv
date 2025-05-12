@@ -19,29 +19,7 @@
 #include <cstring> //memset
 #include <iostream>
 
-int VirtualHost::addressInfo(void){
-    struct addrinfo hints;
-    int status;
 
-    ftMemset(&hints, sizeof(hints));
-    hints.ai_family = AF_INET; //IPv4
-    hints.ai_socktype = SOCK_STREAM; //TCP
-    hints.ai_flags = AI_PASSIVE; //for binding (listening) maybe not needed if we always provide an IP or hostname
-    if ((status = getaddrinfo(_IP.c_str(), _port.c_str(), &hints, &_result)) != 0){
-        std::cerr << "Error: getaddrinfo() failed: ";
-        if (status == EAI_SYSTEM)
-            std::cerr << strerror(errno) << "\n";
-        else
-            std::cerr << gai_strerror(status) << "\n";
-        return (-1);
-    }
-    if (_result->ai_family != AF_INET){
-        std::cerr << "Error: getaddrinfo failed but unclear why.\n";
-        return (-1);
-    }
-    std::cout << "Virtual Host address set up!\n";
-    return (0);
-}
 
 VirtualHost::VirtualHost() : _sockfd(nullptr), _result(nullptr){}
 
@@ -118,17 +96,7 @@ VirtualHost& VirtualHost::operator=(VirtualHost&& other) noexcept {
 
 VirtualHost::~VirtualHost(){}
 
-struct addrinfo* VirtualHost::getRes() const{
-    return(_result);
-}
 
-struct sockaddr* VirtualHost::getAddress() const{
-    return(_result->ai_addr);
-}
-
-socklen_t VirtualHost::getAddressLength() const{
-    return(_result->ai_addrlen);
-}
 
 std::string VirtualHost::getIP(void) const{
     return (_IP);
@@ -150,9 +118,7 @@ int VirtualHost::getFD(void) const{
     return (*_sockfd);
 }
 
-void VirtualHost::freeAddress(void){
-    freeaddrinfo(_result);
-}
+
 /*after this for listening sockets and clients*/
 
 // VirtualHost::VirtualHost(int list_sock_fd){
