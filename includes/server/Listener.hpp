@@ -29,16 +29,18 @@ class Listener : public EventHandler {
         std::string _port;
         std::string _host;
         std::vector<Client> _activeClients;
-        std::unordered_map<std::string, ServerBlock> _allServerNames;
+        std::unordered_map<std::string, ServerBlock*> _allServerNames;
         std::string _firstKey;
         struct addrinfo*    _result; //needs to be freed freeaddrinfo() but be careful because when copying, pointing to the same address
         // ServerBlock _relevant;
+        Listener(const Listener& obj) = delete;
+        Listener& operator=(const Listener& obj) = delete;
     public:
         Listener();
         Listener(std::string _port, std::string _host);
         ~Listener();
-        Listener(const Listener& other);
-        Listener& operator=(const Listener& other);
+        Listener(Listener&& obj) noexcept;
+        Listener& operator=(Listener&& obj) noexcept;
         //move constructor and move assignment operator
         // Listener(Listener&& obj) noexcept;
         // Listener& operator=(Listener&& obj) noexcept;
@@ -50,13 +52,13 @@ class Listener : public EventHandler {
 
         // void addHost(VirtualHost& cur);
         void addServBlock(ServerBlock& cur, std::string name);
-        std::unordered_map<std::string, ServerBlock> getServBlock();
+        std::unordered_map<std::string, ServerBlock*> getServBlock();
         const std::string& getPort(void) const; 
         void setPort(const std::string& port);
         const std::string& getHost(void) const; 
         void setHost(const std::string& host);
         const std::string& getFirstKey() const;
-        void setFirst(std::string key);
+        // void setFirst(std::string key);
         // void addServName(std::string name);
 
         // int copySocketFd(const int& fd);//dup not needed, should i get rid of it and use a fd wrapper?
@@ -91,5 +93,5 @@ class Listener : public EventHandler {
         int setuping(int* fd);
         int makeNonBlock(int* fd);
         void freeAddress(void);
-        void cleanResult(void);
+        // void cleanResult(void);
     };

@@ -165,7 +165,7 @@ void EventLoop::addListeners(std::vector<EventHandler*> listFds){
     }
     _listeners = listFds;
     for (auto& x : _listeners){
-        std::cout << "checking lists: " << *(x->getSocketFd()) << std::endl;
+        x->conditionMet(_activeFds, _epollFd);
     }
 }
 

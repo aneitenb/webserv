@@ -35,7 +35,7 @@
 
 class Client : public EventHandler {
     private:
-        std::unordered_map<std::string, ServerBlock> _allServerNames;
+        std::unordered_map<std::string, ServerBlock*> _allServerNames;
         std::string _firstKey;
         int*                _listfd; //do i need this
         int                 _clFd;
@@ -56,7 +56,7 @@ class Client : public EventHandler {
         void saveResponse();
     public:
         Client();
-        Client(std::unordered_map<std::string, ServerBlock> cur);
+        Client(std::unordered_map<std::string, ServerBlock*> cur);
         ~Client();
         Client(const Client& other) = delete;
         Client& operator=(const Client& other) = delete;        // int     getFlag(void) const;
@@ -70,7 +70,7 @@ class Client : public EventHandler {
         // State getState() const;
         // void setState(State newState);
         // int* getClFd(void);
-        std::unordered_map<std::string, ServerBlock> getServerBlocks() const;
+        std::unordered_map<std::string, ServerBlock*> getServerBlocks() const;
         ServerBlock* getSBforResponse(std::string name);
         bool areServBlocksEq(const Client& other) const;
         // Request& getRequest();

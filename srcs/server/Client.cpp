@@ -22,7 +22,7 @@ Client::Client(): _listfd(nullptr), _clFd(-1), _count(0), /*_curR(EMPTY),*/ _the
     // ftMemset(&_event, sizeof(_event)); //do I leave this like this?
 }
 
-Client::Client(std::unordered_map<std::string, ServerBlock> cur): _allServerNames(cur), _listfd(nullptr), \
+Client::Client(std::unordered_map<std::string, ServerBlock*> cur): _allServerNames(cur), _listfd(nullptr), \
     _clFd(-1), _count(0), /*_curR(EMPTY),*/ \
     _theCgi(CgiHandler(&_requesting, &_responding, &_clFd)){
     ftMemset(&_result, sizeof(_result));
@@ -128,17 +128,17 @@ int Client::setFd(int fd){
 /*Getters and Setters*/
 // Request& Client::getRequest(){ return (_requesting);}
 
-std::unordered_map<std::string, ServerBlock> Client::getServerBlocks() const{
+std::unordered_map<std::string, ServerBlock*> Client::getServerBlocks() const{
     return (_allServerNames);
 }
 
 ServerBlock* Client::getSBforResponse(std::string name){
     try{
         if (_allServerNames.count(name) > 0)
-            return (&(_allServerNames.at(name)));
+            return (_allServerNames.at(name));
     }
     catch(std::exception& e){}
-    return (&(_allServerNames.at(_firstKey)));
+    return (_allServerNames.at(_firstKey));
 }
 
 

@@ -17,27 +17,36 @@
 
 
 /*Constructors and Destructor and Operators*/
-Listener::Listener() : _sockFd(-1){};
+Listener::Listener() : _sockFd(-1), _result(nullptr){};
 
-Listener::Listener(std::string port, std::string host) : _sockFd(-1), _port(port), _host(host) {}
+Listener::Listener(std::string port, std::string host) : _sockFd(-1), _port(port), _host(host), _result(nullptr) {}
 
-Listener::Listener(const Listener& obj){
+Listener::Listener(Listener&& obj) noexcept{
     _sockFd = obj._sockFd;
+    obj._sockFd = -1;
     // this->copySocketFd(obj._sockFd);
     _port = obj._port;
     _host = obj._host;
+    _activeClients = std::move(obj._activeClients);
     _allServerNames = obj._allServerNames;
+    _firstKey = obj._firstKey;
+    _result = obj._result;
+    obj._result = nullptr;
     // _relevant = obj._relevant;
 }
 //remember to close the previous fd
-Listener& Listener::operator=(const Listener& obj) {
+Listener& Listener::operator=(Listener&& obj) noexcept{
     if (this != &obj){
-        // this->copySocketFd(obj._sockFd);
         _sockFd = obj._sockFd;
+        obj._sockFd = -1;
+        // this->copySocketFd(obj._sockFd);
         _port = obj._port;
         _host = obj._host;
+        _activeClients = std::move(obj._activeClients);
         _allServerNames = obj._allServerNames;
-        // _relevant = obj._relevant;
+        _firstKey = obj._firstKey;
+        _result = obj._result;
+        obj._result = nullptr;
     }
     return (*this);
 }
@@ -68,16 +77,20 @@ const std::string& Listener::getFirstKey() const{
     return (_firstKey);
 }
 
-void Listener::setFirst(std::string key){
-    _firstKey = key;
-}
+// void Listener::setFirst(std::string key){
+//     _firstKey = key;
+// }
 
 void Listener::addServBlock(ServerBlock& cur, std::string name){
-    _allServerNames[name] = cur;
+    if (_allServerNames.empty() == true)
+        _firstKey = name;
+    _allServerNames[name] = &cur;
+    std::cout << name << " should have added the key with the name\n";
+    std::cout << "This should be accessible: " << _allServerNames.at(name)->getAllowedMethods() << std::endl;
     // _relevant = cur;
 }
 
-std::unordered_map<std::string, ServerBlock> Listener::getServBlock(){
+std::unordered_map<std::string, ServerBlock*> Listener::getServBlock(){
     return (_allServerNames);
 }
 
@@ -118,9 +131,9 @@ void Listener::freeAddress(void){
     }
 }
         
-void Listener::cleanResult(void){
-    _result = nullptr;
-}
+// void Listener::cleanResult(void){
+//     _result = nullptr;
+// }
 
 /*Helper functions*/
 int Listener::addressInfo(void){
@@ -196,7 +209,7 @@ int Listener::setuping(int *fd){
     // }
 
     // // Verify:
-    // flags = fcntl(*fd, F_GETFL, 0);
+    // int flags = fcntl(*fd, F_GETFL, 0);
     // printf("listen_fd access mode: ");
     // switch (flags & O_ACCMODE) {
     // case O_RDONLY:  printf("read-only");  break;
@@ -276,15 +289,9 @@ int* Listener::getSocketFd(void){
 }
 
 int Listener::handleEvent(uint32_t ev){
-    if (ev & EPOLLERR || ev & EPOLLHUP){
-        //rare but it could happen
-        //in the case of err, socket is unusable
-        //in the case of hup, socket is hanging
-        std::cerr << "Fatal error occurred with the socket. Shutting down.\n";
-        return (-1); //cleanup
-    }
     if (ev & EPOLLIN){ //accept incoming clients while there are clients to be accepted
         while (1){
+            std::cout << "ACCEPTING CLIENTS\n";
             Client curC(this->getServBlock());
             int curFd = -1;
             curFd = accept(_sockFd, nullptr, nullptr); //think about taking in the client info for security reasons maybe
@@ -304,6 +311,13 @@ int Listener::handleEvent(uint32_t ev){
             curFd = -1; //i think this won't keep the fds open haha
             // curEL->addClient(&(_activeClients.at(_activeClients.size() - 1)));
         }
+    }
+    else {
+        //rare but it could happen
+        //in the case of err, socket is unusable
+        //in the case of hup, socket is hanging
+        std::cerr << "Fatal error occurred with the socket. Shutting down.\n";
+        return (-1); //cleanup
     }
     return (0);
 }
@@ -338,6 +352,31 @@ void Listener::resolveClose(){
 EventHandler* Listener::getCgi() { return {}; }
 
 bool Listener::conditionMet(std::unordered_map<int*, std::vector<EventHandler*>>& _activeFds, int& epollFd) { 
+    std::cout << "\nPRINTING ALL VALUES IN LISTENER\n";
+    std::cout << "_sockfd: " << _sockFd << "\n";
+    std::cout << "_port: " << _port << "\n";
+    std::cout << "_host: " << _host << "\n";
+    std::cout << "_firstKey: " << _firstKey << "\n";
+    for (auto& pair : _allServerNames){
+        std::cout << "server name: " << pair.first << "\n";
+    }
+    std::cout << "_result random check: " << _result->ai_family << "\n";
+    std::cout << "State: " << this->getState() << "\n";
+    std::cout << "Event " << this->getEvent()->events << "\n";
+    
+    // Verify:
+    int flags = fcntl(_sockFd, F_GETFL, 0);
+    printf("listen_fd access mode: ");
+    switch (flags & O_ACCMODE) {
+    case O_RDONLY:  printf("read-only");  break;
+    case O_WRONLY:  printf("write-only"); break;
+    case O_RDWR:    printf("read/write"); break;
+    default:        printf("unknown");    break;
+    }
+    printf("\nstatus flags: %sO_NONBLOCK\n",
+        (flags & O_NONBLOCK) ? "" : "(!) ");
+
+    std::cout << "\n\n";
     (void)_activeFds;
     (void)epollFd;
     return false; 
