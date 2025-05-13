@@ -191,15 +191,21 @@ int Client::handleEvent(uint32_t ev){
                 this->setState(TOWRITE);
         }
         std::cout << "Receiving\n";
-        if (receiving_stuff() == -1){
+        if (receiving_stuff() == -1){ //if it's -1 either error or nothing left to accept
             _count++;
-            if (_count == 50)
-                this->setState(CLOSE);
+            if (_count == 50){
+                // this->setState(CLOSE);
+                _count = 0;
+                return (-1);
+            }
             std::cout << "Count: " << _count << std::endl;
         }
         //is it complete, check and set
-        if (saveRequest() == -1)
-            return (0);
+        if (saveRequest() == -1){
+            // _count++;
+            _buffer.clear();
+            return (-1);
+        }
         if (_requesting.getURI().find(".py") != std::string::npos) {//check if CGI
             this->setState(TOCGI);
             _count = -1000; //see if this is ok
@@ -216,8 +222,12 @@ int Client::handleEvent(uint32_t ev){
     if (ev & EPOLLOUT){
         if (_count != -1 && sending_stuff() == -1){
             _count++;
-            if (_count == 100)
-                this->setState(CLOSE);
+            if (_count == 50){
+                _count = 0;
+                _responding.clear();
+                // this->setState(CLOSE);
+                return (-1);
+            }
         }
         if (_responding.isComplete() == true){
             this->setState(TOREAD); //EPOLLIN
@@ -225,12 +235,12 @@ int Client::handleEvent(uint32_t ev){
             //clear the request and response?
             _responding.clear();
             _count = 0;
-        }
         //if connection::keep-alive switch to epollout
         //if connection::close close socket + cleanup
         // }
         //data to be sent
         //if the whole thing was sent change what the epoll listens for to epollin 
+        }
     }
     return (0);
 }
@@ -244,7 +254,7 @@ int Client::sending_stuff(){
     std::cout << std::endl;
     std::cout << std::endl;
     std::cout << "BUFFER:    " << buffer << std::endl;
-    while (_responding.isComplete() != true){
+    if (_responding.isComplete() != true){
         ssize_t len = send(_clFd, buffer.c_str() + _responding.getBytes(), buffer.size() - _responding.getBytes(), 0); //buffer + bytesSentSoFar, sizeof remaining bytes, 0
         if (len < 1){
             std::cout << "Error could not send\n";
@@ -267,21 +277,19 @@ int Client::receiving_stuff(){
     /*if (_curR == CLEAR)
         _buffer.clear(); //maybe can't do this if the request is not complete*/
 
-    while(1){
-        len = recv(_clFd, &temp_buff[0], temp_buff.size(), 0); //sizeof(buffer) - 1?
-        if (len < 1){ //either means that there is no more data to read or error or client closed connection (len == 0)
-            std::cerr << "Error: delete this after\n";
-            std::cerr << strerror(errno) << "\n";
-            return (-1);
-        }
-        else{ // means something was returned
-            temp_buff.resize(len);
-            // std::cout << "What's here  " << temp_buff << std::endl;
-            // std::cout << "Says here: " << temp_buff.size() << "     " << _buffer.max_size() << "\n";
-            if (temp_buff.size() <= _buffer.max_size() - _buffer.size())
-                _buffer.append(temp_buff); //append temp to buffer
-            temp_buff.clear();
-        }
+    len = recv(_clFd, &temp_buff[0], temp_buff.size(), 0); //sizeof(buffer) - 1?
+    if (len < 1){ //either means that there is no more data to read or error or client closed connection (len == 0)
+        std::cerr << "Error: delete this after\n";
+        std::cerr << strerror(errno) << "\n";
+        return (-1);
+    }
+    else{ // means something was returned
+        temp_buff.resize(len);
+        // std::cout << "What's here  " << temp_buff << std::endl;
+        // std::cout << "Says here: " << temp_buff.size() << "     " << _buffer.max_size() << "\n";
+        if (temp_buff.size() <= _buffer.max_size() - _buffer.size())
+            _buffer.append(temp_buff); //append temp to buffer
+        temp_buff.clear();
     }
     std::cout << _buffer << ": is what the buffer says\n";
     return (0);
@@ -290,8 +298,9 @@ int Client::receiving_stuff(){
 int Client::saveRequest(){
     try{ //do I need the try catch with the revamping?
         std::cout << _buffer.size() << ": is what the buffer says\n";
-        if (_buffer.size() == 0)
-            return (-1);
+        if (_buffer.size() == 0){
+            // this->setState(CLOSE);
+            return (-1);}
         std::cout << "Congrats, the buffer was not empty\n\n";
         _requesting.append(_buffer);
         //the thing is what if it's a partial request so not everything has been received? it needs to be updated without being marked as wrong

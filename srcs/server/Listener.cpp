@@ -87,7 +87,8 @@ void Listener::addServBlock(ServerBlock& cur, std::string name){
         _firstKey = name;
     _allServerNames[name] = &cur;
     std::cout << name << " should have added the key with the name\n";
-    std::cout << "This should be accessible: " << _allServerNames.at(name)->getAllowedMethods() << std::endl;
+    std::string check = std::to_string(_allServerNames.at(name)->getAllowedMethods());
+    std::cout << "This should be accessible: " << check << std::endl;
     // _relevant = cur;
 }
 
@@ -291,35 +292,32 @@ int* Listener::getSocketFd(void){
 
 int Listener::handleEvent(uint32_t ev){
     if (ev & EPOLLIN){ //accept incoming clients while there are clients to be accepted
-        while (1){
-            std::cout << "ACCEPTING CLIENTS\n";
-            int curFd = -1;
-            curFd = accept(_sockFd, nullptr, nullptr); //think about taking in the client info for security reasons maybe
-            std::cout << curFd << " newly made fd\n";
-            if (curFd == -1){
-                if (errno == EAGAIN || errno == EWOULDBLOCK)
-                    return (0); //means there are no more clients that wait to be accepted
-                std::cerr << "Error: accept() failed: ";
-                std::cerr << strerror(errno) << "\n";
-                return (-1);
-            }
-            //separate setuping into making it nonblocking
-            if (makeNonBlock(&curFd) == -1) //set as nonblocking
-                return (-1);
-            Client curC(this->getServBlock());
-            curC.setKey(_firstKey);
-            std::cout << curC.getState() << " newly made client state\n";
-            if (curC.setFd(&curFd) == -1) //pass the socket into Client
-                return (-1);
-            _activeClients.push_back(std::move(curC));
-            //delete
-            int status = fcntl(*_activeClients.back().getSocketFd(), F_GETFD);
-            if (status == -1) {
-                perror("File descriptor is not valid");
-            }
-            // curFd = -1; //i think this won't keep the fds open haha
-            // curEL->addClient(&(_activeClients.at(_activeClients.size() - 1)));
+        std::cout << "ACCEPTING A CLIENT\n";
+        int curFd = accept(_sockFd, nullptr, nullptr); //think about taking in the client info for security reasons maybe
+        std::cout << curFd << " newly made fd\n";
+        if (curFd == -1){
+            if (errno == EAGAIN || errno == EWOULDBLOCK)
+                return (0); //means there are no more clients that wait to be accepted
+            std::cerr << "Error: accept() failed: ";
+            std::cerr << strerror(errno) << "\n";
+            return (-1);
         }
+        //separate setuping into making it nonblocking
+        if (makeNonBlock(&curFd) == -1) //set as nonblocking
+            return (-1);
+        Client curC(this->getServBlock());
+        curC.setKey(_firstKey);
+        std::cout << curC.getState() << " newly made client state\n";
+        if (curC.setFd(&curFd) == -1) //pass the socket into Client
+            return (-1);
+        _activeClients.push_back(std::move(curC));
+        //delete
+        int status = fcntl(*_activeClients.back().getSocketFd(), F_GETFD);
+        if (status == -1) {
+            perror("File descriptor is not valid");
+        }
+        // curFd = -1; //i think this won't keep the fds open haha
+        // curEL->addClient(&(_activeClients.at(_activeClients.size() - 1)));
     }
     else {
         //rare but it could happen

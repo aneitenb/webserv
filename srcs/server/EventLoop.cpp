@@ -41,9 +41,10 @@ int EventLoop::run(std::vector<EventHandler*> listFds){
     while(gSignal){
         std::cout << "Entered the loop\n";
         int events2Resolve = epoll_wait(_epollFd, _events, MAX_EVENTS, -1);
-        if (events2Resolve < 0){
-            std::cout << "Error, or no events to resolve: " << events2Resolve << std::endl;
-        }
+        std::cout << "How many events to resolve: " << events2Resolve << std::endl;
+        // if (events2Resolve <= 0){
+        //     continue ;
+        // }
         for (int i = 0; i < events2Resolve; i++){
             EventHandler* curE = static_cast<EventHandler*>(_events[i].data.ptr);
             std::cout << "After receiving events\n";
@@ -213,27 +214,32 @@ EventHandler* EventLoop::getListener(int *fd){
 
 //resolve closing and removing of the done/disconnected clients
 void EventLoop::resolvingClosing(){
-    for (auto& pair : _activeFds){
-        if (*pair.first != -1){
+    for (auto& [keyPtr, vect] : _activeFds){
+        if (*keyPtr != -1){
             //update vectors
             // std::size_t i = 0;
-            EventHandler* curL = getListener(pair.first);
-            pair.second = curL->resolveAccept();
-            if (pair.second.empty() == true)
-                return ;
-            for (size_t i = 0; i < pair.second.size(); i++){
-                if (pair.second.at(i)->getState() == CLOSE){
+            EventHandler* curL = getListener(keyPtr);
+            std::cout << *keyPtr << " current Listener through which we are iterating for closing\n";
+            vect = curL->resolveAccept();
+            std::cout << std::boolalpha;
+            std::cout << "check if empty: " << vect.empty() << std::endl;
+            std:: cout << std::noboolalpha;
+            if (vect.empty() == true)
+                continue ; //i think this was the issue!!
+            for (size_t i = 0; i < vect.size(); i++){
+                if (vect.at(i)->getState() == CLOSE){
+                    std::cout << "Client" << vect.at(i)->getSocketFd() << "going to be closed\n";
                     //cleanup Request, Response, buffer
-                    delEpoll(pair.second.at(i)->getSocketFd());
-                    pair.second.at(i)->setState(TOCLOSE);
+                    delEpoll(vect.at(i)->getSocketFd());
+                    vect.at(i)->setState(TOCLOSE);
                 }
             }
             curL->resolveClose();
-            pair.second = curL->resolveAccept();
+            vect = curL->resolveAccept();
             std::cout << std::boolalpha;
-            std::cout << "Clients empty: " << pair.second.empty() << "\n";
+            std::cout << "Clients empty: " << vect.empty() << "\n";
             std::cout << std::noboolalpha;
-            std::cout << "Client vector size: " << pair.second.size() << "\n";
+            std::cout << "Client vector size: " << vect.size() << "\n";
         }
     }
 }
