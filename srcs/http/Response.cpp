@@ -84,7 +84,7 @@ void Response::clear() {
 	_fullResponse.clear();
 	_bytesSent = 0;
 	_locationBlock = NULL;
-	// _request->clear();	//implement a clear in Request class
+	_request = NULL;
 }
 
 void Response::setRequest(Request& request) {
