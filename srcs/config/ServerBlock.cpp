@@ -12,6 +12,7 @@
 ServerBlock::ServerBlock() :
 	_listen(),
 	_host(""),
+	_serverName(""),
 	_clientMaxBodySize(1024 * 1024),	//1 megabyte as default value
 	_hasCustomErrorPages(false),
 	_maxBodySizeSet(false),

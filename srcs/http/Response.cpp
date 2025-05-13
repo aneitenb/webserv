@@ -84,7 +84,6 @@ void Response::clear() {
 	_fullResponse.clear();
 	_bytesSent = 0;
 	_locationBlock = NULL;
-	_request = NULL;
 }
 
 void Response::setRequest(Request& request) {
@@ -142,8 +141,14 @@ void Response::handleResponse() {
 		_locationBlock = &_serverBlock->getLocationBlockRef(matchedLocation);
 
 	setHeader("Date", getCurrentDate());
-	if (!_request->isValid())	//need to return 405 on unauthorized method of file that exists: isValid needs to pass other methods through
+	if (_request->getMethod() != "GET" && _request->getMethod() != "POST" && _request->getMethod() != "DELETE")
 	{
+		_statusCode = 405;
+		setBody(getErrorPage(405));
+		setHeader("Content-Type", "text/html");
+		return;
+	}
+	if (!_request->isValid()){
 		_statusCode = 400;
 		setBody(getErrorPage(400));
 		setHeader("Content-Type", "text/html");
@@ -380,53 +385,9 @@ void Response::generateDirectoryListing(const std::string& path) {
 		return;
 	}
 	
-	// std::stringstream listing;
-	// listing << "<!DOCTYPE html>\n<html>\n<head>\n";
-	// listing << "<title>Index of " << _request->getURI() << "</title>\n";
-	// listing << "</head>\n<body>\n";
-	// listing << "<h1>Index of " << _request->getURI() << "</h1>\n";
-	// listing << "<hr>\n<pre>\n";
-	
-	// // add parent directory link if not at root
-	// if (_request->getURI() != "/") {
-	// 	listing << "<a href=\"..\">..</a>\n";
-	// }
-	
-	// while ((entry = readdir(dir)) != NULL) {
-	// 	std::string name = entry->d_name;
-	
-	// 	if (name == "." || name == "..") {
-	// 		continue;
-	// 	}
-		
-	// 	std::string fullPath = path + "/" + name;
-	// 	bool isDir = directoryExists(fullPath);
-		
-	// 	listing << "<a href=\"" 
-	// 			<< (_request->getURI() == "/" ? "" : _request->getURI()) 
-	// 			<< "/" << name << (isDir ? "/" : "") << "\">" 
-	// 			<< name << (isDir ? "/" : "") << "</a>\n";
-	// }
-	
-	// listing << "</pre>\n<hr>\n</body>\n</html>";
-	// closedir(dir);
 	std::stringstream listing;
 	listing << "<!DOCTYPE html>\n<html>\n<head>\n";
 	listing << "<title>Index of " << _request->getURI() << "</title>\n";
-	listing << "<style>\n";
-	listing << "body { font-family: Arial, sans-serif; margin: 20px; background-color: #f5f2eb; color: #333; }\n";
-	listing << "h1 { color: #5a4738; border-bottom: 3px solid #e67e22; padding-bottom: 8px; }\n";
-	listing << "table { border-collapse: collapse; width: 100%; background-color: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }\n";
-	listing << "th, td { text-align: left; padding: 12px 15px; border-bottom: 1px solid #e0d9cf; }\n";
-	listing << "th { background-color: #5a4738; color: #fff; font-weight: bold; }\n";
-	listing << "tr:hover { background-color: #fff8e6; }\n";
-	listing << "tr:nth-child(even) { background-color: #f9f6f2; }\n";
-	listing << "a { text-decoration: none; color: #d35400; font-weight: 500; }\n";
-	listing << "a:hover, a:focus { text-decoration: underline; color: #e67e22; }\n";
-	listing << ".file-size { text-align: right; color: #6b584a; }\n";
-	listing << ".file-date { color: #6b584a; }\n";
-	listing << "hr { border: none; height: 1px; background-color: #e0d9cf; margin: 20px 0; }\n";
-	listing << "</style>\n";
 	listing << "</head>\n<body>\n";
 	listing << "<h1>Index of " << _request->getURI() << "</h1>\n";
 	listing << "<hr>\n";
@@ -448,7 +409,7 @@ void Response::generateDirectoryListing(const std::string& path) {
 		listing << "  </tr>\n";
 	}
 	
-	// vecotr of entries for sorting. format: <filename, isDir>
+	// vector of entries for sorting. format: <filename, isDir>
 	std::vector<std::pair<std::string, bool>> entries;
 	
 	while ((entry = readdir(dir)) != NULL) {
