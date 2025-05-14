@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>POST Test</title>
+</head>
+<body>
+	<h1>POST Test Page</h1>
+	
+	<h2>Simple Form</h2>
+	<h3>Post text in /uploads/note.txt</h3>
+	<form action="/uploads/note.txt" method="POST">
+		<input type="text" name="data" placeholder="Enter text" required>
+		<button type="submit">Submit Form</button>
+	</form>
+
+	<h2>File Upload</h2>
+    <form action="/uploads/custom_file.txt" method="POST" onsubmit="this.action = '/uploads/' + document.getElementById('filename').value + '.txt'">
+        <input type="text" id="filename" placeholder="Enter filename (without extension)" required>
+        <input type="text" name="content" placeholder="Enter content" required>
+        <button type="submit">Save File</button>
+        <p class="note">This will create a file with your chosen name in the uploads folder.</p>
+    </form>
+	<p><a href="/uploads/">View all uploads</a></p>
+	<p><a href="/">Back to Home Page</a></p>
+</body>
+</html>

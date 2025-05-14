@@ -57,7 +57,6 @@ public:
 	
 	const std::pair<int, std::string>& getRedirect() const;
 	void setRedirect(const std::pair<int, std::string>& redirect);
-	
 	std::string getRoot() const;
 	void setRoot(const std::string& rootValue);
 	bool getAutoindex() const;

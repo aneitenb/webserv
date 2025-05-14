@@ -15,7 +15,7 @@
 #define MAX_SERVER_NAME_LENGTH 50
 #define MAX_PATH_LENGTH 50
 #define MAX_ROOT_PATH_LENGTH 255
-#define MAX_BODY_SIZE 1073741824 // 1GB
+#define MAX_BODY_SIZE 20971520	//20MB
 
 class ServerBlock {
 private:
@@ -29,6 +29,7 @@ private:
 	std::string _index;
 	std::map<std::string, LocationBlock> _locationBlocks;
 	bool _hasCustomErrorPages;
+	bool _maxBodySizeSet;
 	std::string _defaultErrorDir;
 	uint8_t _allowedMethods;
 

@@ -7,6 +7,7 @@
 //
 // <<ConfigFile.cpp>> -- <<Aida, Ilmari, Milica>>
 
+
 #include "config/ConfigFile.hpp"
 #include "config/ConfigErrors.hpp"
 
@@ -146,7 +147,7 @@ int ConfigurationFile::_parseConfigFile(void) {
 				//end of server block
 				if (_validateServerBlock(currentServer)) {
 					_servers.push_back(currentServer);
-				inServerBlock = false;
+					inServerBlock = false;
 					locationBlocksStarted.clear();
 				}
 			}
@@ -171,7 +172,7 @@ int ConfigurationFile::_parseConfigFile(void) {
 				value = _trimWhitespace(value.substr(0, value.length() - 1));
 
 				if (inLocationBlock) {
-					_parseLocationDirective(currentServer, currentLocationBlock, key, value);
+					_parseLocationDirective(currentLocationBlock, key, value);
 				} else {
 					_parseServerDirective(currentServer, key, value);
 				}
@@ -344,8 +345,7 @@ void ConfigurationFile::_parseServerDirective(ServerBlock& server, const std::st
 	}
 }
 
-void ConfigurationFile::_parseLocationDirective(ServerBlock& server, LocationBlock& locBlock, 
-												const std::string& key, const std::string& value) {
+void ConfigurationFile::_parseLocationDirective(LocationBlock& locBlock, const std::string& key, const std::string& value) {
 	if (!_isValidLocationDirective(key))
 		throw ErrorInvalidConfig("Unknown directive: " + key);
 	
@@ -430,7 +430,7 @@ void ConfigurationFile::_parseLocationDirective(ServerBlock& server, LocationBlo
 			throw ErrorInvalidConfig("Invalid root path format: " + rootPath);
 		if (rootPath.length() > MAX_ROOT_PATH_LENGTH)
 			throw ErrorInvalidConfig("Root path too long (max " + std::to_string(MAX_ROOT_PATH_LENGTH) + " characters)");
-		server.setRoot(rootPath);
+		locBlock.setRoot(rootPath);
 	}
 	else if (key == "index") {
 		if (locBlock.hasIndex())
@@ -458,7 +458,6 @@ bool ConfigurationFile::_validateServerBlock(ServerBlock& server) const {
 	const std::map<std::string, LocationBlock>& locationBlocks = server.getLocationBlocks();
 	for (std::map<std::string, LocationBlock>::const_iterator it = locationBlocks.begin(); 
 		 it != locationBlocks.end(); ++it) {
-		
 		_validateLocationBlock(it->first, it->second);
 	}
 	
