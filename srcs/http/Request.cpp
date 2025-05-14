@@ -27,31 +27,32 @@ Request::Request(const Request &other) {
 
 Request& Request::operator=(const Request &other) {
 	if (this != &other) {
-		_headers = other._headers;
-		_contentType = other._contentType;
-		_version = other._version;
-		_method = other._method;
-		_body = other._body;
-		_uri = other._uri;
-		_copyBuffer = other._copyBuffer;
-		_contentLength = other._contentLength;
-		_chunked = other._chunked;
-		_parsed = other._parsed;
+		this->_headers = other._headers;
+		this->_contentType = other._contentType;
+		this->_remainder = other._remainder;
+		this->_version = other._version;
+		this->_method = other._method;
+		this->_body = other._body;
+		this->_uri = other._uri;
+		this->_contentLength = other._contentLength;
+		this->_chunkSize = other._chunkSize;
+		this->_parsingStage = other._parsingStage;
+		this->_trailers = other._trailers;
+		this->_chunked = other._chunked;
+		this->_parsed = other._parsed;
+		this->_valid = other._valid;
 	}
 	return *this;
 }
 
-bool Request::operator==(const Request& other) const{
-	if (_headers == other._headers && _contentType == other._contentType \
-			&& _remainder == other._remainder && _version == other._version \
-			&& _method == other._method && _body == other._body \
-			&& _uri == other._uri && _copyBuffer == other._copyBuffer \
-			&& _contentLength == other._contentLength && _chunkSize == other._chunkSize \
-			&& _parsingStage == other._parsingStage && _trailers == other._trailers \
-			&& _chunked == other._chunked && _parsed == other._parsed \
-			&& _valid == other._valid)
-			return true;
-	return false;
+bool Request::operator==(const Request &other) const {
+	return (this->_headers == other._headers && this->_contentType == other._contentType
+			&& this->_remainder == other._remainder && this->_version == other._version
+			&& this->_method == other._method && this->_body == other._body
+			&& this->_uri == other._uri && this->_contentLength == other._contentLength
+			&& this->_chunkSize == other._chunkSize && this->_parsingStage == other._parsingStage
+			&& this->_trailers == other._trailers && this->_chunked == other._chunked
+			&& this->_parsed == other._parsed && this->_valid == other._valid) ? true : false;
 }
 
 Request::~Request(void) {}

@@ -31,7 +31,6 @@ class Request
 		std::string	_method;
 		std::string	_body;
 		std::string	_uri;
-		std::string _copyBuffer;
 
 		size_t	_contentLength;
 		size_t	_chunkSize;
