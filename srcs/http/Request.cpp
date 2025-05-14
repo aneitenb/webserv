@@ -19,7 +19,7 @@
 [[maybe_unused]] static inline std::string	_printRawRequest(const std::string &reqData);
 static inline bool							_getChunkSize(std::stringstream &bodySection, std::string &remainder, size_t &chunkSize);
 
-Request::Request(void): _contentLength(0), _parsingStage(REQUESTLINE), _chunked(false), _valid(true) {}
+Request::Request(void): _contentLength(0), _chunkSize(0), _parsingStage(REQUESTLINE), _trailers(false), _chunked(false), _parsed(false), _valid(false) {}
 
 Request::Request(const Request &other) {
 	*this = other;
@@ -41,6 +41,19 @@ Request& Request::operator=(const Request &other) {
 	return *this;
 }
 
+bool Request::operator==(const Request& other) const{
+	if (_headers == other._headers && _contentType == other._contentType \
+			&& _remainder == other._remainder && _version == other._version \
+			&& _method == other._method && _body == other._body \
+			&& _uri == other._uri && _copyBuffer == other._copyBuffer \
+			&& _contentLength == other._contentLength && _chunkSize == other._chunkSize \
+			&& _parsingStage == other._parsingStage && _trailers == other._trailers \
+			&& _chunked == other._chunked && _parsed == other._parsed \
+			&& _valid == other._valid)
+			return true;
+	return false;
+}
+
 Request::~Request(void) {}
 
 // public methods
@@ -57,7 +70,7 @@ void	Request::append(const std::string &reqData) {
 	switch (this->_parsingStage) {
 		case REQUESTLINE:
 			this->_parsed = false;
-			this->_remainder += reqData;
+			this->_remainder += reqData; //uninitalised value?
 			end = this->_remainder.find(CRLF);
 			if (end == std::string::npos)
 				break ;

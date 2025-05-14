@@ -13,6 +13,7 @@
 #include <iostream> //cerr
 #include <unistd.h> //close
 #include <csignal>
+// #include "CgiHandler.hpp"
 
 extern sig_atomic_t gSignal;
 
@@ -35,9 +36,15 @@ int EventLoop::run(std::vector<EventHandler*> listFds){
     if (this->startRun() == -1)
         return (-1);
     this->addListeners(listFds);
+	std::cout << "should be listener (5): " << listFds.at(0)->getState() << std::endl;
 
-    while(gSignal == 0){
+    while(gSignal){
+        std::cout << "Entered the loop\n";
         int events2Resolve = epoll_wait(_epollFd, _events, MAX_EVENTS, -1);
+        std::cout << "How many events to resolve: " << events2Resolve << std::endl;
+        // if (events2Resolve <= 0){
+        //     continue ;
+        // }
         for (int i = 0; i < events2Resolve; i++){
             EventHandler* curE = static_cast<EventHandler*>(_events[i].data.ptr);
             std::cout << "After receiving events\n";
@@ -62,6 +69,13 @@ int EventLoop::run(std::vector<EventHandler*> listFds){
                 case TOREAD:
                     resolvingModify(curE, EPOLLIN); //handled event was sending, now it needs to be receiving 
                     break;
+                case TOCGI:
+                    addCGI(curE);
+                    break;
+                case CGITOREAD:
+                case CGIREAD:
+                    handleCGI(curE); //when you send and receive
+                    break;
                 default:
                     break;
             }
@@ -75,6 +89,50 @@ int EventLoop::run(std::vector<EventHandler*> listFds){
     return (0);   
 }
 
+void EventLoop::handleCGI(EventHandler* cur){
+    if (cur->getState() == CGITOREAD){
+        if (cur->ready2Switch() == false) //might loop here, timeout
+            return ;
+        cur->setState(CGIREAD);
+        delEpoll(cur->getSocketFd());
+        cur->closeFd(cur->getSocketFd());
+        return ;
+    }
+    delEpoll(cur->getSocketFd());
+    cur->closeFd(cur->getSocketFd());
+}
+
+void EventLoop::addCGI(EventHandler* cur){
+    EventHandler* theCGI = cur->getCgi();
+    if (!theCGI){
+        //set response to 500 or 404
+        cur->setState(WRITING);
+        return ;
+    }
+    struct epoll_event& curGet = theCGI->getCgiEvent(1);
+
+    theCGI->setState(CGIREAD);
+    if (cur->conditionMet(_activeFds, _epollFd) == true){ //pass the activefds so they can close in the child
+        struct epoll_event& curSend = theCGI->getCgiEvent(0);
+        theCGI->setState(CGITOREAD);
+        if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, curSend.data.fd, &curSend) == -1){ //not correct
+            //set response
+            cur->setState(WRITING);
+            return ;
+        }
+    }
+    if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, curGet.data.fd, &curGet) == -1){ //not correct
+        //set response
+        cur->setState(WRITING);
+        return ;
+    }
+    if (theCGI->conditionMet(_activeFds, _epollFd) == false){
+        //set response to 500 or 404
+        cur->setState(WRITING);
+    }
+    cur->setState(FORCGI);
+}
+
 //create an epoll instance
 int EventLoop::startRun(void){
     //set up
@@ -83,17 +141,14 @@ int EventLoop::startRun(void){
         std::cerr << strerror(errno) << "\n";
         return (-1);
     }
+    std::cout << "Epoll instance created: " << _epollFd << "\n\n";
     return (0);
 }
 
 //add listeners to the epoll monitoring
 void EventLoop::addListeners(std::vector<EventHandler*> listFds){
     for (std::size_t i = 0; i < listFds.size(); i++){
-        // struct epoll_event curE;
         listFds.at(i)->initEvent();
-        // this->_event.events = EPOLLIN;
-        // curE.data.fd = *listFds.at(i)->getSocketFd();
-        // curE.data.ptr = static_cast<void*>(&listFds.at(i));
 
         if (*(listFds.at(i)->getSocketFd()) == -1 || epoll_ctl(_epollFd, EPOLL_CTL_ADD, *listFds.at(i)->getSocketFd(), listFds.at(i)->getEvent()) == -1){
             std::cerr << "Error: Could not add the listening socket to the epoll instance: ";
@@ -111,7 +166,7 @@ void EventLoop::addListeners(std::vector<EventHandler*> listFds){
     }
     _listeners = listFds;
     for (auto& x : _listeners){
-        std::cout << "checking lists: " << *(x->getSocketFd()) << std::endl;
+        x->conditionMet(_activeFds, _epollFd);
     }
 }
 
@@ -159,25 +214,32 @@ EventHandler* EventLoop::getListener(int *fd){
 
 //resolve closing and removing of the done/disconnected clients
 void EventLoop::resolvingClosing(){
-    for (auto& pair : _activeFds){
-        if (*pair.first != -1){
+    for (auto& [keyPtr, vect] : _activeFds){
+        if (*keyPtr != -1){
             //update vectors
-            std::size_t i = 0;
-            EventHandler* curL = getListener(pair.first);
-            pair.second = curL->resolveAccept();
-            if (pair.second.empty() == true)
-                return ;
-            for (auto it = pair.second.begin(); it != pair.second.end(); it++){
-                if (pair.second.at(i)->getState() == CLOSE){
+            // std::size_t i = 0;
+            EventHandler* curL = getListener(keyPtr);
+            std::cout << *keyPtr << " current Listener through which we are iterating for closing\n";
+            vect = curL->resolveAccept();
+            std::cout << std::boolalpha;
+            std::cout << "check if empty: " << vect.empty() << std::endl;
+            std:: cout << std::noboolalpha;
+            if (vect.empty() == true)
+                continue ; //i think this was the issue!!
+            for (size_t i = 0; i < vect.size(); i++){
+                if (vect.at(i)->getState() == CLOSE){
+                    std::cout << "Client" << vect.at(i)->getSocketFd() << "going to be closed\n";
                     //cleanup Request, Response, buffer
-                    delEpoll(pair.second.at(i)->getSocketFd());
-                    pair.second.at(i)->setState(TOCLOSE);
+                    delEpoll(vect.at(i)->getSocketFd());
+                    vect.at(i)->setState(TOCLOSE);
                 }
-                i++;
             }
             curL->resolveClose();
-            pair.second = curL->resolveAccept();
-            std::cout << "updated clients: " << static_cast<bool>(pair.second.empty()) << "\n";
+            vect = curL->resolveAccept();
+            std::cout << std::boolalpha;
+            std::cout << "Clients empty: " << vect.empty() << "\n";
+            std::cout << std::noboolalpha;
+            std::cout << "Client vector size: " << vect.size() << "\n";
         }
     }
 }
@@ -221,6 +283,7 @@ int EventLoop::delEpoll(int* fd){
         std::cerr << strerror(errno) << "\n";
         return (-1);
     }
+    std::cout << *fd << "got deleted from monitoring!\n";
     return (0);
 }
 

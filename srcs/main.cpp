@@ -17,7 +17,7 @@
 (that is, within a single thread of execution, volatile accesses cannot be optimized out or reordered with 
 another visible side effect that is sequenced-before or sequenced-after the volatile access. 
 This makes volatile objects suitable for communication with a signal handler, but not with another thread of execution*/
-volatile sig_atomic_t gSignal = 0;
+volatile sig_atomic_t gSignal = 1;
 
 void displayServerInfo(const ConfigurationFile& config);
 
@@ -26,8 +26,8 @@ so that client C code can link to (use) the function using a C compatible header
 that contains just the declaration of the function*/
 
 extern "C" void signalHandler(int signum){
-	gSignal = signum;
-	std::cout << gSignal << std::endl;
+	gSignal = 0;
+	std::cout << signum << std::endl; //delete
 	return;
 }
 
@@ -45,14 +45,20 @@ int program(char** av){
 		std::vector<EventHandler*> listPtrs;
 
 		//use ServerBlocks to init webserver instance
-		if (instance.initialize(config.getAllServerBlocks()) == -1)
-			return 1;
+		if (instance.initialize(config.getAllServerBlocks()) == -1){
+			instance.freeStuff();
+			return 1;} //free addresses?
 
 		//Listener -> EventHandler* so I can pass it to EventLoop
-		std::vector<Listener> listeners = instance.getListeners();
+		std::vector<Listener>& listeners = instance.getListeners();
 		listPtrs.reserve(listeners.size());
-		for (Listener& listener : listeners)
-			listPtrs.push_back(&listener);
+		for (std::size_t m = 0; m < listeners.size(); m++){
+			std::cout << listeners.at(m).getFirstKey() << ": first key\n";
+			std::cout << *(listeners.at(m).getSocketFd()) << ": fd\n\n";
+		}
+		std::cout << "Came here\n\n";
+		for (auto& obj : listeners)
+			listPtrs.push_back(&obj);
 		epolling.run(listPtrs);
 		instance.freeStuff();
 	}
@@ -72,7 +78,8 @@ int main(int ac, char **av)
 {
 	std::signal(SIGINT, signalHandler);
 	// std::signal(SIGPIPE, signalHandler);
-	// std::signal(SIGCHLD, signalHandler);
+	std::signal(SIGCHLD, signalHandler);
+	signal(SIGPIPE, SIG_IGN);  // Ignore SIGPIPE globally so if pipe fails program doesn't crash
 
 	if (ac != 2 || av[1] == nullptr || av[1][0] == '\0')
 	{

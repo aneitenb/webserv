@@ -35,7 +35,6 @@ class VirtualHost {
         // socklen_t           _addr_size;
         int                 _sock_err; //not needed?
         // int                 _type;
-        struct addrinfo*    _result; //needs to be freed freeaddrinfo() but be careful because when copying, pointing to the same address
         // struct epoll_event  _event;
         //locations oor a config file?
     public:
