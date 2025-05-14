@@ -11,7 +11,11 @@ NAME	=	webserv
 
 BUILD	=	normal
 
-CC				=	c++
+ifeq ($(BUILD), normal)
+CC		=	c++
+else
+CC		=	g++
+endif
 
 cflags.common	=	-Wall -Wextra -Werror -std=c++17
 cflags.debug	=	-g -D__DEBUG
@@ -37,7 +41,6 @@ SERVERFILES	=	Client.cpp \
 				WebServer.cpp \
 				EventLoop.cpp \
 				CgiHandler.cpp
-# VirtualHost.cpp
 
 CONFIGFILES	=	ConfigErrors.cpp \
 				ConfigFile.cpp \
