@@ -12,6 +12,8 @@
 #include <sys/epoll.h>
 #include <vector>
 #include <unistd.h>
+#include <unordered_map>
+#include <iostream> //delete after
 // #include "EventLoop.hpp"
 
 enum State {
@@ -23,7 +25,11 @@ enum State {
     LISTENER, //socket is a listening socket
     TOADD, //fd needs to be added
     CLOSED, //fd has been closed
-    TOCLOSE //deleted from epoll, not yet from vector
+    TOCLOSE, //deleted from epoll, not yet from vector
+    TOCGI, //is creating and starting the CGI
+    FORCGI, //this is client waiting for cgi
+    CGITOREAD, //is cgi, needs to read
+    CGIREAD //is cgi, has read
 }; 
 
 /*if epollin && towrite
@@ -40,13 +46,18 @@ class EventHandler{
     private:
         // EventLoop* _loop;
         State      _cur;
+        struct epoll_event _event;
     public:
         virtual ~EventHandler(){};
         virtual int handleEvent(uint32_t ev) = 0;
         virtual int* getSocketFd(void) = 0; //add for the client too?
         virtual std::vector<EventHandler*> resolveAccept() = 0;
         virtual void resolveClose() = 0;
-        struct epoll_event _event;
+        virtual EventHandler* getCgi() = 0;
+        virtual bool conditionMet(std::unordered_map<int*, std::vector<EventHandler*>>& _activeFds, int& epollFd) = 0;
+        virtual bool ready2Switch() = 0;
+        virtual struct epoll_event& getCgiEvent(int flag) = 0;
+    
         // void setLoop(EventLoop& curLoop){
         //     _loop = &curLoop;
         // };
@@ -67,14 +78,20 @@ class EventHandler{
         };
         void initEvent(){
             _event.events = EPOLLIN;
-            _event.data.fd  = *((getSocketFd()));
+            _event.data.fd  = *(getSocketFd());
             _event.data.ptr = static_cast<void*>(this);
-        }
+            std::cout << "EventHandler with fd " << *(getSocketFd()) << " got their event initialised\n";
+        };
         struct epoll_event* getEvent(){
             return (&_event);
-        }
+        };
         void changeEvent(uint32_t curE){
             _event.events = curE;
-        }
+        };
+        // void setEvent(struct epoll_event* cur, int *fd, uint32_t curE){
+        //     cur->events = curE;
+        //     cur->data.fd  = *fd;
+        //     cur->data.ptr = static_cast<void*>(this);
+        // };
         //might make sense to freeadrinfo after deleting
 };

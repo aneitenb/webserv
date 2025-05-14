@@ -62,11 +62,14 @@ private:
 	void handlePostRedirect();
 	
 	void handleDelete();
+
 	std::string resolveDeletePath();
 	bool checkDeletePermissions(const std::string& path);
 	void deleteResource(const std::string& path);
 
 	bool isCgiRequest(const std::string& path);
+
+	void handleCgi(const std::string& path);
 	
 public:
 	Response(Request* request, ServerBlock* serverBlock);

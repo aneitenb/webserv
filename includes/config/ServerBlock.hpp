@@ -38,6 +38,7 @@ public:
 	~ServerBlock();
 	ServerBlock(const ServerBlock& other);
 	ServerBlock& operator=(const ServerBlock& other);
+	bool operator==(const ServerBlock& other) const;
 
 	void clear();
 	

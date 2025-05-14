@@ -10,6 +10,8 @@
 #pragma once
 
 #include "CommonFunctions.hpp"
+#define CGI_EXTENSION ".py"
+#define CGI_INTERPRETER "/usr/bin/python3"
 
 // HTTP Method enum as bit flags for easier method checking
 enum HttpMethod {
@@ -33,7 +35,8 @@ private:
 public:
 	LocationBlock();
 	LocationBlock(const LocationBlock& other);
-	LocationBlock& operator=(const LocationBlock& other); 
+	LocationBlock& operator=(const LocationBlock& other);
+	bool operator==(const LocationBlock& other) const;
 	~LocationBlock();
 
 	void clear();

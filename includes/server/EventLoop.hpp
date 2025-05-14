@@ -13,7 +13,7 @@
 #include "VirtualHost.hpp"
 #include <sys/epoll.h>
 #include "EventHandler.hpp"
-#include "Client.hpp"
+// #include "Client.hpp"
 
 #define MAX_EVENTS 1024
 
@@ -55,12 +55,14 @@ public:
     int modifyEpoll(int* fd, uint32_t event, EventHandler* object);
     int delEpoll(int* fd);
     int startRun();
-    void addListeners(std::vector<EventHandler*> listFds);
+    void addListeners(std::vector<EventHandler*> listFds);\
+    void addCGI(EventHandler* cur);
     int run(std::vector<EventHandler*> listFds); //epoll_wait + resolve events: accept/send/recv
     void resolvingAccept(EventHandler* cur);
     void resolvingModify(EventHandler* cur, uint32_t event);
     void resolvingClosing(void);
     void condemnClients(EventHandler* cur);
+    void handleCGI(EventHandler* cur);
 
 
     //getters, setters

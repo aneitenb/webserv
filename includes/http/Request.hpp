@@ -60,6 +60,7 @@ class Request
 		~Request(void);
 		Request(const Request &other);
 		Request& operator=(const Request &other);
+		bool operator==(const Request& other) const;
 
 		// public methods
 		void	append(const std::string &reqData);
