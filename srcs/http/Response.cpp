@@ -550,8 +550,6 @@ void Response::handlePost() {
 		setHeader("Content-Type", "text/html");
 		return;
 	}
-	
-	// Perform the actual file upload
 	postResource(path);
 }
 
@@ -613,8 +611,7 @@ void Response::postResource(const std::string& path) {
 	
 	file.write(_request->getBody().c_str(), _request->getBody().size());
 	file.close();
-	
-	// Set appropriate status code
+
 	if (fileExisted) {
 		_statusCode = 200;
 	} else {
@@ -622,14 +619,14 @@ void Response::postResource(const std::string& path) {
 		_statusCode = 201;
 	}
 	
-	// handle redirect if needed
-	if ((_statusCode == 200 || _statusCode == 201) && _locationBlock && _locationBlock->hasRedirect()) {
-		std::string redirectUrl = _locationBlock->getRedirect().second;
-		int redirectStatus = _locationBlock->getRedirect().first;
+	// // handle redirect if needed
+	// if ((_statusCode == 200 || _statusCode == 201) && _locationBlock && _locationBlock->hasRedirect()) {
+	// 	std::string redirectUrl = _locationBlock->getRedirect().second;
+	// 	int redirectStatus = _locationBlock->getRedirect().first;
 		
-		setHeader("Location", redirectUrl);
-		_statusCode = redirectStatus;
-	}
+	// 	setHeader("Location", redirectUrl);
+	// 	_statusCode = redirectStatus;
+	// }
 	setBody("");
 }
 
