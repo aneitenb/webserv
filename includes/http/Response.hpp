@@ -67,7 +67,7 @@ private:
 	bool checkDeletePermissions(const std::string& path);
 	void deleteResource(const std::string& path);
 
-	bool isCgiRequest(const std::string& path);
+	bool isCgiRequest(const std::string& path) const;
 
 	void handleCgi(const std::string& path);
 	
