@@ -9,6 +9,8 @@
 
 #include "http/Response.hpp"
 
+[[maybe_unused]] static inline std::string _printRawResponse(const std::string &resData);
+
 static const std::map<int, std::string> statusMessages = {
 	{200, "OK"},
 	{201, "Created"},	//do we need these?
@@ -128,6 +130,9 @@ std::string Response::getMimeType(const std::string& path) const {
 void  Response::prepareResponse() {
 	handleResponse();
 	_fullResponse = getStatusLine() + getHeadersString() + _body;
+#ifdef __DEBUG
+	std::cerr << SGR_RESPONSE << "prepareResponse: raw response {\n" << _printRawResponse(_fullResponse) << "\n}" << SGR_RESET << "\n";
+#endif /* __DEBUG */
 	_bytesSent = 0;
 }
 
@@ -1062,4 +1067,21 @@ ssize_t Response::getBytes() const{
 
 std::string Response::getFullResponse() const{
 	return (_fullResponse);
+}
+
+[[maybe_unused]] static inline std::string _printRawResponse(const std::string &resData) {
+	std::string	escaped;
+
+	escaped.clear();
+	for (const char c : resData) {
+		if (isprint(c) || c == '\n')
+			escaped += c;
+		else if (c == '\r')
+			escaped += "\\r";
+		else if (c && c < ' ') {
+			escaped += '^';
+			escaped += c + '@';
+		}
+	}
+	return escaped;
 }
