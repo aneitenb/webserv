@@ -93,6 +93,7 @@ void ServerBlock::clear() {
 	_serverName = "";
 	_root = "";
 	_clientMaxBodySize = 1024 * 1024;
+	_maxBodySizeSet = false;
 	_errorPages.clear();
 	_locationBlocks.clear();
 	_index = "";

@@ -141,20 +141,13 @@ void Response::handleResponse() {
 		_locationBlock = &_serverBlock->getLocationBlockRef(matchedLocation);
 
 	setHeader("Date", getCurrentDate());
-	if (_request->getMethod() != "GET" && _request->getMethod() != "POST" && _request->getMethod() != "DELETE")
-	{
-		_statusCode = 405;
-		setBody(getErrorPage(405));
-		setHeader("Content-Type", "text/html");
-		return;
-	}
 	if (!_request->isValid()){
-		_statusCode = 400;
-		setBody(getErrorPage(400));
+		_statusCode = _request->getErrorCode();
+		setBody(getErrorPage(_request->getErrorCode();));
 		setHeader("Content-Type", "text/html");
 		return;
 	}
-	
+
 	bool delayedRedirect = false;
 	std::pair<int, std::string> redirect;
 	
@@ -202,11 +195,6 @@ bool Response::isComplete() const {
 
 void Response::handleGet() {
 	std::string path = resolvePath(_request->getURI());
-  
-  if (isCgiRequest(path)) {   //DOES THIS WORK?
-		handleCgi(path);
-		return;
-	}
 	
 	if (!resourceExists(path)) {
 		return;
@@ -539,12 +527,13 @@ void Response::readFile(const std::string& path) {
 *********************************************/
 
 void Response::handlePost() {
-	std::string path = resolveUploadPath();
-  
-  if (isCgiRequest(path)) {     //CHECK THIS
-		handleCgi(path);
+	if (!_request->isParsed()) {			//NEEDED? isn't this already in epoll loop?
+		_statusCode = 400;
+		setBody(getErrorPage(400));
+		setHeader("Content-Type", "text/html");
 		return;
 	}
+	std::string path = resolveUploadPath();
 	
 	if (!checkDir(path)) {
 		return;
@@ -557,6 +546,11 @@ void Response::handlePost() {
 		_statusCode = 413;
 		setBody(getErrorPage(413));
 		setHeader("Content-Type", "text/html");
+		return;
+	}
+	if (isMultipartRequest()) {
+		std::string uploadDir = path.substr(0, path.find_last_of('/'));
+		handleMultipartPost(uploadDir);
 		return;
 	}
 	postResource(path);
@@ -627,18 +621,205 @@ void Response::postResource(const std::string& path) {
 		setHeader("Location", _request->getURI());
 		_statusCode = 201;
 	}
-	
-	// // handle redirect if needed
-	// if ((_statusCode == 200 || _statusCode == 201) && _locationBlock && _locationBlock->hasRedirect()) {
-	// 	std::string redirectUrl = _locationBlock->getRedirect().second;
-	// 	int redirectStatus = _locationBlock->getRedirect().first;
-		
-	// 	setHeader("Location", redirectUrl);
-	// 	_statusCode = redirectStatus;
-	// }
 	setBody("");
 }
 
+/********************************************
+*			MULTIPART FUNCTIONS				*
+*********************************************/
+
+bool Response::isMultipartRequest() const {
+	std::string contentType = _request->getHeader("Content-Type");
+	return (contentType.find("multipart/form-data") != std::string::npos);
+}
+
+std::string Response::extractBoundary(const std::string& contentType) const {
+	size_t pos = contentType.find("boundary=");
+	if (pos == std::string::npos) {
+		return "";
+	}
+
+	std::string boundary = contentType.substr(pos + 9);	// "boundary=" is 9 chars
+
+	return boundary;
+}
+
+std::vector<Response::MultipartFile> Response::parseMultipartData(const std::string& boundary) {
+	std::vector<MultipartFile> files;
+	const std::string& requestBody = _request->getBody();
+	
+	// Full boundary in the body has two extra --
+	std::string fullBoundary = "--" + boundary;
+	std::string endBoundary = fullBoundary + "--";
+	
+	size_t pos = 0;
+	while (true) {
+		// find start of a part
+		pos = requestBody.find(fullBoundary, pos);
+		if (pos == std::string::npos) {
+			break;
+		}
+		pos += fullBoundary.length();
+		
+		// check if we've reached the end boundary
+		if (requestBody.substr(pos, 2) == "--") {
+			break;
+		}
+		
+		// skip the CRLF after the boundary!!!!
+		pos += 2;
+		
+		// Find the Content-Disposition header
+		size_t headerEnd = pos;
+		std::string contentDisposition;
+		
+		while (true) {
+			size_t lineEnd = requestBody.find("\r\n", headerEnd);
+			if (lineEnd == std::string::npos) {
+				break;
+			}
+			std::string headerLine = requestBody.substr(headerEnd, lineEnd - headerEnd);
+			headerEnd = lineEnd + 2; // Skip CRLF
+			if (headerLine.empty()) {
+				break; // empty line = end of headers
+			}
+			// only look for Content-Disposition header
+			if (headerLine.find("Content-Disposition:") == 0) {
+				contentDisposition = headerLine;
+			}
+		}
+		
+		// find the start of the next boundary to determine content length
+		size_t nextBoundary = requestBody.find(fullBoundary, headerEnd);
+		if (nextBoundary == std::string::npos) {
+			nextBoundary = requestBody.find(endBoundary, headerEnd);
+			if (nextBoundary == std::string::npos) {
+				break; // malformed data
+			}
+		}
+		
+		// save content between headerEnd and nextBoundary
+		size_t contentLength = nextBoundary - headerEnd - 2; // -2 for CRLF before boundary
+		std::string content = requestBody.substr(headerEnd, contentLength);
+		
+		// save filename if present
+		size_t filenamePos = contentDisposition.find("filename=\"");
+		if (filenamePos != std::string::npos) {
+			filenamePos += 10; // "filename="" is 10 chars
+			size_t filenameEnd = contentDisposition.find("\"", filenamePos);
+			if (filenameEnd != std::string::npos) {
+				std::string filename = contentDisposition.substr(filenamePos, filenameEnd - filenamePos);
+				
+				//only add to files if there's a filename
+				if (!filename.empty()) {
+					MultipartFile file;
+					file.filename = filename;
+					file.content = content;
+					files.push_back(file);
+				}
+			}
+		}
+		// move position to the start of the next part
+		pos = nextBoundary;
+	}
+	return files;
+}
+
+void Response::handleMultipartPost(const std::string& uploadDir) {	
+	std::string contentType = _request->getHeader("Content-Type");
+	std::string boundary = extractBoundary(contentType);
+	
+	if (boundary.empty()) {
+		_statusCode = 400;
+		setBody(getErrorPage(400));
+		setHeader("Content-Type", "text/html");
+		return;
+	}
+	
+	std::vector<MultipartFile> files = parseMultipartData(boundary);
+	
+	if (files.empty()) {
+		_statusCode = 400;
+		setBody(getErrorPage(400));
+		setHeader("Content-Type", "text/html");
+		return;
+	}
+	// create directory if it doesn't exist
+	if (!directoryExists(uploadDir)) {
+		if (mkdir(uploadDir.c_str(), 0755) != 0) {
+			_statusCode = 500;
+			setBody(getErrorPage(500));
+			setHeader("Content-Type", "text/html");
+			return;
+		}
+	}
+	
+	bool allFilesSucceeded = true;
+	std::vector<std::string> savedFiles;
+	
+	// process each file in the multipart struct
+	for (const auto& file : files) {
+		// unsafe: ../../../etc/psswd	safe saved as: psswd.
+		std::string safeFilename = file.filename;
+		size_t lastSlash = safeFilename.find_last_of("/\\");
+		if (lastSlash != std::string::npos) {
+			safeFilename = safeFilename.substr(lastSlash + 1);
+		}
+		
+		// create complete path
+		std::string filePath = uploadDir;
+		if (filePath[filePath.length() - 1] != '/') {
+			filePath += '/';
+		}
+		filePath += safeFilename;
+
+		if (!hasWritePermission(uploadDir)) {
+			_statusCode = 403;
+			setBody(getErrorPage(403));
+			setHeader("Content-Type", "text/html");
+			return;
+		}
+
+		std::ofstream outFile(filePath.c_str(), std::ios::binary);
+		if (!outFile.is_open()) {
+			allFilesSucceeded = false;
+			continue;
+		}
+		
+		outFile.write(file.content.c_str(), file.content.size());
+		outFile.close();
+		
+		savedFiles.push_back(safeFilename);
+	}
+	
+	if (!allFilesSucceeded) {
+		_statusCode = 500;
+		setBody(getErrorPage(500));
+		setHeader("Content-Type", "text/html");
+		return;
+	}
+	
+	_statusCode = 201; // created
+	
+	// std::stringstream response;
+	// response << "<!DOCTYPE html>\n<html>\n<head>\n";
+	// response << "<title>Upload Successful</title>\n";
+	// response << "</head>\n<body>\n";
+	// response << "<h1>Files Uploaded Successfully</h1>\n";
+	
+	// if (!savedFiles.empty()) {
+	// 	response << "<ul>\n";
+	// 	for (const auto& file : savedFiles) {
+	// 		response << "<li>" << file << "</li>\n";
+	// 	}
+	// 	response << "</ul>\n";
+	// }
+	
+	// response << "</body>\n</html>";
+	
+	// setBody(response.str());
+	// setHeader("Content-Type", "text/html");
+}
 
 /************************************************
 *				DELETE FUNCTIONS				*
@@ -774,49 +955,41 @@ bool Response::hasWritePermission(const std::string& path) const {
 }
 
 bool Response::isCgiRequest(const std::string& path) const {
-    if (!_locationBlock || !_locationBlock->hasCgiPass()) {
-        return false;
-    }
+	if (!_locationBlock || !_locationBlock->hasCgiPass()) {
+		return false;
+	}
 
-    // checking that file extension is (.py)
-    size_t dotPos = path.find_last_of('.');
-    if (dotPos == std::string::npos) {
-        return false;
-    }
-    
-    std::string extension = path.substr(dotPos);
-    return (extension == CGI_EXTENSION);
+	// checking that file extension is (.py)
+	size_t dotPos = path.find_last_of('.');
+	if (dotPos == std::string::npos) {
+		return false;
+	}
+	
+	std::string extension = path.substr(dotPos);
+	return (extension == CGI_EXTENSION);
 }
 
 void Response::handleCgi(const std::string& path) {    
-    std::string scriptPath = path;
-    std::string cgiExecutable = _locationBlock->getCgiPass();
-    
-    if (!fileExists(scriptPath)) {
-        _statusCode = 404;
-        setBody(getErrorPage(404));
-        setHeader("Content-Type", "text/html");
-        return;
-    }
-    
-    if (!hasReadPermission(scriptPath)) {
-        _statusCode = 403;
-        setBody(getErrorPage(403));
-        setHeader("Content-Type", "text/html");
-        return;
-    }
-    
-    // TODO: Implement actual CGI execution
-    // 1. Setting up environment variables
-    // 2. Creating pipes for stdin/stdout
-    // 3. Forking a process
-    // 4. Executing the CGI script
-    // 5. Reading the response
-    // 6. Parsing headers from the response
+	std::string scriptPath = path;
+	std::string cgiExecutable = _locationBlock->getCgiPass();
+	
+	if (!fileExists(scriptPath)) {
+		_statusCode = 404;
+		setBody(getErrorPage(404));
+		setHeader("Content-Type", "text/html");
+		return;
+	}
+	
+	if (!hasReadPermission(scriptPath)) {
+		_statusCode = 403;
+		setBody(getErrorPage(403));
+		setHeader("Content-Type", "text/html");
+		return;
+	}
 
-    _statusCode = 501;
-    setBody(getErrorPage(501));
-    setHeader("Content-Type", "text/html");
+	_statusCode = 501;
+	setBody(getErrorPage(501));
+	setHeader("Content-Type", "text/html");
 }
 
 std::string Response::getStatusLine() const {
@@ -869,6 +1042,10 @@ void Response::setBody(const std::string& body) {
 	_body = body;
 	if (_statusCode != 204)
 		setHeader("Content-Length", std::to_string(_body.size()));
+}
+
+void Response::setStatusCode(const int code){
+	_statusCode = code;
 }
 
 void Response::setContentType(const std::string& path) {
