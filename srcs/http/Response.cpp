@@ -146,9 +146,15 @@ void Response::handleResponse() {
 		_locationBlock = &_serverBlock->getLocationBlockRef(matchedLocation);
 
 	setHeader("Date", getCurrentDate());
-	if (!_request->isValid()){
-		_statusCode = _request->getErrorCode();
-		setBody(getErrorPage(_request->getErrorCode();));
+	// if (!_request->isValid()){
+	// 	_statusCode = _request->getErrorCode();
+	// 	setBody(getErrorPage(_request->getErrorCode()));
+	// 	setHeader("Content-Type", "text/html");
+	// 	return;
+	// }
+	if (!_request->isValid()){	//delete when merged with updated request
+		_statusCode = 400;
+		setBody(getErrorPage(400));
 		setHeader("Content-Type", "text/html");
 		return;
 	}
