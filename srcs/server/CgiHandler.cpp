@@ -116,6 +116,12 @@ std::string& CgiHandler::getRaw(){
     return (_rawdata);
 }
 
+void CgiHandler::setReqRes(Request *req, Response *res){
+    _request = req;
+    _response = res;
+}
+
+
 bool CgiHandler::cgiDone(){
     //INTRODUCE TIMEOUT FOR KILLING THE CHILD
     if (_curr == DONE || _curr == ERROR) //if its error the reponse was set
@@ -182,27 +188,34 @@ std::string CgiHandler::getQueryPath(int side){ //NOT USED?
 }
 
 int CgiHandler::check_paths(){
-    size_t found = _request->getURI().find_last_of('/');
-    std::cout << "Cgi: URI: " << _request->getURI() << "\n";
+    std::string uri = _request->getURI();
+    if (uri.at(0) == '/')
+        uri = uri.substr(1);
+    std::cout << "URI is " << uri << std::endl;
+    size_t found = uri.find_last_of('/');
     if (found == std::string::npos)
         return 1; //invalid path
-    _absPath = _request->getURI().substr(0, found);
+    _absPath = uri.substr(0, found);
     std::cout << "Cgi: abspath: " << _absPath << "\n";
-    if (access(_absPath.c_str(), F_OK | X_OK) != 0){
-        //directory not accessible 500 or 404
+    if (access(_absPath.c_str(), X_OK) != 0){
+        std::cout << "could not pass the check\n";
         return 1;
     }
-    found = _request->getURI().find_last_of('?');
-    if (found == std::string::npos)
-    return 1; //invalid path
-    _scriptPath = _request->getURI().substr(0, found);
+    if (_request->getMethod() == "GET"){
+        found = uri.find_last_of('?');
+        if (found == std::string::npos)
+            return 1;
+        _scriptPath = '.' + uri.substr(0, found);
+        _query = uri.substr(found, uri.size() - found);
+        std::cout << "Cgi: query: " << _query << "\n";
+        return (0);               
+    }
+    _scriptPath = uri;
     std::cout << "Cgi: script: " << _scriptPath << "\n";
-    if (access(_scriptPath.c_str(), F_OK | R_OK) != 0){
+    if (access(_scriptPath.c_str(), X_OK) != 0){
         //script not accessible/readable 500 or 404
         return 1;
     }
-    _query = _request->getURI().substr(found, _request->getURI().size() - found);
-    std::cout << "Cgi: query: " << _query << "\n";
     return 0;
 }
 
@@ -211,15 +224,16 @@ int CgiHandler::setupEnv(){
     std::vector <std::string> envS;
 
     //check if file can be opened i guess
-    if (check_paths() == 1)
-        return 1;
-    _absPath = CGI_ROOT + _absPath;
-    envS.push_back("SERVER_PROTOCOL=HTTP/1.1");
-    envS.push_back("GATEWAY_INTERFACE=CGI/1.1");
+    if (check_paths() == 1){
+        std::cout << "The paths are messed up?";
+        return 1;}
+    // envS.push_back("SERVER_PROTOCOL=HTTP/1.1");
+    // envS.push_back("GATEWAY_INTERFACE=CGI/1.1");
     envS.push_back("REQUEST_METHOD=" + _request->getMethod());
-    envS.push_back("QUERY_STRING=" + _query); //ask Ilmari to add + the next one
     envS.push_back("SCRIPT_FILENAME=" + _scriptPath); //not path but the name of the string from the request?
-    envS.push_back("PATH_INFO=" + _absPath); //see if needs fixing, need path anyway
+    envS.push_back("PATH_INFO=" + _absPath); //see if needs fixing, need path anyway    
+    if (_request->getMethod() == "GET")
+        envS.push_back("QUERY_STRING=" + _query);
     if (_request->getMethod() == "POST"){
         envS.push_back("CONTENT_LENGTH=" + std::to_string(_request->getContentLength()));
         envS.push_back("CONTENT_TYPE=" + _request->getContentType());
@@ -301,12 +315,12 @@ int CgiHandler::forking(std::unordered_map<int*, std::vector<EventHandler*>>& _a
 
 int CgiHandler::handleEvent(uint32_t ev){
     std::string buffer = {0};
-
+    std::cout << "I'm handling it!\n";
     if (ev & EPOLLIN){
         buffer.clear();
         buffer.resize(4096);
         std::cout << "Cgi: Receiving\n";
-        ssize_t len = recv(fromCGI._fd[0], &buffer[0], buffer.size(), 0); //sizeof(buffer) - 1?
+        ssize_t len = read(fromCGI._fd[0], &buffer[0], buffer.size()); //sizeof(buffer) - 1?
         if (len < 1){ //either means that there is no more data to read or error or client closed connection (len == 0)
             //SAVE response!!!!either error or fullresponse
             if (len == 0){
@@ -342,13 +356,13 @@ int CgiHandler::handleEvent(uint32_t ev){
         std::cout << std::endl;
         std::cout << "BUFFER:    " << buffer << std::endl;
         if (_offset != buffer.size()){
-            ssize_t len = send(toCGI._fd[1], buffer.c_str() + _offset, buffer.size() - _offset, 0);
+            ssize_t len = write(toCGI._fd[1], buffer.c_str() + _offset, buffer.size() - _offset);
             if (len < 1){
                 if (_offset == buffer.size()){
                     _curr = SWITCH;
                     return (0);
                 }
-                std::cout << "Error could not send" << errno << "\n";
+                std::cout << "Error could not send " << errno << "\n";
                 //timeout
                 setProgress(ERROR);
                 // return (0);

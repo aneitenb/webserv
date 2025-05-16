@@ -86,5 +86,5 @@ class CgiHandler : public EventHandler{
         Progress getProgress() const;
         void setProgress(Progress value);
         std::string& getRaw();
-
+        void setReqRes(Request *req, Response *res);
 };

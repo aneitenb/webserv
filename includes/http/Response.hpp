@@ -111,4 +111,6 @@ private:
 	void handleCgiError(const std::string& path); //need it to be public
 	void handleCgi(const std::string& rawdata);
 	bool isComplete() const;
+
+	// std::string getString();
 };

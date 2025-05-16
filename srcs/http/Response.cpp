@@ -40,13 +40,15 @@ Response::Response(){}
 
 Response::~Response() {}
 
-Response::Response(Response&& other) noexcept
-	: _request(other._request){
+Response::Response(Response&& other) noexcept {
 	_statusCode = other._statusCode;
 	_statusMessage = other._statusMessage;
 	_headers = other._headers;
 	_body = other._body;
+	_fullResponse = other._fullResponse;
 	_bytesSent = other._bytesSent;
+	_request = other._request;
+	other._request = nullptr;
 	_serverBlock = other._serverBlock;
 	other._serverBlock = nullptr;
 	_locationBlock = other._locationBlock;
@@ -56,12 +58,14 @@ Response::Response(Response&& other) noexcept
 
 Response& Response::operator=(Response&& other) noexcept{
 	if (this != &other){
-		_request = other._request;
 		_statusCode = other._statusCode;
 		_statusMessage = other._statusMessage;
 		_headers = other._headers;
 		_body = other._body;
+		_fullResponse = other._fullResponse;
 		_bytesSent = other._bytesSent;
+		_request = other._request;
+		other._request = nullptr;
 		_serverBlock = other._serverBlock;
 		other._serverBlock = nullptr;
 		_locationBlock = other._locationBlock;
@@ -82,6 +86,7 @@ Response::Response(Request* request, ServerBlock* serverBlock)
 }
 
 void Response::clear() {
+	std::cout << "CLEARING RESPONSE\n";
 	_statusCode = 200;
 	_headers.clear();
 	_body.clear();
@@ -1130,49 +1135,50 @@ bool Response::isCgiRequest(const std::string& path) const {
 	return (extension == CGI_EXTENSION);
 }
 
-void Response::handleCgi(const std::string& rawdata) { 
+void Response::handleCgi(const std::string& rawdata) {
+	_fullResponse = rawdata; 
 	//set status code
-	std::size_t pos_rt;
-	std::size_t found = rawdata.find("Status: ");
-	if (found == std::string::npos)
-		_statusCode = 200;
-	else{
-		pos_rt = rawdata.find(found, '\r');
-		if (pos_rt != std::string::npos)
-			_statusCode = std::stoi(rawdata.substr(found, pos_rt));
-		else
-			_statusCode = 501; //check
-	}
-	//set headers
-	found = rawdata.find("Content-Type: ");
-	if (found == std::string::npos)
-    	setHeader("Content-Type", "text/html");
-	else{
-		pos_rt = rawdata.find(found, '\r');
-		if (pos_rt != std::string::npos)
-    		setHeader("Content-Type", "text/html");	
-		else{
-			std::string path = rawdata.substr(found, pos_rt);
-			setContentType(path);
-		}
-	}
-	//set body; does this need to go first?
-	std::string body;
-	found = rawdata.find("\r\n\r\n");
-	if (found == std::string::npos)
-    	body = ""; //check
-	else{
-		body = rawdata.substr(found);
-		if (body.size() == 4)
-			body = "";
-	}
-	setHeader("Content-Length", std::to_string(body.size()));
-	setBody(body);
+	// std::size_t pos_rt;
+	// std::size_t found = rawdata.find("Status: ");
+	// if (found == std::string::npos)
+	// 	_statusCode = 200;
+	// else{
+	// 	pos_rt = rawdata.find(found, '\r');
+	// 	if (pos_rt != std::string::npos)
+	// 		_statusCode = std::stoi(rawdata.substr(found, pos_rt));
+	// 	else
+	// 		_statusCode = 501; //check
+	// }
+	// //set headers
+	// found = rawdata.find("Content-Type: ");
+	// if (found == std::string::npos)
+    // 	setHeader("Content-Type", "text/html");
+	// else{
+	// 	pos_rt = rawdata.find(found, '\r');
+	// 	if (pos_rt != std::string::npos)
+    // 		setHeader("Content-Type", "text/html");	
+	// 	else{
+	// 		std::string path = rawdata.substr(found, pos_rt);
+	// 		setContentType(path);
+	// 	}
+	// }
+	// //set body; does this need to go first?
+	// std::string body;
+	// found = rawdata.find("\r\n\r\n");
+	// if (found == std::string::npos)
+    // 	body = ""; //check
+	// else{
+	// 	body = rawdata.substr(found);
+	// 	if (body.size() == 4)
+	// 		body = "";
+	// }
+	// setHeader("Content-Length", std::to_string(body.size()));
+	// setBody(body);
 }
 
 void Response::handleCgiError(const std::string& path) {   
     std::string scriptPath = path;
-    std::string cgiExecutable = _locationBlock->getCgiPass();
+    // std::string cgiExecutable = _locationBlock->getCgiPass();
     
     if (!fileExists(scriptPath)) {
         _statusCode = 404;

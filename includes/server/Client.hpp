@@ -43,11 +43,11 @@ class Client : public EventHandler {
         Client();
         Client(std::unordered_map<std::string, ServerBlock*> cur);
         ~Client();
-        Client(const Client& other) = delete;
-        Client& operator=(const Client& other) = delete;        // int     getFlag(void) const;
+
         //move constructor
         Client(Client&& other) noexcept;
         Client& operator=(Client&& other) noexcept;
+
         bool operator==(const Client& other) const;
         int setFd(int *fd);
         // void setSockFd(int* fd);
