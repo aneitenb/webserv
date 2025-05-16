@@ -17,6 +17,9 @@
 import os #for the environmental variables
 import sys #for reading from the stdin
 import cgi #useful?
+import cgitb
+
+cgitb.enable() #enables debugging info in the browser, delete after?
 
 #os.environ is a mapping object that represents the env variables
 #returns a dictionary with key:value elements
@@ -27,24 +30,30 @@ import cgi #useful?
 #Required HTTP header things
 # this should come from the server: print("HTTP/1.1 200 OK")
 def handle_get():
+    print() 
 
+def handle_post():
+    print()
 
+#main bloc
 
-print("Content-Type: text/html") #new line yes or no
+if __name__ == "__main__":
 
-method = os.environ.get("REQUEST_METHOD", "GET")
+    print("Content-Type: text/html") #new line yes or no
 
-if method == 'GET'
-    query = os.environ.get("QUERY_STRING", "")
-    response = f"<html><body><h1>GET query: {query}</h1></body></html>"
+    method = os.environ.get("REQUEST_METHOD", "GET")
 
-elif method == 'POST'
-    length = int(os.environ.get("CONTENT_LENGTH", 0))
-    body = sys.stdin.read(length)
-    response = f"<html><body><h1>POST body: {body}</h1></body></html>"
+    if method == 'GET'
+        query = os.environ.get("QUERY_STRING", "")
+        response = f"<html><body><h1>GET query: {query}</h1></body></html>"
 
-print(f"Content-Length: {len(response)}")
-print() #empty line to separate the headers from the body
-print(response)
+    elif method == 'POST'
+        length = int(os.environ.get("CONTENT_LENGTH", 0))
+        body = sys.stdin.read(length)
+        response = f"<html><body><h1>POST body: {body}</h1></body></html>"
 
-#print out the minimum requirements for the response
+    print(f"Content-Length: {len(response)}")
+    print() #empty line to separate the headers from the body
+    print(response)
+
+    #print out the minimum requirements for the response
