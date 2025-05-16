@@ -93,27 +93,12 @@ class Request
 				const char	*what(void) const noexcept;
 		};
 
-		class IncompleteHeaderException: public std::exception {
-			public:
-				const char	*what(void) const noexcept;
-		};
-
 		class FieldNotFoundException: public std::exception {
 			public:
 				const char	*what(void) const noexcept;
 		};
 
 		class InvalidHeaderException: public std::exception {
-			public:
-				const char	*what(void) const noexcept;
-		};
-
-		class InvalidFieldException: public std::exception {
-			public:
-				const char	*what(void) const noexcept;
-		};
-
-		class InvalidBodyException: public std::exception {
 			public:
 				const char	*what(void) const noexcept;
 		};

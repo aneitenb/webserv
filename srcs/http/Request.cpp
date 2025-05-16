@@ -350,14 +350,8 @@ const bool	&Request::isValid(void) const { return this->_valid; }
 const i32	&Request::getErrorCode(void) const { return this->_errorCode; }
 
 //exceptions
-const char	*Request::InvalidRequestLineException::what(void) const noexcept { return "Invalid or missing request line"; }
-
-const char	*Request::IncompleteHeaderException::what(void) const noexcept { return "Incomplete or missing header"; }
+const char	*Request::InvalidRequestLineException::what(void) const noexcept { return "Invalid request line"; }
 
 const char	*Request::FieldNotFoundException::what(void) const noexcept { return "Header field not found"; }
 
 const char	*Request::InvalidHeaderException::what(void) const noexcept { return "Invalid header"; }
-
-const char	*Request::InvalidFieldException::what(void) const noexcept { return "Invalid header field"; }
-
-const char	*Request::InvalidBodyException::what(void) const noexcept { return "Invalid or incomplete body"; }
