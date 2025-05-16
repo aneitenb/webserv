@@ -12,6 +12,10 @@
 
 #define SGR_DEBUG	"\x1b[1;38;5;202m"
 #define SGR_RESET	"\x1b[m"
+//DELETE THE FOLLOWING:
+#define SGR_ERROR    "\x1b[1;31m"
+#define SGR_SUCCESS    "\x1b[1;32m"
+#define SGR_INFO    "\x1b[1;34m"
 
 #define _find(c, x)	(std::find(c.cbegin(), c.cend(), x))
 #define _trimLWS(s)	(s.erase(0, s.find_first_not_of(LWS)), s.erase(s.find_last_not_of(LWS) + 1))
@@ -107,6 +111,14 @@ void	Request::append(const std::string &reqData) {
 			this->_parsingStage = REQUESTLINE;
 			this->_parsed = true;
 	}
+	// DEBUG - Summary at end of append, DELETE
+	std::cerr << SGR_INFO << "End of append. Current state:" << SGR_RESET << "\n";
+	std::cerr << SGR_INFO << "  Parsing stage: " << this->_parsingStage << SGR_RESET << "\n";
+	std::cerr << SGR_INFO << "  Request parsed: " << (this->_parsed ? "YES" : "NO") << SGR_RESET << "\n";
+	std::cerr << SGR_INFO << "  Request valid: " << (this->_valid ? "YES" : "NO") << SGR_RESET << "\n";
+	std::cerr << SGR_INFO << "  Headers count: " << this->_headers.size() << SGR_RESET << "\n";
+	std::cerr << SGR_INFO << "  Remainder size: " << this->_remainder.size() << SGR_RESET << "\n";
+	std::cerr << SGR_INFO << "=== DEBUG REQUEST APPEND END ===" << SGR_RESET << "\n";
 }
 
 // private methods
