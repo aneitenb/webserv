@@ -65,7 +65,7 @@ public:
     void handleCGI(EventHandler* cur);
 
     //getters, setters
-    std::vector<EventHandler*> findValue(int *fd);
+    // std::vector<EventHandler*> findValue(int *fd);
     EventHandler* getListener(int *fd);
 };
 

@@ -225,7 +225,8 @@ void Client::setKey(std::string key){
 }
 
 /* Overriden*/
-int* Client::getSocketFd(void) {
+int* Client::getSocketFd(int flag) {
+    (void)flag;
     return(&_clFd);
 }
 
@@ -238,10 +239,12 @@ struct epoll_event& Client::getCgiEvent(int flag) {
     return (*this->getEvent()); //wont be used
 }
 
-bool Client::ready2Switch() { return false; }
+int Client::ready2Switch() { return 1; }
 
 EventHandler* Client::getCgi(){
     if (_theCgi.run() == 1){
+        _theCgi.setProgress(ERROR);
+        _theCgi.resolveClose();
         return (nullptr);
     }
     return (dynamic_cast<EventHandler*>(&_theCgi));
@@ -362,6 +365,7 @@ bool Client::shouldClose() const {
 /*Handle Event Helpers*/
 int Client::sending_stuff(){
     std::string buffer = {0};
+    _responding.prepareResponse(); //moved this in the case of the cgi needs to happen here
     buffer = _responding.getFullResponse();
 	if (buffer.size() == 0)
 		return (-1);
@@ -443,7 +447,7 @@ void Client::saveResponse(){
 
     Response curR(&_requesting, getSBforResponse(hostHeader));
     _responding = std::move(curR);
-    _responding.prepareResponse();
+    // _responding.prepareResponse();
 }
 
 void	Client::updateDisconnectTime(void) {

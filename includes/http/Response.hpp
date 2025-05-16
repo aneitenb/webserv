@@ -42,6 +42,7 @@ private:
 	
 	bool hasReadPermission(const std::string& path) const;
 	bool hasWritePermission(const std::string& path) const;
+	bool hasExecPermission(const std::string& path) const;
 	bool fileExists(const std::string& path) const;
 	bool directoryExists(const std::string& path) const;
 	bool isMethodAllowed() const;
@@ -107,5 +108,7 @@ private:
 	void setContentType(const std::string& path);
 
 	void prepareResponse();
+	void handleCgiError(const std::string& path); //need it to be public
+	void handleCgi(const std::string& rawdata);
 	bool isComplete() const;
 };

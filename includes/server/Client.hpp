@@ -72,7 +72,7 @@ class Client : public EventHandler {
         void resolveClose() override;
         EventHandler* getCgi() override;
         bool conditionMet(std::unordered_map<int*, std::vector<EventHandler*>>& _activeFds, int& epollFd) override;
-        bool ready2Switch() override;
+        int ready2Switch() override;
         struct epoll_event& getCgiEvent(int flag) override;
         std::string getLocalConnectionIP(); //new
         std::string getLocalConnectionPort();  //new

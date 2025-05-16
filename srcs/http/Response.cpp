@@ -1106,6 +1106,10 @@ bool Response::hasReadPermission(const std::string& path) const {
 	return access(path.c_str(), R_OK) == 0;
 }
 
+bool Response::hasExecPermission(const std::string& path) const {
+	return access(path.c_str(), X_OK) == 0;
+}
+
 bool Response::hasWritePermission(const std::string& path) const {
 	std::string dir = path.substr(0, path.find_last_of('/'));
 	return access(dir.c_str(), W_OK) == 0;
@@ -1126,23 +1130,71 @@ bool Response::isCgiRequest(const std::string& path) const {
 	return (extension == CGI_EXTENSION);
 }
 
-void Response::handleCgi(const std::string& path) {    
-	std::string scriptPath = path;
-	// std::string cgiExecutable = _locationBlock->getCgiPass();
-	
-	if (!fileExists(scriptPath)) {
-		_statusCode = 404;
-		setBody(getErrorPage(404));
-		setHeader("Content-Type", "text/html");
-		return;
+void Response::handleCgi(const std::string& rawdata) { 
+	//set status code
+	std::size_t pos_rt;
+	std::size_t found = rawdata.find("Status: ");
+	if (found == std::string::npos)
+		_statusCode = 200;
+	else{
+		pos_rt = rawdata.find(found, '\r');
+		if (pos_rt != std::string::npos)
+			_statusCode = std::stoi(rawdata.substr(found, pos_rt));
+		else
+			_statusCode = 501; //check
 	}
-	
-	if (!hasReadPermission(scriptPath)) {
-		_statusCode = 403;
-		setBody(getErrorPage(403));
-		setHeader("Content-Type", "text/html");
-		return;
+	//set headers
+	found = rawdata.find("Content-Type: ");
+	if (found == std::string::npos)
+    	setHeader("Content-Type", "text/html");
+	else{
+		pos_rt = rawdata.find(found, '\r');
+		if (pos_rt != std::string::npos)
+    		setHeader("Content-Type", "text/html");	
+		else{
+			std::string path = rawdata.substr(found, pos_rt);
+			setContentType(path);
+		}
 	}
+	//set body; does this need to go first?
+	std::string body;
+	found = rawdata.find("\r\n\r\n");
+	if (found == std::string::npos)
+    	body = ""; //check
+	else{
+		body = rawdata.substr(found);
+		if (body.size() == 4)
+			body = "";
+	}
+	setHeader("Content-Length", std::to_string(body.size()));
+	setBody(body);
+}
+
+void Response::handleCgiError(const std::string& path) {   
+    std::string scriptPath = path;
+    std::string cgiExecutable = _locationBlock->getCgiPass();
+    
+    if (!fileExists(scriptPath)) {
+        _statusCode = 404;
+        setBody(getErrorPage(404));
+        setHeader("Content-Type", "text/html");
+        return;
+    }
+    
+    if (!hasReadPermission(scriptPath) || !hasExecPermission(scriptPath)) { //does this check if we can execute it too? should it?
+        _statusCode = 403;
+        setBody(getErrorPage(403));
+        setHeader("Content-Type", "text/html");
+        return;
+    }
+    
+    // TODO: Implement actual CGI execution
+    // 1. Setting up environment variables
+    // 2. Creating pipes for stdin/stdout
+    // 3. Forking a process
+    // 4. Executing the CGI script
+    // 5. Reading the response
+    // 6. Parsing headers from the response
 
 	_statusCode = 501;
 	setBody(getErrorPage(501));

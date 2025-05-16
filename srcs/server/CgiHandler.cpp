@@ -80,8 +80,8 @@ bool CgiHandler::compareStructs(const CgiHandler& other) const{
 bool CgiHandler::operator==(const CgiHandler& other) const{
     if (_request && other._request && _response && other._response \
             && _fd && other._fd && *_request == *(other._request) && _response == other._response \
-            && _fd == other._fd && _pid == other._pid && _envp == other._envp \
-            && _curr == other._curr && _offset == other._offset){
+            && _fd == other._fd && _pid == other._pid \
+            && _envp == other._envp && _curr == other._curr && _offset == other._offset){
         if (compareStructs(other) == true)
             return true;
             }
@@ -100,9 +100,35 @@ int* CgiHandler::getOutFd(){ //notused yet?
     return (&toCGI._fd[1]);
 }
 
+Progress CgiHandler::getProgress() const{
+    return (_curr);
+}
+
+void CgiHandler::setProgress(Progress value){
+    if (value == ERROR){
+        // this->resolveClose();
+        _response->handleCgiError(_scriptPath);
+    }
+    _curr = value;
+}
+
+std::string& CgiHandler::getRaw(){
+    return (_rawdata);
+}
+
 bool CgiHandler::cgiDone(){
-    if (_curr == DONE)
+    //INTRODUCE TIMEOUT FOR KILLING THE CHILD
+    if (_curr == DONE || _curr == ERROR) //if its error the reponse was set
         return true;
+    else if (_curr == WAIT){
+        int status;
+        pid_t result = waitpid(_pid, &status, WNOHANG); //see if the child was terminated
+        if (result == _pid){
+            _curr = DONE;
+            _response->handleCgi(_rawdata); //handle it inside
+            return true;
+        }
+    }
     return false;
 }
 
@@ -118,33 +144,11 @@ int CgiHandler::run(){
 }
 
 int CgiHandler::setupPipes(){
-    if (pipe(fromCGI._fd) == -1){
-        //error
+    if ((pipe(fromCGI._fd) == -1) || (_curr == SENDING && pipe(toCGI._fd) == -1))
         return 1;
-    }
-    if (_curr == SENDING && pipe(toCGI._fd) == -1){
-        //error
-        closeFd (&fromCGI._fd[0]);
-        closeFd (&fromCGI._fd[1]);
+    if ((fcntl(fromCGI._fd[0], F_SETFL, O_NONBLOCK) == -1 ) || \
+        (_curr == SENDING && fcntl(toCGI._fd[1], F_SETFL, O_NONBLOCK) == -1 ))
         return 1;
-    }
-    if (fcntl(fromCGI._fd[0], F_SETFL, O_NONBLOCK) == -1 ){
-        //error
-        //massive close?
-        closeFd (&toCGI._fd[0]);
-        closeFd (&fromCGI._fd[0]);
-        closeFd (&toCGI._fd[1]);
-        closeFd (&fromCGI._fd[1]);
-        return 1;
-    }
-    if (_curr == SENDING && fcntl(toCGI._fd[1], F_SETFL, O_NONBLOCK) == -1 ){
-        closeFd (&toCGI._fd[0]);
-        closeFd (&fromCGI._fd[0]);
-        closeFd (&toCGI._fd[1]);
-        closeFd (&fromCGI._fd[1]);       
-        //error
-        return 1;
-    }
     if (_curr == SENDING){
         toCGI._event.events = EPOLLOUT;
         toCGI._event.data.fd = toCGI._fd[1];
@@ -241,7 +245,7 @@ int CgiHandler::forking(std::unordered_map<int*, std::vector<EventHandler*>>& _a
         //close everything else, cleanup epoll
         for(auto& pair : _activeFds){
             for (size_t i = 0; i < pair.second.size(); i++){
-                closeFd(pair.second.at(i)->getSocketFd());
+                closeFd(pair.second.at(i)->getSocketFd(0));
             }
             closeFd(pair.first);
         }
@@ -251,18 +255,8 @@ int CgiHandler::forking(std::unordered_map<int*, std::vector<EventHandler*>>& _a
         closeFd(&fromCGI._fd[0]);
         closeFd(&toCGI._fd[1]);
 
-        if (_curr == SENDING && dup2(toCGI._fd[0], STDIN_FILENO) == -1){
-            //error, cleanup
-            closeFd(&toCGI._fd[0]);
-            closeFd(&fromCGI._fd[1]);
+        if ((_curr == SENDING && dup2(toCGI._fd[0], STDIN_FILENO) == -1) || (dup2(fromCGI._fd[1], STDIN_FILENO) == -1))
             return 1;
-        }
-        if (dup2(fromCGI._fd[1], STDIN_FILENO) == -1){
-            //error, cleanup
-            closeFd(&toCGI._fd[0]);
-            closeFd(&fromCGI._fd[1]);
-            return 1;
-        }
         closeFd(&toCGI._fd[0]);
         closeFd(&fromCGI._fd[1]);
 
@@ -306,54 +300,58 @@ int CgiHandler::forking(std::unordered_map<int*, std::vector<EventHandler*>>& _a
 /*Overriden*/
 
 int CgiHandler::handleEvent(uint32_t ev){
-    if (ev & EPOLLERR || ev & EPOLLHUP){
-        return (-1);
-    }
     std::string buffer = {0};
 
     if (ev & EPOLLIN){
         buffer.clear();
         buffer.resize(4096);
         std::cout << "Cgi: Receiving\n";
-        while(1){
-            ssize_t len = recv(fromCGI._fd[0], &buffer[0], buffer.size(), 0); //sizeof(buffer) - 1?
-            if (len < 1){ //either means that there is no more data to read or error or client closed connection (len == 0)
-                //SAVE response!!!!either error or fullresponse
-                if (len == 0){
-                    int status;
-                    waitpid(_pid, &status, 0);
+        ssize_t len = recv(fromCGI._fd[0], &buffer[0], buffer.size(), 0); //sizeof(buffer) - 1?
+        if (len < 1){ //either means that there is no more data to read or error or client closed connection (len == 0)
+            //SAVE response!!!!either error or fullresponse
+            if (len == 0){
+                int status;
+                pid_t result = waitpid(_pid, &status, WNOHANG);
+                if (result != _pid)
+                    _curr = WAIT;
+                else
                     _curr = DONE;
-                }
-                std::cerr << "Error: delete this after\n";
-                std::cerr << strerror(errno) << "\n";
-                return (-1);
+                _response->handleCgi(_rawdata); //handle it inside
+                return (0);
             }
-            else{ // means something was returned
-                buffer.resize(len);
-                // std::cout << "What's here  " << temp_buff << std::endl;
-                // std::cout << "Says here: " << temp_buff.size() << "     " << _buffer.max_size() << "\n";
-                if (buffer.size() <= _rawdata.max_size() - buffer.size())
-                    _rawdata.append(buffer); //append temp to buffer
-                buffer.clear();
-            }
+            setProgress(ERROR);
+            std::cerr << "Error: delete this after\n";
+            std::cerr << strerror(errno) << "\n";
+            return (-1);
         }
+        else{ // means something was returned
+            buffer.resize(len);
+            std::cout << "What's here  " << buffer << std::endl;
+            std::cout << "Says here: " << buffer.size() << "     " << _rawdata.size() << "\n";
+            if (buffer.size() <= _rawdata.max_size() - buffer.size())
+                _rawdata.append(buffer); //append temp to buffer
+        }   
     }
     else if (ev & EPOLLOUT){
         std::cout << "Cgi: Sending\n";
         buffer = _request->getBody();
-        if (buffer.size() == 0)
-            return (-1);
+        if (buffer.size() == 0){
+            setProgress(ERROR);
+            return (0);}
         std::cout << std::endl;
         std::cout << std::endl;
         std::cout << "BUFFER:    " << buffer << std::endl;
-        while (_offset != buffer.size()){
+        if (_offset != buffer.size()){
             ssize_t len = send(toCGI._fd[1], buffer.c_str() + _offset, buffer.size() - _offset, 0);
             if (len < 1){
-                if (_offset == buffer.size())
+                if (_offset == buffer.size()){
                     _curr = SWITCH;
+                    return (0);
+                }
                 std::cout << "Error could not send" << errno << "\n";
                 //timeout
-                return (-1);
+                setProgress(ERROR);
+                // return (0);
             }
             else{ // len > 0
                 _offset += len;
@@ -362,38 +360,48 @@ int CgiHandler::handleEvent(uint32_t ev){
             }
         }
     }
+    else
+        setProgress(ERROR); //just sets the response
     return 0;
 }
 
-int* CgiHandler::getSocketFd(void){
-    if (_curr == SENDING)
+int* CgiHandler::getSocketFd(int flag){
+    if (flag == 1)
         return (getOutFd());
     return (getInFd());//for SENDING to the original client
 }
 
-struct epoll_event& CgiHandler::getEvent(int flag){
-    if (flag == 0)
-        return (fromCGI._event);
-    return (toCGI._event);
-}
+// struct epoll_event& CgiHandler::getEvent(int flag){ //delete this or the other one?
+//     if (flag == 0)
+//         return (toCGI._event);
+//     return (fromCGI._event);
+// }
 
 bool CgiHandler::conditionMet(std::unordered_map<int*, std::vector<EventHandler*>>& _activeFds, int& epollFd) { 
-    if (this->forking(_activeFds, epollFd) == 1)
-        return false;
+    if (this->forking(_activeFds, epollFd) == 1){
+        this->setProgress(ERROR);
+        return false;}
     return true;
 }
 
-bool CgiHandler::ready2Switch() {
+int CgiHandler::ready2Switch() {
+    if (_curr == ERROR)
+        return (-1);
     if (_curr == SWITCH){
         _curr = RECEIVING;
-        return true;
+        return (0);
     }
-    return false; 
+    return (1); 
 }
 
 std::vector<EventHandler*> CgiHandler::resolveAccept(void){ return {};}
 
-void CgiHandler::resolveClose(){}
+void CgiHandler::resolveClose(){
+    closeFd(&fromCGI._fd[0]);
+    closeFd(&fromCGI._fd[1]);
+    closeFd(&toCGI._fd[0]);
+    closeFd(&toCGI._fd[1]);
+}
 
 EventHandler* CgiHandler::getCgi() { return {};}
 

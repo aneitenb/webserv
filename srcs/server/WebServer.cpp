@@ -115,7 +115,7 @@ int WebServer::resolveListener(std::string port, std::string host, ServerBlock& 
         }
         
         _theLList.push_back(std::move(curL));
-		Debug("Created listener for port " << port << " with key " << key << " on socket #" << *(_theLList.back().getSocketFd()) << '\n');
+		Debug("Created listener for port " << port << " with key " << key << " on socket #" << *(_theLList.back().getSocketFd(0)) << '\n');
     }
     return (0);
 }

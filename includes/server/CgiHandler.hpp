@@ -26,7 +26,9 @@ enum Progress{
     SWITCH,
     RECEIVING,
     SENDING,
-    DONE
+    DONE,
+    ERROR,
+    WAIT
 };
 
 class CgiHandler : public EventHandler{
@@ -63,12 +65,12 @@ class CgiHandler : public EventHandler{
         ~CgiHandler();
 
         int handleEvent(uint32_t ev) override;
-        int* getSocketFd(void) override;
+        int* getSocketFd(int flag) override;
         std::vector<EventHandler*> resolveAccept(void) override;
         void resolveClose() override;
         EventHandler* getCgi() override;
         bool conditionMet(std::unordered_map<int*, std::vector<EventHandler*>>& _activeFds, int& epollFd) override;
-        bool ready2Switch() override;
+        int ready2Switch() override;
         struct epoll_event& getCgiEvent(int flag) override;
 
         bool compareStructs(const CgiHandler& other) const;
@@ -78,8 +80,11 @@ class CgiHandler : public EventHandler{
         int forking(std::unordered_map<int*, std::vector<EventHandler*>>& _activeFds, int& epollFd);
         int run();
 
-        struct epoll_event& getEvent(int flag);
+        // struct epoll_event& getEvent(int flag);
         int* getInFd();
         int* getOutFd();
+        Progress getProgress() const;
+        void setProgress(Progress value);
+        std::string& getRaw();
 
 };

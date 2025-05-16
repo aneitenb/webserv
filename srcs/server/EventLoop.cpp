@@ -33,9 +33,9 @@ EventLoop::~EventLoop(){
 }
 
 //getter for all active fds, key : value; get value based on key
-std::vector<EventHandler*> EventLoop::findValue(int *fd){
-    return (_activeFds.at(fd));
-}
+// std::vector<EventHandler*> EventLoop::findValue(int *fd){
+//     return (_activeFds.at(fd));
+// }
 
 int EventLoop::run(std::vector<EventHandler*> listFds){
 	EventHandler	*curE;
@@ -123,47 +123,62 @@ int EventLoop::run(std::vector<EventHandler*> listFds){
 
 void EventLoop::handleCGI(EventHandler* cur){
     if (cur->getState() == CGITOREAD){
-        if (cur->ready2Switch() == false) //might loop here, timeout
+        int status = cur->ready2Switch();
+        if ( status == 1)
             return ;
-        cur->setState(CGIREAD);
-        delEpoll(cur->getSocketFd());
-        cur->closeFd(cur->getSocketFd());
-        return ;
+        else if (status == 0){ //might loop here, timeout
+            cur->setState(CGIREAD);
+            delEpoll(cur->getSocketFd(1));
+            cur->closeFd(cur->getSocketFd(1));
+            return ;
+        }
+        delEpoll(cur->getSocketFd(1));
+        cur->closeFd(cur->getSocketFd(1));
     }
-    delEpoll(cur->getSocketFd());
-    cur->closeFd(cur->getSocketFd());
+    delEpoll(cur->getSocketFd(0));
+    cur->closeFd(cur->getSocketFd(0));
 }
 
 void EventLoop::addCGI(EventHandler* cur){
     EventHandler* theCGI = cur->getCgi();
     if (!theCGI){
         //set response to 500 or 404
-
+        // theCGI->resolveClose();
         cur->setState(WRITING);
         return ;
     }
+    bool toBeOrNot = cur->conditionMet(_activeFds, _epollFd);
+    struct epoll_event& curSend = theCGI->getCgiEvent(0);
     struct epoll_event& curGet = theCGI->getCgiEvent(1);
 
     theCGI->setState(CGIREAD);
-    if (cur->conditionMet(_activeFds, _epollFd) == true){ //pass the activefds so they can close in the child
-        struct epoll_event& curSend = theCGI->getCgiEvent(0);
+    if (toBeOrNot == true){ //pass the activefds so they can close in the child
         theCGI->setState(CGITOREAD);
-        if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, curSend.data.fd, &curSend) == -1){ //not correct
+        if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, *(theCGI->getSocketFd(1)), &curSend) == -1){ //not correct
             //set response
+            theCGI->resolveClose();
             cur->setState(WRITING);
             return ;
         }
     }
-    if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, curGet.data.fd, &curGet) == -1){ //not correct
+    if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, *(theCGI->getSocketFd(0)), &curGet) == -1){ //not correct
         //set response
+        if (toBeOrNot == true)
+            delEpoll(theCGI->getSocketFd(1));
+        theCGI->resolveClose();
         cur->setState(WRITING);
         return ;
     }
     if (theCGI->conditionMet(_activeFds, _epollFd) == false){
-        //set response to 500 or 404
+        if (toBeOrNot == true)
+            delEpoll(theCGI->getSocketFd(1));
+        delEpoll(theCGI->getSocketFd(0));
+        theCGI->resolveClose();
         cur->setState(WRITING);
+        return;
     }
     cur->setState(FORCGI);
+    resolvingModify(cur, EPOLLOUT);
 }
 
 //create an epoll instance
@@ -187,7 +202,7 @@ void EventLoop::addListeners(std::vector<EventHandler*> listFds){
 				 << ", EPOLL_CTL_ADD, " << *listFds.at(i)->getSocketFd()
 				 << ") failed: " << strerror(errno));
             listFds.at(i)->setState(CLOSED);
-            listFds.at(i)->closeFd(listFds.at(i)->getSocketFd());
+            listFds.at(i)->closeFd(listFds.at(i)->getSocketFd(0));
             continue;
         }
 
@@ -198,7 +213,7 @@ void EventLoop::addListeners(std::vector<EventHandler*> listFds){
 }
 
 void EventLoop::condemnClients(EventHandler* cur){
-   std::vector<EventHandler*> clients = findValue(cur->getSocketFd());
+   std::vector<EventHandler*> clients = cur->resolveAccept();
 
    for (size_t i = 0; i < clients.size(); i++){
         clients.at(i)->setState(CLOSE);
@@ -211,10 +226,10 @@ void EventLoop::resolvingAccept(EventHandler* cur){
     // if (curClients.empty())
 	Debug("Registering accepted client" << ((curClients.size() > 1) ? 's' : '\0'));
     for (size_t i = 0; i < curClients.size(); i++){
-        if (*curClients.at(i)->getSocketFd() != -1 && curClients.at(i)->getState() == TOADD){
-            if (addToEpoll(curClients.at(i)->getSocketFd(), curClients.at(i)) == -1){
+        if (*curClients.at(i)->getSocketFd(0) != -1 && curClients.at(i)->getState() == TOADD){
+            if (addToEpoll(curClients.at(i)->getSocketFd(0), curClients.at(i)) == -1){
                 curClients.at(i)->setState(CLOSED);
-                curClients.at(i)->closeFd(curClients.at(i)->getSocketFd());
+                curClients.at(i)->closeFd(curClients.at(i)->getSocketFd(0));
                 //there shouldn't be anything to clean from Response, Request probably
                 continue;}
             curClients.at(i)->setState(READING);
@@ -226,16 +241,16 @@ void EventLoop::resolvingAccept(EventHandler* cur){
 
 //calling modify on the client
 void EventLoop::resolvingModify(EventHandler* cur, uint32_t event){
-    if (modifyEpoll(cur->getSocketFd(), event, cur) == -1)
+    if (modifyEpoll(cur->getSocketFd(0), event, cur) == -1)
         cur->setState(CLOSE);
 }
 
 EventHandler* EventLoop::getListener(int *fd){
-	for (auto& it : _listeners)
-		if (fd == it->getSocketFd())
-			return (it);
-	Error("EventLoop::getListener(" << fd << " (" << *fd << ")): Panic: Listener not found in _listeners");
-	return {};
+    for (auto& it : _listeners)
+        if (fd == it->getSocketFd(0))
+            return (it);
+    Error("EventLoop::getListener(" << fd << " (" << *fd << ")): Panic: Listener not found in _listeners");
+    return {};
 }
 
 void EventLoop::resolvingClosing(){
@@ -251,7 +266,7 @@ void EventLoop::resolvingClosing(){
             for (size_t i = 0; i < vect.size(); i++){
                 if (vect.at(i)->getState() == CLOSE){
                     // Remove from epoll BEFORE changing state
-                    if (vect.at(i)->getSocketFd() && *(vect.at(i)->getSocketFd()) >= 0) {
+                    if (vect.at(i)->getSocketFd(0) && *(vect.at(i)->getSocketFd(0)) >= 0) {
                         delEpoll(vect.at(i)->getSocketFd());
                     }
                     // NOW change the state to TOCLOSE
