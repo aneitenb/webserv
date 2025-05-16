@@ -1148,6 +1148,7 @@ void Response::handleCgi(const std::string& rawdata) {
 	// 		_statusCode = std::stoi(rawdata.substr(found, pos_rt));
 	// 	else
 	// 		_statusCode = 501; //check
+	// set here everything and return
 	// }
 	// //set headers
 	// found = rawdata.find("Content-Type: ");
