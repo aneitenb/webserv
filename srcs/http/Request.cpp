@@ -69,7 +69,6 @@ void	Request::append(const std::string &reqData) {
 	size_t	end;
 	bool	fell;
 
-	end = 0;
 	fell = false;
 #ifdef __DEBUG
 	std::cerr << SGR_DEBUG << "append: current remainder: {" << _printRawRequest(this->_remainder) << "}" << SGR_RESET << "\n";
@@ -115,6 +114,11 @@ void	Request::append(const std::string &reqData) {
 			this->_parsingStage = REQUESTLINE;
 			this->_parsed = true;
 	}
+}
+
+void	Request::reset(void) {
+	this->_parsingStage = REQUESTLINE;
+	this->_remainder.clear();
 }
 
 // private methods

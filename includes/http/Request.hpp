@@ -68,6 +68,7 @@ class Request
 
 		// public methods
 		void	append(const std::string &reqData);
+		void	reset(void);
 
 		// public getters
 		const headerlist_t	&getHeaderList(void) const;
