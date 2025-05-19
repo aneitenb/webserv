@@ -18,12 +18,15 @@ import os #for the environmental variables
 import sys #for reading from the stdin
 import urllib.parse
 import json
-import cgi #useful?
-import cgitb # delete after i think
+# import cgi #useful?
+# import cgitb # delete after i think
 from datetime import datetime, timezone
 
 
+# cgitb.enable() #comment out later
 
+NEWLINE = "\r\n"
+BNEWLINE = b"\r\n" #for the binary stream
 
 #os.environ is a mapping object that represents the env variables
 #returns a dictionary with key:value elements
@@ -34,81 +37,119 @@ from datetime import datetime, timezone
 #Required HTTP header things
 # this should come from the server: print("HTTP/1.1 200 OK")
 
-def print_all(method, statuscode, date_h, contenttype, response)
-    newline = ord('\r\n')
+def build_response_binary(response, status_code="200 OK", content_type="application/octet-stream"):
+    out = sys.stdout.buffer #the binary mode stdout
+    #headers in ascii
+    out.write(f"Status: {status_code}".encode("ascii") + BNEWLINE)
+    out.write(f"Server: Hardly_know_er/1.0".encode("ascii") + BNEWLINE)
+    now = datetime.now(timezone.utc)
+    date_h = now.strftime("%a, %d %b %Y %H:%M:%S GMT")
+    out.write(f"Date: {date_h}".encode("ascii") + BNEWLINE)
+    out.write(f"Content-Type: {content_type}".encode("ascii") + BNEWLINE)
+    out.write(f"Content-Length: {len(response)}".encode("ascii") + BNEWLINE)
+    out.write(BNEWLINE)
+    out.write(response)
+    out.write(BNEWLINE + BNEWLINE) #check
+    out.flush()
 
-    print(f"HTTP1.1 {statuscode}{newline}")
-    print(f"Server: Hardly_know_er/1.0{newline}")
-    print(f"Date: {date_h} GMT{newline}")
-    if method == POST:
-        print(f"Content-Type: {contenttype}{newline}")
-        print(f"Content-Length: {len(response)}{newline}")
-
-    print({newline})
-    print({response})
+def build_response(method, response, status_code="200 OK", content_type="text/html"):
+    #CGI headers
+    print(f"Status: {status_code}", end=NEWLINE)
+    print(f"Server: Hardly_know_er/1.0", end=NEWLINE)
+    now = datetime.now(timezone.utc)
+    print(f"Date: {now.strftime('%a, %d %b %Y %H:%M:%S')} GMT", end=NEWLINE)
+    print(f"Content-Type: {content_type}", end=NEWLINE)
+    print(f"Content-Length: {len(response)}", end=NEWLINE)
+    print(NEWLINE, end="") #empty line
+    print(response, end="") #response ie body
 
 def handle_get():
-    newline = ord('\r\n')
     query = os.environ.get("QUERY_STRING", "")
-    response = f"<!DOCTYPE html>{newline}<html lang=""EN">{newline}<head><title>GREETINGS FROM THE SERVER!</title></head>{newline}	<body>{newline}     <h1>{query}?</h1>{newline}     <p>HARDLY KNOW 'ER!</p>{newline}	</body>{newline}</html>{newline}{newline}"
+    response = (
+        "<!DOCTYPE html>" + NEWLINE +
+        "<html lang=\"EN\">" + NEWLINE +
+        "<head><title>GREETINGS FROM THE SERVER!</title></head>" + NEWLINE +
+        "<body>" + NEWLINE +
+        f"  <h1>{query}?</h1>" + NEWLINE +
+        "       <p>HARDLY KNOW 'ER!</p>" + NEWLINE +
+        "</body>" + NEWLINE +
+        "</html>" + NEWLINE + NEWLINE
+    )
     return response
 
 
 def handle_post():
-    newline = ord('\r\n')
     ctype = os.environ.get("CONTENT_TYPE", "text/plain")
-    clength = int(os.environ.get("CONTENT_LENGTH", "0"))
+    try:
+        clength = int(os.environ.get("CONTENT_LENGTH", "0"))
+    except ValueError:
+        clength = 0
 
+    #sys.stdin is a text-mode file handle, as in, you get strings back
+    #but .buffer attribute gives a binary stream, so gives back a bytes object instead of string
+    data = sys.stdin.buffer.read(clength) if clength else b"" #if clength is 0, give empty byte-string
+    name = email = "unknown"
+
+    #have to use .decode because everything used expects a string not bytes
+    #default is decode("utf-8")
     if ctype == 'application/x-www-form-urlencoded':
-        data = sys.stdin.read(clength)
-        params = urllib.parse.parse_qs(data)
+        params = urllib.parse.parse_qs(data.decode())
         name = params.get("name", [""])[0] #since the value is a list of strings the [0] returns the first and usually only item in the list
         email = params.get("email", [""])[0]
+
     elif ctype == 'application/json':
-        data = sys.stdin.read(clength)
-        params = json.loads(data)
+        params = json.loads(data.decode() or "{}")
         name = params.get("name", "unknown")
-        email = params.get("email", "unknown@gmail.com")
+        email = params.get("email", "unknown")
+
+    #bytes need to be handled differently since print expects text
     elif ctype == 'application/octet-stream':
-        data = sys.stdin.buffer.read(clength)
         return data
+
     else:
-        raw = sys.stdin.read(clength)
-        data = {}
-        for line in raw.strip().splitlines():
+        for line in data.decode().splitlines():
             if '=' in line:
-                key, value = line.strip().split('='. 1)
-                data[key] = value
-        name = data.get("name", "unknown")
-        email = data.get("email", "unknown")
-
-
-    response = f"<!DOCTYPE html>{newline}<html lang=""EN">{newline}<head><title>HEHE!</title></head>{newline}	<body>{newline}     <h1>Thanks for the email, {name}.</h1>{newline}     <p>Spam incoming to email address: {email}</p>{newline}	</body>{newline}</html>{newline}{newline}"
+                key, value = line.split('=', 1)
+                if key == "name": name = value
+                if key == "email": email = value
+                # data[key] = value
+        # name = data.get("name", "unknown")
+        # email = data.get("email", "unknown")
+    response = (
+        "<!DOCTYPE html>" + NEWLINE +
+        "<html lang=\"EN\">" + NEWLINE +
+        "<head><title>HEHE!</title></head>" + NEWLINE +
+        "<body>" + NEWLINE +
+        f"  <h1>Thanks for the email, {name}.</h1>" + NEWLINE +
+        f"       <p>Spam incoming to email address: {email}</p>" + NEWLINE +
+        "</body>" + NEWLINE +
+        "</html>" + NEWLINE + NEWLINE
+    )
     return response
 
 #main block
 
 if __name__ == "__main__":
     try:
-        cgitb.enable() #enables debugging info in the browser, delete after?
-
-        today = datetime.datetime.today()
-        now = datetime.now(timzeone.utc) #get current utc time
-        date_h = now.strftime("%a, %d %b %Y %H:%M:%S")
-
         method = os.environ.get("REQUEST_METHOD", "GET")
 
-        if method == 'POST':
+        if method == "POST":
             response = handle_post()
         else:
             response = handle_get()
 
-        statuscode = '200 OK'
-        contenttype = text/html
-    except:
-        statuscode = '500 Internal Server Error'
-        contenttype = 'text/html'
-        response = f"<!DOCTYPE html>{newline}<html lang="EN">{newline}<head><title>500 Internal Server Error</title></head>{newline}<body>{newline}<p>Something went wrong.</p>{newline}</body>{newline}</html>{newline}{newline}"
-    
-    print_all(method, statuscode, date_h, contenttype, response)
+        if isinstance(response, bytes):
+            build_response_binary(response)
+        else:
+            build_response(method, response)
+    except Exception:
+        #send 500 error
+        response = (
+            "<!DOCTYPE html>" + NEWLINE +
+            "<html lang=\"EN\">" + NEWLINE +
+            "<head><title>500 Internal Server Error</title></head>" + NEWLINE +
+            "<body><p>Something went wrong.</p></body>" + NEWLINE +
+            "</html>" + NEWLINE + NEWLINE
+        )
+        build_response("GET", response, status_code="500 Internal Server Error")
 

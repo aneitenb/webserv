@@ -92,11 +92,11 @@ CgiHandler::~CgiHandler(){}
 
 /*Helpers & co.*/
 
-int* CgiHandler::getInFd(){ //notused yet?
+int* CgiHandler::getFromFd(){ //notused yet? //CHECK
     return (&fromCGI._fd[0]);
 }
 
-int* CgiHandler::getOutFd(){ //notused yet?
+int* CgiHandler::getToFd(){ //notused yet? //CHECK
     return (&toCGI._fd[1]);
 }
 
@@ -107,12 +107,13 @@ Progress CgiHandler::getProgress() const{
 void CgiHandler::setProgress(Progress value){
     if (value == ERROR){
         // this->resolveClose();
+        std::cout << "setProgress: error detected\n";
         _response->handleCgiError(_scriptPath);
     }
     _curr = value;
 }
 
-std::string& CgiHandler::getRaw(){
+std::string& CgiHandler::getRaw(){ //is it used?
     return (_rawdata);
 }
 
@@ -127,6 +128,7 @@ bool CgiHandler::cgiDone(){
     if (_curr == DONE || _curr == ERROR) //if its error the reponse was set
         return true;
     else if (_curr == WAIT){
+        std::cout << "cgiDone: waiting, waiiiiiiting\n";
         int status;
         pid_t result = waitpid(_pid, &status, WNOHANG); //see if the child was terminated
         if (result == _pid){
@@ -170,22 +172,22 @@ int CgiHandler::setupPipes(){
 
 //query: after the ? (without it) or ""
 //filename = root + / + uri before ? until /
-std::string CgiHandler::getQueryPath(int side){ //NOT USED?
-    // Request& cur = _client.getRequest();
-    std::string URI = _request->getURI();
-    size_t brPos = URI.find('?');
-    if (brPos != std::string::npos){
-        switch (side){
-            case 1:
-                return URI.substr(0, brPos);
-            case 2:
-                return URI.substr(brPos + 1);
-            default:
-                break;
-        }
-    }
-    return (nullptr);
-}
+// std::string CgiHandler::getQueryPath(int side){ //NOT USED?
+//     // Request& cur = _client.getRequest();
+//     std::string URI = _request->getURI();
+//     size_t brPos = URI.find('?');
+//     if (brPos != std::string::npos){
+//         switch (side){
+//             case 1:
+//                 return URI.substr(0, brPos);
+//             case 2:
+//                 return URI.substr(brPos + 1);
+//             default:
+//                 break;
+//         }
+//     }
+//     return (nullptr);
+// }
 
 int CgiHandler::check_paths(){
     std::string uri = _request->getURI();
@@ -216,34 +218,45 @@ int CgiHandler::check_paths(){
         //script not accessible/readable 500 or 404
         return 1;
     }
+    found = _scriptPath.find_last_of('/');
+    if (found == std::string::npos)
+        _scriptName = _scriptPath;
+    else{
+        _scriptName = _scriptPath.substr(found + 1, _scriptPath.size() - (found + 1));
+    }
+    _scriptName = "./" + _scriptName;
+    std::cout << "Cgi: Script name: " << _scriptName << "\n";
     return 0;
 }
 
 //envp.data()
 int CgiHandler::setupEnv(){
-    std::vector <std::string> envS;
 
+    _envS.clear();
+    _envp.clear();
     //check if file can be opened i guess
     if (check_paths() == 1){
         std::cout << "The paths are messed up?";
         return 1;}
     // envS.push_back("SERVER_PROTOCOL=HTTP/1.1");
     // envS.push_back("GATEWAY_INTERFACE=CGI/1.1");
-    envS.push_back("REQUEST_METHOD=" + _request->getMethod());
-    envS.push_back("SCRIPT_FILENAME=" + _scriptPath); //not path but the name of the string from the request?
-    envS.push_back("PATH_INFO=" + _absPath); //see if needs fixing, need path anyway    
+    _envS.push_back("REQUEST_METHOD=" + _request->getMethod());
+    _envS.push_back("SCRIPT_FILENAME=" + _scriptName); //not path but the name of the string from the request?
+    _envS.push_back("PATH_INFO=" + _absPath); //see if needs fixing, need path anyway    
     if (_request->getMethod() == "GET")
-        envS.push_back("QUERY_STRING=" + _query);
+        _envS.push_back("QUERY_STRING=" + _query);
     if (_request->getMethod() == "POST"){
-        envS.push_back("CONTENT_LENGTH=" + std::to_string(_request->getContentLength()));
-        envS.push_back("CONTENT_TYPE=" + _request->getContentType());
+        _envS.push_back("CONTENT_LENGTH=" + std::to_string(_request->getContentLength()));
+        _envS.push_back("CONTENT_TYPE=" + _request->getContentType());
     }
 
-    for (size_t i = 0; i < envS.size(); i++){
-        _envp.push_back(const_cast<char*>(envS.at(i).c_str()));
+    _envp.reserve(_envS.size() + 1);
+    for (size_t i = 0; i < _envS.size(); i++){
+        std::cout << "Check the envp string: " << _envS.at(i) << "\n";
+        _envp.push_back(const_cast<char*>(_envS.at(i).c_str()));
     }
 
-    _envp.push_back(NULL);
+    _envp.push_back(nullptr);
 
     std::cout << "Cgi: Environment setup complete!\n";
     return 0;
@@ -268,11 +281,13 @@ int CgiHandler::forking(std::unordered_map<int*, std::vector<EventHandler*>>& _a
 
         closeFd(&fromCGI._fd[0]);
         closeFd(&toCGI._fd[1]);
+        std::cerr << "forking: child, closed everything except what is needed\n";
 
-        if ((_curr == SENDING && dup2(toCGI._fd[0], STDIN_FILENO) == -1) || (dup2(fromCGI._fd[1], STDIN_FILENO) == -1))
+        if ((_curr == SENDING && dup2(toCGI._fd[0], STDIN_FILENO) == -1) || (dup2(fromCGI._fd[1], STDOUT_FILENO) == -1))
             return 1;
         closeFd(&toCGI._fd[0]);
         closeFd(&fromCGI._fd[1]);
+
 
         //change into the correct directory
         if (chdir(_absPath.c_str()) != 0)
@@ -280,7 +295,7 @@ int CgiHandler::forking(std::unordered_map<int*, std::vector<EventHandler*>>& _a
 
         std::string temparg = CGI_EX;
         argv[0] = (char *)temparg.c_str();
-        argv[1] = (char*)_absPath.c_str(); //needs fixing
+        argv[1] = (char*)_scriptName.c_str(); //needs fixing
         argv[2] = 0;
 
         //execve
@@ -313,6 +328,19 @@ int CgiHandler::forking(std::unordered_map<int*, std::vector<EventHandler*>>& _a
 
 /*Overriden*/
 
+bool CgiHandler::requestComplete(){
+    int num = 0;
+    std::string toFind = "\r\n\r\n";
+    std::size_t pos = _rawdata.find(toFind);
+    while (pos != std::string::npos){
+        num++;
+        pos = _rawdata.find(toFind, pos + toFind.length());
+    }
+    if (num == 2)
+        return true;
+    return false;
+}
+
 int CgiHandler::handleEvent(uint32_t ev){
     std::string buffer = {0};
     std::cout << "I'm handling it!\n";
@@ -324,14 +352,16 @@ int CgiHandler::handleEvent(uint32_t ev){
         if (len < 1){ //either means that there is no more data to read or error or client closed connection (len == 0)
             //SAVE response!!!!either error or fullresponse
             if (len == 0){
-                int status;
-                pid_t result = waitpid(_pid, &status, WNOHANG);
-                if (result != _pid)
-                    _curr = WAIT;
-                else
-                    _curr = DONE;
-                _response->handleCgi(_rawdata); //handle it inside
-                return (0);
+                if (requestComplete() == true){
+                    int status;
+                    pid_t result = waitpid(_pid, &status, WNOHANG);
+                    if (result != _pid)
+                        _curr = WAIT;
+                    else
+                        _curr = DONE;
+                    _response->handleCgi(_rawdata); //handle it inside
+                    return (0);
+                }
             }
             setProgress(ERROR);
             std::cerr << "Error: delete this after\n";
@@ -344,6 +374,15 @@ int CgiHandler::handleEvent(uint32_t ev){
             std::cout << "Says here: " << buffer.size() << "     " << _rawdata.size() << "\n";
             if (buffer.size() <= _rawdata.max_size() - buffer.size())
                 _rawdata.append(buffer); //append temp to buffer
+            if (requestComplete() == true){
+            int status;
+            pid_t result = waitpid(_pid, &status, WNOHANG);
+            if (result != _pid)
+                _curr = WAIT;
+            else
+                _curr = DONE;
+            _response->handleCgi(_rawdata); //handle it inside
+            }
         }   
     }
     else if (ev & EPOLLOUT){
@@ -360,6 +399,7 @@ int CgiHandler::handleEvent(uint32_t ev){
             if (len < 1){
                 if (_offset == buffer.size()){
                     _curr = SWITCH;
+                    std::cout << "Set to switch\n";
                     return (0);
                 }
                 std::cout << "Error could not send " << errno << "\n";
@@ -369,7 +409,9 @@ int CgiHandler::handleEvent(uint32_t ev){
             }
             else{ // len > 0
                 _offset += len;
-                std::cout << "some data sent\n";
+                std::cout << len << ": len, some data sent\n";
+                if (_offset == buffer.size())
+                    _curr = SWITCH;
                 //clear rawData?
             }
         }
@@ -381,8 +423,8 @@ int CgiHandler::handleEvent(uint32_t ev){
 
 int* CgiHandler::getSocketFd(int flag){
     if (flag == 1)
-        return (getOutFd());
-    return (getInFd());//for SENDING to the original client
+        return (getToFd());
+    return (getFromFd());//for SENDING to the original client
 }
 
 // struct epoll_event& CgiHandler::getEvent(int flag){ //delete this or the other one?
@@ -411,6 +453,7 @@ int CgiHandler::ready2Switch() {
 std::vector<EventHandler*> CgiHandler::resolveAccept(void){ return {};}
 
 void CgiHandler::resolveClose(){
+    std::cout << "CALLED CGI RESOLVE CLOSE\n";
     closeFd(&fromCGI._fd[0]);
     closeFd(&fromCGI._fd[1]);
     closeFd(&toCGI._fd[0]);
@@ -420,7 +463,7 @@ void CgiHandler::resolveClose(){
 EventHandler* CgiHandler::getCgi() { return {};}
 
 struct epoll_event& CgiHandler::getCgiEvent(int flag) { 
-    if (flag == 0)
+    if (flag == 1)
         return toCGI._event;
     return fromCGI._event;
 }

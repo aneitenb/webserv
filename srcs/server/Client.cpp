@@ -35,6 +35,7 @@ Client::~Client(){
         // close (_clFd);   //CHANGED:don't close if sstill in epoll, eventloop will handle proper cleanup
         _clFd = -1;
     }
+     _theCgi.resolveClose();    //WHAT'S THIS DO?
 }
 
 Client::Client(Client&& other) noexcept : _clFd(-1), _requesting(std::move(other._requesting)), \

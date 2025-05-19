@@ -122,19 +122,23 @@ int EventLoop::run(std::vector<EventHandler*> listFds){
 }
 
 void EventLoop::handleCGI(EventHandler* cur){
+    std::cout << cur->getState() << " :State\n";
     if (cur->getState() == CGITOREAD){
         int status = cur->ready2Switch();
         if ( status == 1)
             return ;
         else if (status == 0){ //might loop here, timeout
+            std::cout << "handleCGI: time to change state\n";
             cur->setState(CGIREAD);
             delEpoll(cur->getSocketFd(1));
             cur->closeFd(cur->getSocketFd(1));
             return ;
         }
+        std::cout << "handleCGI: error flag detected or done with sending\n";
         delEpoll(cur->getSocketFd(1));
         cur->closeFd(cur->getSocketFd(1));
     }
+    std::cout << "handleCGI: done with receiving\n";
     delEpoll(cur->getSocketFd(0));
     cur->closeFd(cur->getSocketFd(0));
 }
@@ -144,17 +148,20 @@ void EventLoop::addCGI(EventHandler* cur){
     if (!theCGI){
         //set response to 500 or 404
         // theCGI->resolveClose();
+        std::cout << "addCGI: setup failed\n";
         cur->setState(WRITING);
         return ;
     }
     bool toBeOrNot = cur->conditionMet(_activeFds, _epollFd);
-    struct epoll_event& curSend = theCGI->getCgiEvent(0);
-    struct epoll_event& curGet = theCGI->getCgiEvent(1);
+    struct epoll_event& curSend = theCGI->getCgiEvent(1);
+    struct epoll_event& curGet = theCGI->getCgiEvent(0);
 
     theCGI->setState(CGIREAD);
     if (toBeOrNot == true){ //pass the activefds so they can close in the child
+        std::cout << "addCGI: this is a post request with a body\n";
         theCGI->setState(CGITOREAD);
         if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, *(theCGI->getSocketFd(1)), &curSend) == -1){ //not correct
+            std::cout << "addCGI: error in the first adding of the fd\n";
             //set response
             theCGI->resolveClose();
             cur->setState(WRITING);
@@ -163,6 +170,7 @@ void EventLoop::addCGI(EventHandler* cur){
     }
     if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, *(theCGI->getSocketFd(0)), &curGet) == -1){ //not correct
         //set response
+        std::cout << "addCGI: error in the second adding of the fd\n";
         if (toBeOrNot == true)
             delEpoll(theCGI->getSocketFd(1));
         theCGI->resolveClose();
@@ -170,6 +178,7 @@ void EventLoop::addCGI(EventHandler* cur){
         return ;
     }
     if (theCGI->conditionMet(_activeFds, _epollFd) == false){
+        std::cout << "addCGI: forking somehow failed\n";
         if (toBeOrNot == true)
             delEpoll(theCGI->getSocketFd(1));
         delEpoll(theCGI->getSocketFd(0));
@@ -179,6 +188,7 @@ void EventLoop::addCGI(EventHandler* cur){
     }
     cur->setState(FORCGI);
     resolvingModify(cur, EPOLLOUT);
+    std::cout << "State update for current client: " << cur->getState() << " and its cgi: " << theCGI->getState() << "\n";
 }
 
 //create an epoll instance

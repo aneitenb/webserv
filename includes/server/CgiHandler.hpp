@@ -40,18 +40,20 @@ class CgiHandler : public EventHandler{
         int*    _fd;
         pid_t   _pid;
         std::vector<char*> _envp;
+        std::vector <std::string> _envS;
         toAndFro fromCGI;
         toAndFro toCGI;
         std::size_t _offset;
         Progress _curr;
         std::string _absPath;
         std::string _scriptPath;
+        std::string _scriptName;
         std::string _query;
         std::string _rawdata; //for what's received from the script
-
         
-        std::string getQueryPath(int side);
+        // std::string getQueryPath(int side);
         int check_paths();
+        bool requestComplete();
         CgiHandler(const CgiHandler& other) = delete;
         CgiHandler& operator=(const CgiHandler& other) = delete;
     public:
@@ -81,8 +83,8 @@ class CgiHandler : public EventHandler{
         int run();
 
         // struct epoll_event& getEvent(int flag);
-        int* getInFd();
-        int* getOutFd();
+        int* getFromFd();
+        int* getToFd();
         Progress getProgress() const;
         void setProgress(Progress value);
         std::string& getRaw();
