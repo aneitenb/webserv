@@ -242,23 +242,33 @@ struct epoll_event& Client::getCgiEvent(int flag) {
 
 int Client::ready2Switch() { return 1; }
 
-EventHandler* Client::getCgi(){
-    _theCgi.setReqRes(&_requesting, &_responding);
-    if (_theCgi.run() == 1){
-        _theCgi.setProgress(ERROR);
-        _theCgi.resolveClose();
-        return (nullptr);
-    }
-    return (dynamic_cast<EventHandler*>(&_theCgi));
+void Client::setErrorCgi() {
+    // _responding.handleCgiError(_theCgi.getScriptP());
+    _theCgi.setProgress(ERROR);
+    std::cout << "Set the error\n";
 }
 
-bool Client::conditionMet(std::unordered_map<int*, std::vector<EventHandler*>>& _activeFds, int& epollFd){
+EventHandler* Client::getCgi(){
+    EventHandler* temp = dynamic_cast<EventHandler*>(&this->_theCgi);
+    temp->setState(CGIREAD);
+    this->_theCgi.setReqRes(&_requesting, &_responding);
+    if (this->_theCgi.run() == 1){
+        this->setErrorCgi();
+        this->_theCgi.resolveClose();
+        return (nullptr);
+    }
+    return (temp);
+}
+
+int Client::conditionMet(std::unordered_map<int*, std::vector<EventHandler*>>& _activeFds, int& epollFd){
     //check if the method is post and if the POST body is not empty
     (void)_activeFds;
     (void)epollFd;
+    // if (_theCgi.getProgress() == SENDING || _theCgi.getProgress() == RECEIVING)
+    //     return 2;
     if (_requesting.getMethod() == "POST" && _requesting.getBody().size() != 0)
-        return true;
-    return false;
+        return 0;
+    return 1;
 }
 
 int Client::handleEvent(uint32_t ev){
@@ -325,6 +335,25 @@ int Client::handleEvent(uint32_t ev){
         }
     }
     if (ev & EPOLLOUT){
+        if (this->getState() == FORCGI){
+            int status = _theCgi.cgiDone();
+            if ( status == -1){
+                std::string _path = _requesting.getURI();
+                std::size_t found = _path.find('?');
+                if (found != std::string::npos)
+                    _path = _path.substr(0, _path.size() - found);
+                _responding.handleCgiError(_path);
+                _responding.prepareResponse();
+            }
+            else if (status == 1){  
+                _count++;
+                    if (_count == 50)
+                        return (-1);
+                return (0);
+            }
+            else
+                _count = 0;
+        }
         if (sending_stuff() == -1){
             _count++;
             if (_count >= 50){

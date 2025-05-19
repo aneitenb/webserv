@@ -69,9 +69,10 @@ class Listener : public EventHandler {
         std::vector<EventHandler*> resolveAccept(void) override;
         void resolveClose() override;
         EventHandler* getCgi() override;
-        bool conditionMet(std::unordered_map<int*, std::vector<EventHandler*>>& _activeFds, int& epollFd) override;
+        int conditionMet(std::unordered_map<int*, std::vector<EventHandler*>>& _activeFds, int& epollFd) override;
         int ready2Switch() override;
         struct epoll_event& getCgiEvent(int flag) override;
+        void setErrorCgi() override;
 
         // void addClient(Client& cur);
         const std::list<Client>& getClients(void) const;    //changed return type to be list instead of vector

@@ -29,7 +29,8 @@ enum State {
     TOCGI, //is creating and starting the CGI
     FORCGI, //this is client waiting for cgi
     CGITOREAD, //is cgi, needs to read
-    CGIREAD //is cgi, has read
+    CGIREAD, //is cgi, has read
+    CGICLOSED //is cgi, idle
 }; 
 
 /*if epollin && towrite
@@ -54,9 +55,10 @@ class EventHandler{
         virtual std::vector<EventHandler*> resolveAccept() = 0;
         virtual void resolveClose() = 0;
         virtual EventHandler* getCgi() = 0;
-        virtual bool conditionMet(std::unordered_map<int*, std::vector<EventHandler*>>& _activeFds, int& epollFd) = 0;
+        virtual int conditionMet(std::unordered_map<int*, std::vector<EventHandler*>>& _activeFds, int& epollFd) = 0;
         virtual int ready2Switch() = 0;
         virtual struct epoll_event& getCgiEvent(int flag) = 0;
+        virtual void setErrorCgi() = 0;
     
         // void setLoop(EventLoop& curLoop){
         //     _loop = &curLoop;

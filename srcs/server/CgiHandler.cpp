@@ -18,15 +18,18 @@
 
 /*Constructors and Destructor and Operators*/
 
-CgiHandler::CgiHandler() : _request(nullptr), _response(nullptr), _fd(nullptr), _pid(-1), _offset(0), _curr(RECEIVING){}  
+CgiHandler::CgiHandler() : _request(nullptr), _response(nullptr), _fd(nullptr), _pid(-1), _offset(0), _curr(IDLE){
+    this->setState(CGICLOSED);
+}  
 
-CgiHandler::CgiHandler(Request* req, Response* res, int* fd) : _request(req), _response(res), _fd(fd), _offset(0), _curr(RECEIVING){
+CgiHandler::CgiHandler(Request* req, Response* res, int* fd) : _request(req), _response(res), _fd(fd), _offset(0), _curr(IDLE){
     fromCGI._fd[0] = -1;
     fromCGI._fd[1] = -1;
     fromCGI._event = {.events = 0, .data = { .u64 = 0 }};
     toCGI._fd[0] = -1;
     toCGI._fd[1] = -1;
     toCGI._event = {.events = 0, .data = { .u64 = 0 }};
+    this->setState(CGICLOSED);
 }
 
 CgiHandler::CgiHandler(CgiHandler&& other) : _request(other._request), \
@@ -92,6 +95,11 @@ CgiHandler::~CgiHandler(){}
 
 /*Helpers & co.*/
 
+std::string& CgiHandler::getScriptP(){
+    return(_scriptPath);
+}
+
+
 int* CgiHandler::getFromFd(){ //notused yet? //CHECK
     return (&fromCGI._fd[0]);
 }
@@ -106,9 +114,7 @@ Progress CgiHandler::getProgress() const{
 
 void CgiHandler::setProgress(Progress value){
     if (value == ERROR){
-        // this->resolveClose();
         std::cout << "setProgress: error detected\n";
-        _response->handleCgiError(_scriptPath);
     }
     _curr = value;
 }
@@ -123,26 +129,36 @@ void CgiHandler::setReqRes(Request *req, Response *res){
 }
 
 
-bool CgiHandler::cgiDone(){
+int CgiHandler::cgiDone(){
     //INTRODUCE TIMEOUT FOR KILLING THE CHILD
-    if (_curr == DONE || _curr == ERROR) //if its error the reponse was set
-        return true;
+    if (_curr == DONE) //if its error the reponse was set
+    {
+        _curr = IDLE;
+        return (0);
+    }
+    else if (_curr == ERROR){
+        _curr = IDLE;
+        return (-1);
+    }
     else if (_curr == WAIT){
         std::cout << "cgiDone: waiting, waiiiiiiting\n";
         int status;
         pid_t result = waitpid(_pid, &status, WNOHANG); //see if the child was terminated
         if (result == _pid){
-            _curr = DONE;
             _response->handleCgi(_rawdata); //handle it inside
-            return true;
+            _curr = IDLE;
+            return (0);
         }
     }
-    return false;
+    return (1);
 }
 
 int CgiHandler::run(){
     if (_request->getMethod() == "POST" && _request->getBody().size() != 0)
         _curr = SENDING;
+    else
+        _curr = RECEIVING;
+    std::cout << "Current progress of the cgi: " << _curr << " and state:" << this->getState() << "\n";
     if (setupPipes() == 1)
         return 1;//error
     if (setupEnv() == 1)
@@ -433,11 +449,11 @@ int* CgiHandler::getSocketFd(int flag){
 //     return (fromCGI._event);
 // }
 
-bool CgiHandler::conditionMet(std::unordered_map<int*, std::vector<EventHandler*>>& _activeFds, int& epollFd) { 
+int CgiHandler::conditionMet(std::unordered_map<int*, std::vector<EventHandler*>>& _activeFds, int& epollFd) { 
     if (this->forking(_activeFds, epollFd) == 1){
-        this->setProgress(ERROR);
-        return false;}
-    return true;
+        // this->setProgress(ERROR);
+        return 1;}
+    return 0;
 }
 
 int CgiHandler::ready2Switch() {
@@ -447,6 +463,8 @@ int CgiHandler::ready2Switch() {
         _curr = RECEIVING;
         return (0);
     }
+    if (_curr == SENDING)
+        return (2);
     return (1); 
 }
 
@@ -459,6 +477,8 @@ void CgiHandler::resolveClose(){
     closeFd(&toCGI._fd[0]);
     closeFd(&toCGI._fd[1]);
 }
+
+void CgiHandler::setErrorCgi() {}
 
 EventHandler* CgiHandler::getCgi() { return {};}
 

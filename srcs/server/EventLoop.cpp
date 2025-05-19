@@ -77,7 +77,7 @@ int EventLoop::run(std::vector<EventHandler*> listFds){
 
             if (!curE) {
 				Warn("EventLoop::run(): no event handler found for event #" << i + 1);
-                continue;
+                continue; //skip state processing for closed clients
             }
 
 			if (curE == dynamic_cast<Client *>(curE))
@@ -86,6 +86,10 @@ int EventLoop::run(std::vector<EventHandler*> listFds){
             if (curE->handleEvent(_events[i].events) == -1){
                 if (curE->getState() == LISTENER)
                     condemnClients(curE); 
+                else if (curE->getState() == CGIREAD || curE->getState() == CGITOREAD || curE->getState() == CGICLOSED){
+                    handleCGI(curE);
+                    curE->setState(CGICLOSED);
+                } 
                 else{
                     curE->setState(CLOSE);
                 }
@@ -138,9 +142,13 @@ void EventLoop::handleCGI(EventHandler* cur){
         delEpoll(cur->getSocketFd(1));
         cur->closeFd(cur->getSocketFd(1));
     }
+    int status = cur->ready2Switch();
+    if (status == 2)
+        return ;
     std::cout << "handleCGI: done with receiving\n";
     delEpoll(cur->getSocketFd(0));
     cur->closeFd(cur->getSocketFd(0));
+    cur->setState(CGICLOSED);
 }
 
 void EventLoop::addCGI(EventHandler* cur){
@@ -149,46 +157,55 @@ void EventLoop::addCGI(EventHandler* cur){
         //set response to 500 or 404
         // theCGI->resolveClose();
         std::cout << "addCGI: setup failed\n";
-        cur->setState(WRITING);
+        cur->setErrorCgi();
+        cur->setState(FORCGI);
+        resolvingModify(cur, EPOLLOUT);
         return ;
     }
-    bool toBeOrNot = cur->conditionMet(_activeFds, _epollFd);
+    std::cout << "CGI SETUP COMPLETE\n";
+    std::cout << theCGI->getState() << " : yet another check\n";
+    int toBeOrNot = cur->conditionMet(_activeFds, _epollFd);
+    // if (toBeOrNot == 2)
+    //     return ;
     struct epoll_event& curSend = theCGI->getCgiEvent(1);
     struct epoll_event& curGet = theCGI->getCgiEvent(0);
 
     theCGI->setState(CGIREAD);
-    if (toBeOrNot == true){ //pass the activefds so they can close in the child
+    if (toBeOrNot == 0){ //pass the activefds so they can close in the child
         std::cout << "addCGI: this is a post request with a body\n";
         theCGI->setState(CGITOREAD);
         if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, *(theCGI->getSocketFd(1)), &curSend) == -1){ //not correct
             std::cout << "addCGI: error in the first adding of the fd\n";
-            //set response
             theCGI->resolveClose();
-            cur->setState(WRITING);
+            cur->setErrorCgi();
+            cur->setState(FORCGI);
+            resolvingModify(cur, EPOLLOUT);
             return ;
         }
     }
     if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, *(theCGI->getSocketFd(0)), &curGet) == -1){ //not correct
         //set response
         std::cout << "addCGI: error in the second adding of the fd\n";
-        if (toBeOrNot == true)
+        if (toBeOrNot == 0)
             delEpoll(theCGI->getSocketFd(1));
         theCGI->resolveClose();
-        cur->setState(WRITING);
+        cur->setErrorCgi();
+        cur->setState(FORCGI);
+        resolvingModify(cur, EPOLLOUT);
         return ;
-    }
-    if (theCGI->conditionMet(_activeFds, _epollFd) == false){
-        std::cout << "addCGI: forking somehow failed\n";
-        if (toBeOrNot == true)
-            delEpoll(theCGI->getSocketFd(1));
-        delEpoll(theCGI->getSocketFd(0));
-        theCGI->resolveClose();
-        cur->setState(WRITING);
-        return;
     }
     cur->setState(FORCGI);
     resolvingModify(cur, EPOLLOUT);
     std::cout << "State update for current client: " << cur->getState() << " and its cgi: " << theCGI->getState() << "\n";
+    if (theCGI->conditionMet(_activeFds, _epollFd) == 1){
+        std::cout << "addCGI: forking somehow failed\n";
+        if (toBeOrNot == 0)
+            delEpoll(theCGI->getSocketFd(1));
+        delEpoll(theCGI->getSocketFd(0));
+        theCGI->resolveClose();
+        cur->setErrorCgi();
+        return;
+    }
 }
 
 //create an epoll instance
