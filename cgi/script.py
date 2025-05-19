@@ -40,7 +40,7 @@ BNEWLINE = b"\r\n" #for the binary stream
 def build_response_binary(response, status_code="200 OK", content_type="application/octet-stream"):
     out = sys.stdout.buffer #the binary mode stdout
     #headers in ascii
-    out.write(f"Status: {status_code}".encode("ascii") + BNEWLINE)
+    out.write(f"HTTP/1.1 {status_code}".encode("ascii") + BNEWLINE)
     out.write(f"Server: Hardly_know_er/1.0".encode("ascii") + BNEWLINE)
     now = datetime.now(timezone.utc)
     date_h = now.strftime("%a, %d %b %Y %H:%M:%S GMT")
@@ -54,7 +54,7 @@ def build_response_binary(response, status_code="200 OK", content_type="applicat
 
 def build_response(method, response, status_code="200 OK", content_type="text/html"):
     #CGI headers
-    print(f"Status: {status_code}", end=NEWLINE)
+    print(f"HTTP/1.1 {status_code}", end=NEWLINE)
     print(f"Server: Hardly_know_er/1.0", end=NEWLINE)
     now = datetime.now(timezone.utc)
     print(f"Date: {now.strftime('%a, %d %b %Y %H:%M:%S')} GMT", end=NEWLINE)
