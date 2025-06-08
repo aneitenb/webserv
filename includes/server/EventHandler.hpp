@@ -15,6 +15,7 @@
 #include <unordered_map>
 #include <iostream> //delete after
 // #include "EventLoop.hpp"
+#include "log.hpp"
 
 enum State {
     WRITING, //client is currently writing

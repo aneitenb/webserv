@@ -12,6 +12,7 @@
 #include <fcntl.h>
 #include <netdb.h> //getaddrinfo
 #include <cstring> //memset
+#include "log.hpp"
 
 #include "utils/message.hpp"
 #include "utils/Timeout.hpp"
@@ -59,7 +60,7 @@ Listener::~Listener(){
     if (_sockFd != -1){
         close(_sockFd);
         _sockFd = -1;
-        // std::cout << "closed fd\n";
+        // getLogFile() << "closed fd\n";
     }
     freeAddress(); //check if double free but it shouldn't be
 }

@@ -16,6 +16,7 @@
 #include "utils/message.hpp"
 #include "server/Client.hpp"
 #include "server/CgiHandler.hpp"
+#include "log.hpp"
 
 /*Orthodox Cannonical Form*/
 Client::Client(): /*_listfd(nullptr), */_clFd(-1), _count(0), /*_curR(EMPTY),*/ _theCgi(&_requesting, &_responding, &_clFd), _timeout(CLIENT_DEFAULT_TIMEOUT){
@@ -245,13 +246,14 @@ int Client::ready2Switch() { return 1; }
 void Client::setErrorCgi() {
     // _responding.handleCgiError(_theCgi.getScriptP());
     _theCgi.setProgress(ERROR);
-    std::cout << "Set the error\n";
+    getLogFile() << "Set the error\n";
 }
 
 EventHandler* Client::getCgi(){
     EventHandler* temp = dynamic_cast<EventHandler*>(&this->_theCgi);
     temp->setState(CGIREAD);
     this->_theCgi.setReqRes(&_requesting, &_responding);
+    getLogFile() << "testing what the state of the cgi is: " << temp->getState() << std::endl;
     if (this->_theCgi.run() == 1){
         this->setErrorCgi();
         this->_theCgi.resolveClose();
@@ -438,7 +440,6 @@ int Client::receiving_stuff(){
         return (-1); //real error
     } else {  //something was returned
         temp_buff.resize(len);
-
         if (temp_buff.size() <= _buffer.max_size() - _buffer.size())
             _buffer.append(temp_buff);
         else
@@ -480,6 +481,7 @@ void Client::saveResponse(){
     Response curR(&_requesting, getSBforResponse(hostHeader));
     _responding = std::move(curR);
     _responding.handleResponse();
+    getLogFile() << "response saved\n";
     // _responding.prepareResponse();
 }
 

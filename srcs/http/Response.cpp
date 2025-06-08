@@ -86,7 +86,7 @@ Response::Response(Request* request, ServerBlock* serverBlock)
 }
 
 void Response::clear() {
-	std::cout << "CLEARING RESPONSE\n";
+	getLogFile() << "CLEARING RESPONSE\n";
 	_statusCode = 200;
 	_headers.clear();
 	_body.clear();
@@ -159,6 +159,7 @@ void  Response::prepareResponse() {
 void Response::handleResponse() {
 	std::string uri = _request->getURI();
 	std::string matchedLocation = findMatchingLocation(uri);
+	getLogFile() << "Entered handlleResponse\n";
 	
 	if (matchedLocation.empty())
 		_locationBlock = NULL;
@@ -229,6 +230,7 @@ void Response::handleResponse() {
 		setBody(getErrorPage(501));
 		setHeader("Content-Type", "text/html");
 	}
+	getLogFile() << "Exited handlleResponse\n";
 }
 
 bool Response::isComplete() const {
@@ -251,6 +253,96 @@ void Response::handleGet() {
 	}
 	getResource(path);
 }
+
+/*	BELOW VERSION WAS IN CGI, may need to re-implement
+if (isCgiRequest(path)) {
+		// handleCgi(path); //needs to be deleted?
+		getLogFile() << "Is CGI, is GET\n";
+		return;
+	}
+
+	std::string absPath = path;
+	if (!absPath.empty() && absPath[absPath.length()-1] == '/' && 
+		absPath.length() > 1)
+		{
+			absPath = absPath.substr(0, absPath.length()-1);
+		}
+
+ 	if (directoryExists(absPath))
+	{
+		std::string indexFile;
+		if (_locationBlock && _locationBlock->hasIndex()) {
+			indexFile = _locationBlock->getIndex();
+		} else {
+			indexFile = _serverBlock->getIndex();
+		}
+		
+		// path has to end with slash for appending index file
+		if (!absPath.empty() && absPath[absPath.length()-1] != '/') {
+			absPath += '/';
+		}
+		
+		std::string indexPath = absPath + indexFile;
+		if (fileExists(indexPath) && hasReadPermission(indexPath)) {
+			readFile(indexPath);
+			return;
+		}
+		
+		// No directory listing and no index file
+		_statusCode = 403;
+		setBody(getErrorPage(403));
+		setHeader("Content-Type", "text/html");
+		return;
+	}
+	//check if path is a file
+	if (fileExists(absPath) && hasReadPermission(absPath)) {
+		readFile(absPath);
+		return;
+	}
+	//file not found
+	_statusCode = 404;
+	setBody(getErrorPage(404));
+	setHeader("Content-Type", "text/html");
+}
+
+void Response::handlePost(){
+	std::string path;
+	getLogFile() << "entered handlePost\n";
+
+	//check for upload_store directive
+	if (_locationBlock && _locationBlock->hasUploadStore()) {
+		std::string filename = _request->getURI();
+		size_t lastSlash = filename.find_last_of('/');
+		if (lastSlash != std::string::npos) {
+			filename = filename.substr(lastSlash + 1);
+		}
+		
+		// making sure upload dir ends with a slash
+		std::string uploadDir = _locationBlock->getUploadStore();
+		if (!uploadDir.empty() && uploadDir[uploadDir.length()-1] != '/') {
+			uploadDir += '/';
+		}
+		
+		path = uploadDir + filename;
+	} 
+	else {
+		path = resolvePath(_request->getURI());
+	}
+
+	if (isCgiRequest(path)) {
+		// handleCgi(path);
+		getLogFile() << "is CGI, is POST.\n";
+		return;
+	}
+
+	std::string dirPath = path.substr(0, path.find_last_of('/'));
+	if (!directoryExists(dirPath)) {
+		_statusCode = 404;
+		setBody(getErrorPage(404));
+		setHeader("Content-Type", "text/html");
+		return;
+	}
+*/
 
 std::string Response::resolvePath(const std::string& uri) {
 	// check if location block has an alias directive

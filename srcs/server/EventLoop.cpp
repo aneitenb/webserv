@@ -126,26 +126,27 @@ int EventLoop::run(std::vector<EventHandler*> listFds){
 }
 
 void EventLoop::handleCGI(EventHandler* cur){
-    std::cout << cur->getState() << " :State\n";
+    getLogFile() << cur->getState() << " :State\n";
     if (cur->getState() == CGITOREAD){
         int status = cur->ready2Switch();
         if ( status == 1)
             return ;
         else if (status == 0){ //might loop here, timeout
-            std::cout << "handleCGI: time to change state\n";
+            getLogFile() << "handleCGI: time to change state\n";
             cur->setState(CGIREAD);
             delEpoll(cur->getSocketFd(1));
             cur->closeFd(cur->getSocketFd(1));
+            getLogFile() << "checking if the fd has been closed: " << cur->getSocketFd(1) << "\n";
             return ;
         }
-        std::cout << "handleCGI: error flag detected or done with sending\n";
+        getLogFile() << "handleCGI: error flag detected or done with sending\n";
         delEpoll(cur->getSocketFd(1));
         cur->closeFd(cur->getSocketFd(1));
     }
     int status = cur->ready2Switch();
     if (status == 2)
         return ;
-    std::cout << "handleCGI: done with receiving\n";
+    getLogFile() << "handleCGI: done with receiving\n";
     delEpoll(cur->getSocketFd(0));
     cur->closeFd(cur->getSocketFd(0));
     cur->setState(CGICLOSED);
@@ -156,26 +157,26 @@ void EventLoop::addCGI(EventHandler* cur){
     if (!theCGI){
         //set response to 500 or 404
         // theCGI->resolveClose();
-        std::cout << "addCGI: setup failed\n";
+        getLogFile() << "addCGI: setup failed\n";
         cur->setErrorCgi();
         cur->setState(FORCGI);
         resolvingModify(cur, EPOLLOUT);
         return ;
     }
-    std::cout << "CGI SETUP COMPLETE\n";
-    std::cout << theCGI->getState() << " : yet another check\n";
+    getLogFile() << "CGI SETUP COMPLETE\n";
+    getLogFile() << theCGI->getState() << " : yet another check\n";
     int toBeOrNot = cur->conditionMet(_activeFds, _epollFd);
     // if (toBeOrNot == 2)
     //     return ;
     struct epoll_event& curSend = theCGI->getCgiEvent(1);
     struct epoll_event& curGet = theCGI->getCgiEvent(0);
 
-    theCGI->setState(CGIREAD);
+    // theCGI->setState(CGIREAD);
     if (toBeOrNot == 0){ //pass the activefds so they can close in the child
-        std::cout << "addCGI: this is a post request with a body\n";
-        theCGI->setState(CGITOREAD);
+        getLogFile() << "addCGI: this is a post request with a body\n";
+        // theCGI->setState(CGITOREAD);
         if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, *(theCGI->getSocketFd(1)), &curSend) == -1){ //not correct
-            std::cout << "addCGI: error in the first adding of the fd\n";
+            getLogFile() << "addCGI: error in the first adding of the fd\n";
             theCGI->resolveClose();
             cur->setErrorCgi();
             cur->setState(FORCGI);
@@ -185,7 +186,7 @@ void EventLoop::addCGI(EventHandler* cur){
     }
     if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, *(theCGI->getSocketFd(0)), &curGet) == -1){ //not correct
         //set response
-        std::cout << "addCGI: error in the second adding of the fd\n";
+        getLogFile() << "addCGI: error in the second adding of the fd\n";
         if (toBeOrNot == 0)
             delEpoll(theCGI->getSocketFd(1));
         theCGI->resolveClose();
@@ -196,9 +197,9 @@ void EventLoop::addCGI(EventHandler* cur){
     }
     cur->setState(FORCGI);
     resolvingModify(cur, EPOLLOUT);
-    std::cout << "State update for current client: " << cur->getState() << " and its cgi: " << theCGI->getState() << "\n";
+    getLogFile() << "State update for current client: " << cur->getState() << " and its cgi: " << theCGI->getState() << "\n";
     if (theCGI->conditionMet(_activeFds, _epollFd) == 1){
-        std::cout << "addCGI: forking somehow failed\n";
+        getLogFile() << "addCGI: forking somehow failed\n";
         if (toBeOrNot == 0)
             delEpoll(theCGI->getSocketFd(1));
         delEpoll(theCGI->getSocketFd(0));
@@ -234,7 +235,7 @@ void EventLoop::addListeners(std::vector<EventHandler*> listFds){
         }
 
         listFds.at(i)->setState(LISTENER); //set state to listener
-        _activeFds[listFds.at(i)->getSocketFd()]; //add fd to the unordered map 
+        _activeFds[listFds.at(i)->getSocketFd(0)]; //add fd to the unordered map 
     }
     _listeners = listFds;
 }
@@ -260,8 +261,8 @@ void EventLoop::resolvingAccept(EventHandler* cur){
                 //there shouldn't be anything to clean from Response, Request probably
                 continue;}
             curClients.at(i)->setState(READING);
-            _activeFds.at(cur->getSocketFd()).push_back(curClients.at(i));
-			Debug("Registered new client at socket #" << *_activeFds.at(cur->getSocketFd()).at(i)->getSocketFd());
+            _activeFds.at(cur->getSocketFd(0)).push_back(curClients.at(i));
+			Debug("Registered new client at socket #" << *_activeFds.at(cur->getSocketFd(0)).at(i)->getSocketFd(0));
         }
     }
 }
@@ -294,7 +295,7 @@ void EventLoop::resolvingClosing(){
                 if (vect.at(i)->getState() == CLOSE){
                     // Remove from epoll BEFORE changing state
                     if (vect.at(i)->getSocketFd(0) && *(vect.at(i)->getSocketFd(0)) >= 0) {
-                        delEpoll(vect.at(i)->getSocketFd());
+                        delEpoll(vect.at(i)->getSocketFd(0));
                     }
                     // NOW change the state to TOCLOSE
                     vect.at(i)->setState(TOCLOSE);

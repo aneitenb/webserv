@@ -16,7 +16,7 @@
 #get the libraries
 import os #for the environmental variables
 import sys #for reading from the stdin
-import urllib.parse
+from urllib.parse import parse_qs
 import json
 # import cgi #useful?
 # import cgitb # delete after i think
@@ -93,7 +93,9 @@ def handle_post():
     #have to use .decode because everything used expects a string not bytes
     #default is decode("utf-8")
     if ctype == 'application/x-www-form-urlencoded':
-        params = urllib.parse.parse_qs(data.decode())
+        body = data.decode('utf-8')
+        print(repr(body))
+        params = parse_qs(data.decode())
         name = params.get("name", [""])[0] #since the value is a list of strings the [0] returns the first and usually only item in the list
         email = params.get("email", [""])[0]
 

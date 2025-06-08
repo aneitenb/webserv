@@ -36,7 +36,7 @@ class CgiHandler : public EventHandler{
     private:
         // const std::string& _path; //should be the full path? assuming already checked
         // Client& _client;
-        Request* _request;
+        Request* _request; //maybe set to nullptr after done?
         Response* _response;
         int*    _fd;
         pid_t   _pid;

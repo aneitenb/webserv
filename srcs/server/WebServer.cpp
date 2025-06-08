@@ -10,6 +10,7 @@
 #include <string.h>
 #include <netdb.h> //getaddrinfo
 #include <fcntl.h> //delete after
+#include "log.hpp"
 
 #include "utils/message.hpp"
 #include "server/WebServer.hpp"
@@ -22,7 +23,7 @@ WebServer::~WebServer(){}
 /*use bind and listen for listening sockets*/
 // int WebServer::bind_listen(Listener* cur, int* fd){
 //     //for the listening socket bind and listen
-//     std::cout << "fd is: " << *fd << " and the host is " << cur->getAddress()->sa_family << std::endl;
+//     getLogFile() << "fd is: " << *fd << " and the host is " << cur->getAddress()->sa_family << std::endl;
 //     int status = fcntl(*fd, F_GETFD); //delete
 //     if (status == -1) {
 //         perror("File descriptor is not valid");
@@ -38,14 +39,14 @@ WebServer::~WebServer(){}
 //         return (-1);   
 //     }
 //     cur->setup_fd(fd);
-//     std::cout << "testing fd set up: " << cur->getFD() << std::endl;
+//     getLogFile() << "testing fd set up: " << cur->getFD() << std::endl;
 //     return (0);
 // }
 
 // bool WebServer::doesExist(std::string port, std::string host){ //check
-//     std::cout << "entered doesExist\n";
+//     getLogFile() << "entered doesExist\n";
 //     if (_theSList.count(port) == 0){
-//         std::cout << "this shouldve happened\n";
+//         getLogFile() << "this shouldve happened\n";
 //         _theSList[port].push_back(host);
 //         return false;
 //     }
