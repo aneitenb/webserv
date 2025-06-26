@@ -840,16 +840,13 @@ void Response::handleDelete() {
 		setHeader("Content-Type", "text/html");
 		return;
 	}
-
 	if (!isMethodAllowed()) {
 		setMethodNotAllowedResponse();
 		return;
 	}
-	
 	if (!checkDeletePermissions(path)) {
 		return;
 	}
-	
 	deleteResource(path);
 }
 
