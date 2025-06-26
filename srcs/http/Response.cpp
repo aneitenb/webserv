@@ -34,10 +34,10 @@ static const std::map<int, std::string> statusMessages = {
 
 Response::Response(const Request& request, ServerBlock* serverBlock)
 	: _statusCode(200), 
+	_bytesSent(0),
 	_request(request), 
 	_serverBlock(serverBlock), 
-	_locationBlock(NULL),
-	_bytesSent(0)
+	_locationBlock(NULL)
 {
 	initializeMimeTypes();
 }
@@ -51,7 +51,6 @@ void Response::clear() {
 	_fullResponse.clear();
 	_bytesSent = 0;
 	_locationBlock = NULL;
-	_request.clear();	//implement a clear in Request class
 }
 
 void Response::setRequest(const Request& request) {

@@ -51,10 +51,10 @@ private:
 	void handleDelete();
 	
 public:
-	Response(Request& request, ServerBlock* serverBlock);
+	Response(const Request& request, ServerBlock* serverBlock);
 	~Response();
 	void clear();
-	void setRequest(Request& request);
+	void setRequest(const Request& request);
 
 	void handleResponse();
 
