@@ -23,10 +23,12 @@ static inline void	_printRequest(const Request &req, const size_t &n);
 static inline void	_printBody(const Request &req);
 
 i32	main(void) {
-	bool	err;
-	Request	req;
+	ServerBlock	cfg;
+	bool		err;
 
 	err = false;
+	cfg.setClientMaxBodySize(42);
+	Request	req(cfg);
 	std::cerr << SGR_INFO << "---REQUEST 1---" << SGR_RESET << "\n";
 	req.append("GET datatracker.ietf.org/doc/html/rfc2616 HTTP/1.1\r\nAccept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif/image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0,7\r\nAccept-Encoding: gzip,deflate,br,zstd\r\nAccept-Language: en-US,en;q=0.9\r\nCache-Control: max-age=0\r\nPriority: u=0,i\r\nSec-Ch-Ua: \"Google Chrome\";v=\"131\",\"Chromium\";v=\"131\",\"Not_A_BRAND\";v=\"24\"\r\nSec-Ch-Ua-Mobile: ?0\r\nSec-Ch-Ua-Platform: \"Linux\"\r\nSec-Fetch-Dest: document\r\nSec-Fetch-Mode: navigate\r\nSec-Fetch-Site: same-origin\r\nSec-Fetch-User: ?1\r\nUpgrade-Insecure-Requests: 1\r\nUser-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36\");\r\n\r\n");
 	_printRequest(req, 1);
@@ -49,6 +51,10 @@ i32	main(void) {
 	req.append("GET datatracker.ietf.org/doc/html/rfc2616 HTTP/1.1\r\nAccept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif/image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0,7\r\nAccept-Encoding: gzip,deflate,br,zstd\r\nAccept-Language: en-US,en;q=0.9\r\nCache-Control: max-age=0\r\nPriority: u=0,i\r\nSec-Ch-Ua: \"Google Chrome\";v=\"131\",\"Chromium\";v=\"131\",\"Not_A_BRAND\";v=\"24\"\r\nSec-Ch-Ua-Mobile: ?0\r\nSec-Ch-Ua-Platform: \"Linux\"\r\nSec-Fetch-Dest: document\r\nSec-Fetch-Mode: navigate\r\nSec-Fetch-Site: same-origin\r\nSec-Fetch-User: ?1\r\nUpgrade-Insecure-Requests: 1\r\nUser-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36\");\r\n\r\n");
 	_printRequest(req, 6);
 	_checkValid(req, true, err, 6);
+	std::cerr << SGR_INFO << "---REQUEST 7---" << SGR_RESET << "\n";
+	req.append("POST /huh.txt HTTP/1.1\r\nHost: 127.0.0.2:8080\r\nUser-Agent: curl/7.81.0\r\nAccept: */*\r\nContent-Length: 257\r\nContent-Type: multipart/form-data; boundary=------------------------564c321640ca763b\r\n\r\n--------------------------564c321640ca763b--\r\nContent-Disposition: form-data; name=\"file\"; filename=\"huh.txt\"\r\nContent-Type: text/plain\r\n\r\nhello there\nhello there\nhello there\nhello there\nhello there\nhello there\n\r\n--------------------------564c321640ca763b--\r\n");
+	_printRequest(req, 7);
+	_checkValid(req, false, err, 7);
 	return (!err) ? 0 : 1;
 }
 
@@ -95,8 +101,10 @@ static inline void	_printRequest(const Request &req, const size_t &n) {
 	std::cerr << "Request " << n << ":\n";
 	std::cerr << "\tchunked: " << req.isChunked() << "\n";
 	std::cerr << "\tparsed: " << req.isParsed() << "\n";
-	std::cerr << "\tvalid: " << req.isValid() << "\n";
-	std::cerr << "\tcontent-length: " << req.getContentLength() << "\n";
+	std::cerr << "\tvalid: " << req.isValid();
+	if (!req.isValid())
+		std::cerr << " (error " << req.getErrorCode() << ")\n";
+	std::cerr << "\n\tcontent-length: " << req.getContentLength() << "\n";
 	if (!req.getURI().empty())
 		std::cerr << "\tURI: " << req.getURI() << "\n";
 	if (!req.getMethod().empty())

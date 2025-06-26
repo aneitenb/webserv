@@ -11,7 +11,11 @@ NAME	=	webserv
 
 BUILD	=	normal
 
-CC				=	c++
+ifeq ($(BUILD), normal)
+CC		=	c++
+else
+CC		=	g++
+endif
 
 cflags.common	=	-Wall -Wextra -Werror -std=c++17
 cflags.debug	=	-g -D__DEBUG
@@ -37,7 +41,6 @@ SERVERFILES	=	Client.cpp \
 				WebServer.cpp \
 				EventLoop.cpp \
 				CgiHandler.cpp
-# VirtualHost.cpp
 
 CONFIGFILES	=	ConfigErrors.cpp \
 				ConfigFile.cpp \
@@ -64,7 +67,7 @@ httptests: $(REQUEST_TEST)
 	@./run_test Request $(REQUEST_TEST)
 	@printf "\e[1;38;5;42mWEBSERV >\e[m All http tests passed!\n"
 
-$(REQUEST_TEST): $(SRCDIR)/$(HTTPDIR)/Request.cpp $(TESTDIR)/$(HTTPDIR)/Request.cpp
+$(REQUEST_TEST): $(SRCDIR)/$(HTTPDIR)/Request.cpp $(SRCDIR)/$(CONFIGDIR)/ServerBlock.cpp $(SRCDIR)/$(CONFIGDIR)/LocationBlock.cpp $(SRCDIR)/$(CONFIGDIR)/ConfigErrors.cpp $(TESTDIR)/$(HTTPDIR)/Request.cpp
 	@printf "\e[1;38;5;42mWEBSERV >\e[m Compiling Request test\n" $@
 	@$(CC) $(CFLAGS) -I$(INCDIR) $^ -o $@
 
