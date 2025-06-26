@@ -43,6 +43,7 @@ Request& Request::operator=(const Request &other) {
 		this->_body = other._body;
 		this->_uri = other._uri;
 		this->_contentLength = other._contentLength;
+		this->_maxBodySize = other._maxBodySize;
 		this->_chunkSize = other._chunkSize;
 		this->_parsingStage = other._parsingStage;
 		this->_trailers = other._trailers;
@@ -58,9 +59,10 @@ bool Request::operator==(const Request &other) const {
 	return (this->_headers == other._headers && this->_contentType == other._contentType
 			&& this->_remainder == other._remainder && this->_version == other._version
 			&& this->_method == other._method && this->_body == other._body && this->_uri == other._uri
-			&& this->_contentLength == other._contentLength && this->_chunkSize == other._chunkSize
-			&& this->_parsingStage == other._parsingStage && this->_trailers == other._trailers
-			&& this->_chunked == other._chunked && this->_parsed == other._parsed && this->_valid == other._valid
+			&& this->_contentLength == other._contentLength && this->_maxBodySize == other._maxBodySize
+			&& this->_chunkSize == other._chunkSize && this->_parsingStage == other._parsingStage
+			&& this->_trailers == other._trailers && this->_chunked == other._chunked
+			&& this->_parsed == other._parsed && this->_valid == other._valid
 			&& this->_errorCode == other._errorCode) ? true : false;
 }
 
