@@ -7,7 +7,10 @@
 //
 // <<Request.cpp>> -- <<Aida, Ilmari, Milica>>
 
+#ifdef __DEBUG
 #include <iostream>
+#endif /* __DEBUG */
+
 #include "http/Request.hpp"
 
 #define _ERR_BAD_REQUEST		400
@@ -18,6 +21,8 @@
 
 [[maybe_unused]] static inline std::string	_printRawRequest(const std::string &reqData);
 static inline bool							_getChunkSize(std::stringstream &bodySection, std::string &remainder, size_t &chunkSize);
+
+Request::Request(void): _contentLength(0), _maxBodySize(MAX_BODY_SIZE), _chunkSize(0), _parsingStage(REQUESTLINE), _trailers(false), _chunked(false), _parsed(false), _valid(false) {}
 
 Request::Request(const ServerBlock &cfg): _contentLength(0), _chunkSize(0), _parsingStage(REQUESTLINE), _trailers(false), _chunked(false), _parsed(false), _valid(false) {
 	this->_maxBodySize = (cfg.hasClientMaxBodySize()) ? cfg.getClientMaxBodySize() : MAX_BODY_SIZE;

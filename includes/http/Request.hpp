@@ -59,7 +59,7 @@ class Request
 		bool	_processChunkedBody(std::stringstream bodySection);
 
 	public:
-		Request(void) = delete;
+		Request(void);
 		Request(const ServerBlock &cfg);
 		~Request(void);
 		Request(const Request &other);
