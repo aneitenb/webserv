@@ -10,13 +10,6 @@
 #include <iostream>
 #include "http/Request.hpp"
 
-#define SGR_DEBUG	"\x1b[1;38;5;202m"
-#define SGR_RESET	"\x1b[m"
-//DELETE THE FOLLOWING:
-#define SGR_ERROR    "\x1b[1;31m"
-#define SGR_SUCCESS    "\x1b[1;32m"
-#define SGR_INFO    "\x1b[1;34m"
-
 #define _find(c, x)	(std::find(c.cbegin(), c.cend(), x))
 #define _trimLWS(s)	(s.erase(0, s.find_first_not_of(LWS)), s.erase(s.find_last_not_of(LWS) + 1))
 
@@ -68,8 +61,8 @@ void	Request::append(const std::string &reqData) {
 	end = 0;
 	fell = false;
 #ifdef __DEBUG
-	std::cerr << SGR_DEBUG << "append: current remainder: {" << _printRawRequest(this->_remainder) << "}" << SGR_RESET << "\n";
-	std::cerr << SGR_DEBUG << "append: new request data: {" << _printRawRequest(reqData) << "}" << SGR_RESET << "\n";
+	std::cerr << SGR_REQUEST << "append: current remainder: {\n" << _printRawRequest(this->_remainder) << "\n}" << SGR_RESET << "\n";
+	std::cerr << SGR_REQUEST << "append: new request data: {\n" << _printRawRequest(reqData) << "\n}" << SGR_RESET << "\n";
 #endif /* __DEBUG */
 	switch (this->_parsingStage) {
 		case REQUESTLINE:
@@ -111,14 +104,6 @@ void	Request::append(const std::string &reqData) {
 			this->_parsingStage = REQUESTLINE;
 			this->_parsed = true;
 	}
-	// DEBUG - Summary at end of append, DELETE
-	std::cerr << SGR_INFO << "End of append. Current state:" << SGR_RESET << "\n";
-	std::cerr << SGR_INFO << "  Parsing stage: " << this->_parsingStage << SGR_RESET << "\n";
-	std::cerr << SGR_INFO << "  Request parsed: " << (this->_parsed ? "YES" : "NO") << SGR_RESET << "\n";
-	std::cerr << SGR_INFO << "  Request valid: " << (this->_valid ? "YES" : "NO") << SGR_RESET << "\n";
-	std::cerr << SGR_INFO << "  Headers count: " << this->_headers.size() << SGR_RESET << "\n";
-	std::cerr << SGR_INFO << "  Remainder size: " << this->_remainder.size() << SGR_RESET << "\n";
-	std::cerr << SGR_INFO << "=== DEBUG REQUEST APPEND END ===" << SGR_RESET << "\n";
 }
 
 // private methods
@@ -126,7 +111,7 @@ void	Request::_parseRequestLine(std::string line) {
 	static std::regex	validReqLine("(GET|POST|DELETE) +[^\\x00-\\x1F\"#<>{}|\\\\^[\\]`\\x7F]+ +HTTP\\/1\\.1\\r\\n");
 
 #ifdef __DEBUG
-	std::cerr << SGR_DEBUG << "_parseRequestLine: Request-Line: " << line.substr(0, line.length() - 2) << SGR_RESET << "\n";
+	std::cerr << SGR_REQUEST << "_parseRequestLine: Request-Line: " << line.substr(0, line.length() - 2) << SGR_RESET << "\n";
 #endif /* __DEBUG */
 	if (!std::regex_match(line, validReqLine))
 		throw Request::InvalidRequestLineException();
@@ -145,7 +130,7 @@ void	Request::_parseHeaders(std::stringstream rawHeaders) {
 	while (std::getline(rawHeaders, line)) {
 		if (!line.empty() && line != CR) {
 #ifdef __DEBUG
-			std::cerr << SGR_DEBUG << "_parseHeaders: current header line: " << line << SGR_RESET << "\n";
+			std::cerr << SGR_REQUEST << "_parseHeaders: current header line: " << line << SGR_RESET << "\n";
 #endif /* __DEBUG */
 			if (line[line.length() - 1] == *CR)
 				line.erase(line.length() - 1);
@@ -201,7 +186,7 @@ bool	Request::_processBody(const std::string &rawBody) {
 		rv = this->_processChunkedBody(std::stringstream(rawBody));
 	else {
 #ifdef __DEBUG
-		std::cerr << SGR_DEBUG << "_processBody: current body segment: '" << rawBody << "'" << SGR_RESET << "\n";
+		std::cerr << SGR_REQUEST << "_processBody: current body segment: '" << rawBody << "'" << SGR_RESET << "\n";
 #endif /* __DEBUG */
 		this->_body += rawBody;
 		this->_remainder.clear();
@@ -228,7 +213,7 @@ bool	Request::_processChunkedBody(std::stringstream bodySection) {
 			if (!_getChunkSize(bodySection, this->_remainder, this->_chunkSize))
 				return false;
 #ifdef __DEBUG
-			std::cerr << SGR_DEBUG << "_processChunkedBody: next chunk size: " << this->_chunkSize << SGR_RESET << "\n";
+			std::cerr << SGR_REQUEST << "_processChunkedBody: next chunk size: " << this->_chunkSize << SGR_RESET << "\n";
 #endif /* __DEBUG */
 			this->_remainder.clear();
 			parsingStage = CHUNK;
@@ -243,7 +228,7 @@ bool	Request::_processChunkedBody(std::stringstream bodySection) {
 					return false ;
 				}
 #ifdef __DEBUG
-				std::cerr << SGR_DEBUG << "_processChunkedBody: next chunk data: '" << chunkData << "'" << SGR_RESET << "\n";
+				std::cerr << SGR_REQUEST << "_processChunkedBody: next chunk data: '" << chunkData << "'" << SGR_RESET << "\n";
 #endif /* __DEBUG */
 				this->_contentLength += this->_chunkSize;
 				this->_body += chunkData;
@@ -251,7 +236,7 @@ bool	Request::_processChunkedBody(std::stringstream bodySection) {
 				if (!_getChunkSize(bodySection, this->_remainder, this->_chunkSize))
 					return false;
 #ifdef __DEBUG
-				std::cerr << SGR_DEBUG << "_processChunkedBody: next chunk size: " << this->_chunkSize << SGR_RESET << "\n";
+				std::cerr << SGR_REQUEST << "_processChunkedBody: next chunk size: " << this->_chunkSize << SGR_RESET << "\n";
 #endif /* __DEBUG */
 				parsingStage = CHUNK;
 			}
