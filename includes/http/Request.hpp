@@ -10,6 +10,7 @@
 #pragma once
 
 #include "defs.hpp"
+#include "config/ServerBlock.hpp"
 
 #include <map>
 #include <regex>
@@ -31,9 +32,9 @@ class Request
 		std::string	_method;
 		std::string	_body;
 		std::string	_uri;
-		std::string _copyBuffer;
 
 		size_t	_contentLength;
+		size_t	_maxBodySize;
 		size_t	_chunkSize;
 
 		enum {
@@ -47,6 +48,8 @@ class Request
 		bool	_parsed;
 		bool	_valid;
 
+		i32		_errorCode;
+
 		// private methods
 		void	_parseRequestLine(std::string line);
 		void	_parseHeaders(std::stringstream rawHeaders);
@@ -56,7 +59,8 @@ class Request
 		bool	_processChunkedBody(std::stringstream bodySection);
 
 	public:
-		Request(void);
+		Request(void) = delete;
+		Request(const ServerBlock &cfg);
 		~Request(void);
 		Request(const Request &other);
 		Request& operator=(const Request &other);
@@ -64,6 +68,7 @@ class Request
 
 		// public methods
 		void	append(const std::string &reqData);
+		void	reset(void);
 
 		// public getters
 		const headerlist_t	&getHeaderList(void) const;
@@ -81,12 +86,9 @@ class Request
 		const bool	&isParsed(void) const;
 		const bool	&isValid(void) const;
 
-		class InvalidRequestLineException: public std::exception {
-			public:
-				const char	*what(void) const noexcept;
-		};
+		const i32	&getErrorCode(void) const;
 
-		class IncompleteHeaderException: public std::exception {
+		class InvalidRequestLineException: public std::exception {
 			public:
 				const char	*what(void) const noexcept;
 		};
@@ -97,16 +99,6 @@ class Request
 		};
 
 		class InvalidHeaderException: public std::exception {
-			public:
-				const char	*what(void) const noexcept;
-		};
-
-		class InvalidFieldException: public std::exception {
-			public:
-				const char	*what(void) const noexcept;
-		};
-
-		class InvalidBodyException: public std::exception {
 			public:
 				const char	*what(void) const noexcept;
 		};
