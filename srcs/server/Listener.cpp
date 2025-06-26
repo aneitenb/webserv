@@ -183,7 +183,12 @@ int Listener::setuping(int *fd){
     // }
     /*TEST TO SEE IF THE NONBLOCKING HAS BEEN SET UP FOR THE LISTENER, DELETE AFTER*/
     if (makeNonBlock(fd) == -1)
-        return (-1);
+		return (-1);
+#ifdef __DEBUG
+	i32	n = 1;
+	if (setsockopt(*fd, SOL_SOCKET, SO_REUSEADDR, &n, sizeof(i32)) == -1)
+		return (-1);
+#endif /* __DEBUG */
     if ((bind(*fd, this->getAddress(), sizeof(struct sockaddr)) == -1)){
         std::cerr << "Error: bind() failed\n";
         std::cerr << strerror(errno) << "\n";
