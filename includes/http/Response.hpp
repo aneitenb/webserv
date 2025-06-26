@@ -26,6 +26,11 @@ private:
 	Request* 		_request;
 	ServerBlock*	_serverBlock;
 	LocationBlock*	_locationBlock;
+
+	struct MultipartFile {
+		std::string filename;
+		std::string content;
+	};
 	
 	std::map<std::string, std::string> _mimeTypes;
 	
@@ -62,10 +67,14 @@ private:
 	void handlePostRedirect();
 	
 	void handleDelete();
-
 	std::string resolveDeletePath();
 	bool checkDeletePermissions(const std::string& path);
 	void deleteResource(const std::string& path);
+
+	bool isMultipartRequest() const;
+	std::vector<MultipartFile> parseMultipartData(const std::string& boundary);
+	std::string extractBoundary(const std::string& contentType) const;
+	void handleMultipartPost(const std::string& uploadDir);
 
 	bool isCgiRequest(const std::string& path) const;
 
@@ -89,6 +98,7 @@ public:
 	void addToBytesSent(ssize_t adding);
 	ssize_t getBytes() const;
 	
+	void setStatusCode(const int code);
 	void setHeader(const std::string& key, const std::string& value);
 	void setBody(const std::string& body);
 	void setContentType(const std::string& path);

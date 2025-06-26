@@ -1,17 +1,21 @@
+start of server block!!!!!!!!!!!!!!!!
+end of server block!!!!!!!!!!!!!!!!
 Configuration file parsed successfully!
 
 -------------------------------------
 Found 1 server(s)
 
 ----- Server 1 -----
-Host: 127.0.0.2
+Host: 127.0.0.1
 Ports: 8080
 Server Name: localhost
 Root: webpage
-Max Body Size: 1048576 bytes
+Max Body Size: 10485760 bytes
 Index: index.html
-Allowed Methods: GET
+Allowed Methods: GET POST DELETE
 
+Error Pages:
+  404: /errors/404.html
 Default Error Pages:
   400: /default_errors/400.html
   403: /default_errors/403.html
@@ -28,12 +32,17 @@ Default Error Pages:
   503: /default_errors/503.html
   505: /default_errors/505.html
 
+Location Blocks:
+  Location: /uploads
+    Autoindex: on
+    Upload Store: uploads
+    Allowed Methods: GET POST DELETE
 -------------------------------------
 
-Cur host: 127.0.0.2
+Cur host: 127.0.0.1
 PortHost doesn't exits, adding
 localhost should have added the key with the name
-This should be accessible: 1
+This should be accessible: 7
 Listener address set up!
 This socket has the fd: 3
 3    this is the listeners true fd
@@ -52,7 +61,7 @@ checking active Fds: 3
 PRINTING ALL VALUES IN LISTENER
 _sockfd: 3
 _port: 8080
-_host: 127.0.0.2
+_host: 127.0.0.1
 _firstKey: localhost
 server name: localhost
 _result random check: 2
@@ -64,9 +73,41 @@ status flags: O_NONBLOCK
 
 should be listener (5): 5
 Entered the loop
-2
-How many events to resolve: -1
+How many events to resolve: 1
+After receiving events
+ACCEPTING A CLIENT
+5 newly made fd
+6 newly made client state
+Client destructor called:-1
+After handling
+Trying to add clients
+EventHandler with fd 5 got their event initialised
+Client added with fd: 5
+After one loop
 3 current Listener through which we are iterating for closing
-check if empty: true
+check if empty: false
+Clients empty: false
+Client vector size: 1
 After closing
-Did the free
+Entered the loop
+How many events to resolve: 1
+After receiving events
+Receiving
+GET / HTTP/1.1
+Host: 127.0.0.1:8080
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:135.0) Gecko/20100101 Firefox/135.0
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+Accept-Language: en-US,en;q=0.5
+Accept-Encoding: gzip, deflate, br, zstd
+Connection: keep-alive
+Upgrade-Insecure-Requests: 1
+Sec-Fetch-Dest: document
+Sec-Fetch-Mode: navigate
+Sec-Fetch-Site: none
+Sec-Fetch-User: ?1
+Priority: u=0, i
+
+: is what the buffer says
+438: is what the buffer says
+Congrats, the buffer was not empty
+

@@ -94,6 +94,7 @@ int ConfigurationFile::_parseConfigFile(void) {
 				throw ErrorInvalidConfig("Nested server blocks not allowed");
 			inServerBlock = true;
 			bracketCount++;
+			std::cout << "start of server block!!!!!!!!!!!!!!!!" << std::endl;
 			currentServer.clear();
 			continue;
 		}
@@ -145,6 +146,7 @@ int ConfigurationFile::_parseConfigFile(void) {
 			}
 			else if (bracketCount == 0) {
 				//end of server block
+				std::cout << "end of server block!!!!!!!!!!!!!!!!" << std::endl;
 				if (_validateServerBlock(currentServer)) {
 					_servers.push_back(currentServer);
 					inServerBlock = false;

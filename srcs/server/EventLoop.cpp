@@ -106,6 +106,7 @@ void EventLoop::addCGI(EventHandler* cur){
     EventHandler* theCGI = cur->getCgi();
     if (!theCGI){
         //set response to 500 or 404
+
         cur->setState(WRITING);
         return ;
     }
