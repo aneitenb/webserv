@@ -17,7 +17,7 @@
 
 /*Orthodox Cannonical Form*/
 Client::Client(): /*_listfd(nullptr), */_clFd(-1), _count(0), /*_curR(EMPTY),*/ _theCgi(&_requesting, &_responding, &_clFd){
-    ftMemset(&_result, sizeof(_result));
+	_result = nullptr;
     setState(TOADD);
     // ftMemset(&_event, sizeof(_event)); //do I leave this like this?
 }
@@ -25,7 +25,7 @@ Client::Client(): /*_listfd(nullptr), */_clFd(-1), _count(0), /*_curR(EMPTY),*/ 
 Client::Client(std::unordered_map<std::string, ServerBlock*> cur): _allServerNames(cur), /*_listfd(nullptr),*/ \
     _clFd(-1), _count(0), /*_curR(EMPTY),*/ \
     _theCgi(CgiHandler(&_requesting, &_responding, &_clFd)){
-    ftMemset(&_result, sizeof(_result));
+	_result = nullptr;
     setState(TOADD);
     // ftMemset(&_event, sizeof(_event)); //do I leave this like this?
 }

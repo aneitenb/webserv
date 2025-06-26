@@ -9,3 +9,4 @@ compile_commands.json
 webserv
 request_test
 .vscode/
+webpage/uploads/*
