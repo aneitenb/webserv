@@ -71,17 +71,15 @@ Request::~Request(void) {}
 // public methods
 void	Request::append(const std::string &reqData) {
 	size_t	end;
-	bool	fell;
 
-	fell = false;
 #ifdef __DEBUG
 	std::cerr << SGR_REQUEST << "append: current remainder: {\n" << _printRawRequest(this->_remainder) << "\n}" << SGR_RESET << "\n";
 	std::cerr << SGR_REQUEST << "append: new request data: {\n" << _printRawRequest(reqData) << "\n}" << SGR_RESET << "\n";
 #endif /* __DEBUG */
+	this->_remainder += reqData;
 	switch (this->_parsingStage) {
 		case REQUESTLINE:
 			this->_parsed = false;
-			this->_remainder += reqData;
 			end = this->_remainder.find(CRLF);
 			if (end == std::string::npos)
 				break ;
@@ -93,11 +91,8 @@ void	Request::append(const std::string &reqData) {
 			this->_remainder.erase(0, end);
 			this->_headers.clear();
 			this->_parsingStage = HEADERS;
-			fell = true;
 			[[fallthrough]];
 		case HEADERS:
-			if (!fell)
-				this->_remainder += reqData;
 			end = this->_remainder.find(CRLF CRLF);
 			if (end == std::string::npos)
 				break ;
@@ -108,11 +103,8 @@ void	Request::append(const std::string &reqData) {
 			this->_remainder.erase(0, end);
 			this->_body.clear();
 			this->_parsingStage = BODY;
-			fell = true;
 			[[fallthrough]];
 		case BODY:
-			if (!fell)
-				this->_remainder += reqData;
 			if (!this->_processBody(this->_remainder))
 				break ;
 			this->_parsingStage = REQUESTLINE;
