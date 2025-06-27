@@ -137,6 +137,8 @@ void	Request::_parseHeaders(std::stringstream rawHeaders) {
 	size_t		sep;
 	bool		valid;
 
+	if (rawHeaders.str().size() > REQUEST_MAX_HEADER_SIZE)
+		throw Request::InvalidHeaderException();
 	valid = true;
 	while (std::getline(rawHeaders, line)) {
 		if (!line.empty() && line != CR) {
