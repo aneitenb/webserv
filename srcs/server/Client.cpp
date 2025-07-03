@@ -189,60 +189,77 @@ int Client::handleEvent(uint32_t ev){
         if (this->getState() == FORCGI){
             if (_theCgi.cgiDone() == true)
                 this->setState(TOWRITE);
+            return (0);
         }
-        std::cout << "Receiving\n";
-        if (receiving_stuff() == -1){ //if it's -1 either error or nothing left to accept
-            _count++;
-            if (_count == 50){
-                // this->setState(CLOSE);
-                _count = 0;
-                return (-1);
+
+        int recvResult = receiving_stuff();
+        
+        if (recvResult == -1) {
+            if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                return (0); //No more data available right now
             }
-            std::cout << "Count: " << _count << std::endl;
+            return (-1); // binary data or real errors close the connection
         }
-        //is it complete, check and set
-        if (saveRequest() == -1){
-            // _count++;
-            _buffer.clear();
-            return (-1);
+        else if (recvResult == 0) {
+            return (0); //No data available, waiting...
         }
-        if (_requesting.getURI().find(".py") != std::string::npos) {//check if CGI
+        
+        if (_buffer.empty()) {
+            return (0);
+        }
+        
+        // process the request using saveRequest()
+        int saveResult = saveRequest();
+        
+        if (saveResult == -1) {
+            _buffer.clear(); 
+            return (-1);    // Error occurred
+        } else if (saveResult == 1) {
+            // don't clear buffer - keep accumulating data
+            return (0); // Request incomplete, need more data
+        } else {
+            // Request complete (saveResult == 0)
+            _buffer.clear(); // CRITICAL
+            
+        // Check for CGI
+        if (_requesting.getURI().find(".py") != std::string::npos) {
             this->setState(TOCGI);
-            _count = -1000; //see if this is ok
+            return (0);
         }
-        saveResponse(); //since the response will be formed on a complete request, maybe the constructor can call process request right away?
-        _buffer.clear(); //or see how it's handled?
-        // _buffer = "";
-        //if cgi
-        //setState(tocgi)
-        //count = -1000
-        this->setState(TOWRITE); //EPOLLOUT
-        _count = 0;
+        
+        // Prepare response
+        saveResponse();
+        this->setState(TOWRITE);
+        return (0);
+        }
     }
     if (ev & EPOLLOUT){
-        if (_count != -1 && sending_stuff() == -1){
+        if (sending_stuff() == -1){
             _count++;
             if (_count == 50){
                 _count = 0;
                 _responding.clear();
-                // this->setState(CLOSE);
-                return (-1);
+                return (-1);    //close after too many send failures
             }
+            return (0); // Try again
         }
+        
         if (_responding.isComplete() == true){
-            this->setState(TOREAD); //EPOLLIN
-            std::cout << "switching sides\n";
-            //clear the request and response?
+            // Reset for next request
+            _requesting.reset();
             _responding.clear();
+            this->setState(TOREAD);
             _count = 0;
-        //if connection::keep-alive switch to epollout
-        //if connection::close close socket + cleanup
-        // }
-        //data to be sent
-        //if the whole thing was sent change what the epoll listens for to epollin 
         }
+        return (0);
     }
     return (0);
+}
+
+// Add a method to properly handle connection timeouts:
+bool Client::shouldClose() const {
+    // Close if we've had too many consecutive errors
+    return _count >= 50;
 }
 
 /*Handle Event Helpers*/
@@ -275,51 +292,60 @@ int Client::receiving_stuff(){
     ssize_t len = 0;
     std::string temp_buff;
     temp_buff.resize(4096);
-    // temp_buff.clear(); //maybe I don't need this?
-    /*if (_curR == CLEAR)
-        _buffer.clear(); //maybe can't do this if the request is not complete*/
 
-    len = recv(_clFd, &temp_buff[0], temp_buff.size(), 0); //sizeof(buffer) - 1?
-    if (len < 1){ //either means that there is no more data to read or error or client closed connection (len == 0)
-        std::cerr << "Error: delete this after\n";
-        std::cerr << strerror(errno) << "\n";
+    len = recv(_clFd, &temp_buff[0], temp_buff.size(), 0);
+    
+    if (len == 0) { //Client closed connection
         return (-1);
     }
-    else{ // means something was returned
+    else if (len < 0) { //No more data available
+        if (errno == EAGAIN || errno == EWOULDBLOCK) {
+            return (0);
+        }
+        std::cerr << "DEBUG: recv() error: " << strerror(errno) << std::endl;
+        return (-1);
+    }
+    else {  //something was returned
         temp_buff.resize(len);
-        // std::cout << "What's here  " << temp_buff << std::endl;
-        // std::cout << "Says here: " << temp_buff.size() << "     " << _buffer.max_size() << "\n";
-        if (temp_buff.size() <= _buffer.max_size() - _buffer.size())
-            _buffer.append(temp_buff); //append temp to buffer
+
+        if (temp_buff.size() <= _buffer.max_size() - _buffer.size()) {
+            _buffer.append(temp_buff);
+        } else {
+            return (-1);    //buffer would overflow
+        }
         temp_buff.clear();
     }
-    std::cout << _buffer << ": is what the buffer says\n";
-    return (0);
+    
+    return (len);
 }
 
 int Client::saveRequest(){
-    try{ //do I need the try catch with the revamping?
-        std::cout << _buffer.size() << ": is what the buffer says\n";
+    try{
         if (_buffer.size() == 0){
-            // this->setState(CLOSE);
-            return (-1);}
-        std::cout << "Congrats, the buffer was not empty\n\n";
+            return (0); //Buffer is empty, nothing to process
+        }
+        
         _requesting.append(_buffer);
+        _buffer.clear();  // Clear immediately after processing
+        
+        if (!_requesting.isValid()) {
+            return (-1);
+        }
+        
         //the thing is what if it's a partial request so not everything has been received? it needs to be updated without being marked as wrong
-        if (_requesting.isParsed() == true){
-            std::cout << "PARSED\n"; //here check for cgi?
+        if (_requesting.isParsed()) {
             return (0);
+        } else {
+            return (1); //Request incomplete, waiting for more data
         }
     }
     catch(std::exception& e){
         return (-1);
     }
-    return (-1);
 }
 
 void Client::saveResponse(){
     std::string name = _requesting.getHeader("Host");
-    std::cout << name << " checking what's in a name, response\n";
     Response curR(&_requesting, getSBforResponse(name));
     _responding = std::move(curR);
     _responding.prepareResponse();
