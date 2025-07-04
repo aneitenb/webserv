@@ -141,18 +141,22 @@ void Response::handleResponse() {
 		_locationBlock = &_serverBlock->getLocationBlockRef(matchedLocation);
 
 	setHeader("Date", getCurrentDate());
-	// if (!_request->isValid()){
-	// 	_statusCode = _request->getErrorCode();
-	// 	setBody(getErrorPage(_request->getErrorCode()));
-	// 	setHeader("Content-Type", "text/html");
-	// 	return;
-	// }
-	if (!_request->isValid()){	//delete when merged with updated request
-		_statusCode = 400;
-		setBody(getErrorPage(400));
+	std::cout << "DEBUG: Request valid: " << (_request->isValid() ? "YES" : "NO") << std::endl;
+	std::cout << "DEBUG: Request method: '" << _request->getMethod() << "'" << std::endl;
+	std::cout << "DEBUG: Request parsed: " << (_request->isParsed() ? "YES" : "NO") << std::endl;
+	if (!_request->isValid()){
+		_statusCode = _request->getErrorCode();
+		setBody(getErrorPage(_request->getErrorCode()));
 		setHeader("Content-Type", "text/html");
 		return;
 	}
+	// if (!_request->isValid()){	//delete when merged with updated request
+	// 	_statusCode = 400;
+	// 	setBody(getErrorPage(400));
+	// 	setHeader("Content-Type", "text/html");
+	// 	return;
+	// }
+	std::cout << "DEBUG: Request valid, continuing with method: " << _request->getMethod() << std::endl;
 
 	bool delayedRedirect = false;
 	std::pair<int, std::string> redirect;
@@ -202,11 +206,11 @@ bool Response::isComplete() const {
 void Response::handleGet() {
 	std::string path = resolvePath(_request->getURI());
 	
-	if (!resourceExists(path)) {
-		return;
-	}
 	if (!isMethodAllowed()) {
 		setMethodNotAllowedResponse();
+		return;
+	}
+	if (!resourceExists(path)) {
 		return;
 	}
 	getResource(path);
@@ -533,6 +537,10 @@ void Response::readFile(const std::string& path) {
 *********************************************/
 
 void Response::handlePost() {
+	if (!isMethodAllowed()) {
+		setMethodNotAllowedResponse();
+		return;
+	}
 	if (!_request->isParsed()) {			//NEEDED? isn't this already in epoll loop?
 		_statusCode = 400;
 		setBody(getErrorPage(400));
@@ -542,10 +550,6 @@ void Response::handlePost() {
 	std::string path = resolveUploadPath();
 	
 	if (!checkDir(path)) {
-		return;
-	}
-	if (!isMethodAllowed()) {
-		setMethodNotAllowedResponse();
 		return;
 	}
 	if (_request->getContentLength() > _serverBlock->getClientMaxBodySize()) {
@@ -837,14 +841,14 @@ void Response::handleMultipartPost(const std::string& uploadDir) {
 void Response::handleDelete() {
 	std::string path = resolveDeletePath();
 	
+	if (!isMethodAllowed()) {
+		setMethodNotAllowedResponse();
+		return;
+	}
 	if (!fileExists(path)) {
 		_statusCode = 404;
 		setBody(getErrorPage(404));
 		setHeader("Content-Type", "text/html");
-		return;
-	}
-	if (!isMethodAllowed()) {
-		setMethodNotAllowedResponse();
 		return;
 	}
 	if (!checkDeletePermissions(path)) {
