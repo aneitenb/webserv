@@ -266,7 +266,6 @@ bool Client::shouldClose() const {
 int Client::sending_stuff(){
     std::string buffer = {0};
     std::cout << "METHOD SENT TO RESPONSE: '" << _requesting.getMethod() << "'" << std::endl;
-    _responding.prepareResponse();    //CHECK!! 
     buffer = _responding.getFullResponse();
     if (buffer.size() == 0)
         return (-1);
