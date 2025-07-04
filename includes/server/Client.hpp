@@ -81,6 +81,7 @@ class Client : public EventHandler {
 
 
         int handleEvent(uint32_t ev) override;
+        bool shouldClose() const;
         int* getSocketFd(void) override;
         std::vector<EventHandler*> resolveAccept(void) override;
         void resolveClose() override;

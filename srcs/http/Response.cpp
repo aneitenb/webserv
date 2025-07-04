@@ -9,11 +9,9 @@
 
 #include "http/Response.hpp"
 
-[[maybe_unused]] static inline std::string _printRawResponse(const std::string &resData);
-
 static const std::map<int, std::string> statusMessages = {
 	{200, "OK"},
-	{201, "Created"},	//do we need these?
+	{201, "Created"},
 	{204, "No Content"},//needed?
 	{301, "Moved Permanently"},
 	{302, "Found"},	//needed?
@@ -130,9 +128,6 @@ std::string Response::getMimeType(const std::string& path) const {
 void  Response::prepareResponse() {
 	handleResponse();
 	_fullResponse = getStatusLine() + getHeadersString() + _body;
-#ifdef __DEBUG
-	std::cerr << SGR_RESPONSE << "prepareResponse: raw response {\n" << _printRawResponse(_fullResponse) << "\n}" << SGR_RESET << "\n";
-#endif /* __DEBUG */
 	_bytesSent = 0;
 }
 
@@ -747,8 +742,10 @@ void Response::handleMultipartPost(const std::string& uploadDir) {
 		return;
 	}
 	
-	std::vector<MultipartFile> files = parseMultipartData(boundary);
-	
+	std::string bodyPreview = _request->getBody().substr(0, std::min((size_t)500, _request->getBody().size()));
+
+    std::vector<MultipartFile> files = parseMultipartData(boundary);
+
 	if (files.empty()) {
 		_statusCode = 400;
 		setBody(getErrorPage(400));
@@ -812,24 +809,25 @@ void Response::handleMultipartPost(const std::string& uploadDir) {
 	
 	_statusCode = 201; // created
 	
-	// std::stringstream response;
-	// response << "<!DOCTYPE html>\n<html>\n<head>\n";
-	// response << "<title>Upload Successful</title>\n";
-	// response << "</head>\n<body>\n";
-	// response << "<h1>Files Uploaded Successfully</h1>\n";
+	std::stringstream response;
+	response << "<!DOCTYPE html>\n<html>\n<head>\n";
+	response << "<title>Upload Successful</title>\n";
+	response << "</head>\n<body>\n";
+	response << "<h1>Upload Successful!</h1>\n";
 	
-	// if (!savedFiles.empty()) {
-	// 	response << "<ul>\n";
-	// 	for (const auto& file : savedFiles) {
-	// 		response << "<li>" << file << "</li>\n";
-	// 	}
-	// 	response << "</ul>\n";
-	// }
+	if (!savedFiles.empty()) {
+		response << "<ul>\n";
+		for (const auto& file : savedFiles) {
+			response << "<li>" << file << "</li>\n";
+		}
+		response << "</ul>\n";
+	}
 	
-	// response << "</body>\n</html>";
+	response << "<p><a href=\"/uploads/\">Back to uploads</a></p>\n";
+	response << "</body>\n</html>";
 	
-	// setBody(response.str());
-	// setHeader("Content-Type", "text/html");
+	setBody(response.str());
+	setHeader("Content-Type", "text/html");
 }
 
 /************************************************
@@ -1072,19 +1070,3 @@ std::string Response::getFullResponse() const{
 	return (_fullResponse);
 }
 
-[[maybe_unused]] static inline std::string _printRawResponse(const std::string &resData) {
-	std::string	escaped;
-
-	escaped.clear();
-	for (const char c : resData) {
-		if (isprint(c) || c == '\n')
-			escaped += c;
-		else if (c == '\r')
-			escaped += "\\r";
-		else if (c && c < ' ') {
-			escaped += '^';
-			escaped += c + '@';
-		}
-	}
-	return escaped;
-}

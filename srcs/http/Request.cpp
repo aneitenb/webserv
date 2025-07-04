@@ -120,6 +120,7 @@ void	Request::append(const std::string &reqData) {
 	}
 }
 
+
 void	Request::reset(void) {
 	this->_parsingStage = REQUESTLINE;
 	this->_remainder.clear();
