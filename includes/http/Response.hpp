@@ -38,7 +38,6 @@ private:
 	std::string getStatusLine() const;
 	std::string getHeadersString() const;
 	std::string getMimeType(const std::string& path) const;
-	std::string getErrorPage(int statusCode) const;
 	std::string getCurrentDate() const;
 	
 	bool hasReadPermission(const std::string& path) const;
@@ -70,30 +69,31 @@ private:
 	std::string resolveDeletePath();
 	bool checkDeletePermissions(const std::string& path);
 	void deleteResource(const std::string& path);
-
+	
 	bool isMultipartRequest() const;
 	std::vector<MultipartFile> parseMultipartData(const std::string& boundary);
 	std::string extractBoundary(const std::string& contentType) const;
 	void handleMultipartPost(const std::string& uploadDir);
-
+	
 	bool isCgiRequest(const std::string& path) const;
-
+	
 	void handleCgi(const std::string& path);
 	
-public:
+	public:
 	Response(Request* request, ServerBlock* serverBlock);
 	~Response();
-  	Response();
-  	Response(Response &&other) noexcept;
+	Response();
+	Response(Response &&other) noexcept;
 	Response &operator=(Response &&other) noexcept;
 	void clear();
 	void setRequest(Request& request);
-
+	
 	void handleResponse();
-
+	
 	int getStatusCode() const;
 	const std::string& getBody() const;
 	std::string getFullResponse() const;
+	std::string getErrorPage(int statusCode) const;
   
 	void addToBytesSent(ssize_t adding);
 	ssize_t getBytes() const;

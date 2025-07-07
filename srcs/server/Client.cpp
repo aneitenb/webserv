@@ -212,6 +212,17 @@ int Client::handleEvent(uint32_t ev){
         int saveResult = saveRequest();
         
         if (saveResult == -1) {
+            if (!_requesting.isValid()) {
+                Response errorResponse(&_requesting, getSBforResponse(_requesting.getHeader("Host")));
+                errorResponse.setStatusCode(_requesting.getErrorCode()); // 400 for invalid request line
+                errorResponse.setBody(errorResponse.getErrorPage(_requesting.getErrorCode()));
+                errorResponse.setHeader("Content-Type", "text/html");
+                errorResponse.prepareResponse();
+                _responding = std::move(errorResponse);
+                this->setState(TOWRITE);
+                _buffer.clear();
+                return (0);
+            }
             _buffer.clear(); 
             return (-1);    // Error occurred
         } else if (saveResult == 1) {
@@ -327,9 +338,9 @@ int Client::saveRequest(){
         _requesting.append(_buffer);
         _buffer.clear();  // Clear immediately after processing
         
-        if (!_requesting.isValid()) {
-            return (-1);
-        }
+        // if (!_requesting.isValid()) {        //even on invlaid request, need to generate error response
+        //     return (-1);
+        // }
         
         //the thing is what if it's a partial request so not everything has been received? it needs to be updated without being marked as wrong
         if (_requesting.isParsed()) {

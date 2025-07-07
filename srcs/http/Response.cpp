@@ -141,15 +141,9 @@ void Response::handleResponse() {
 		_locationBlock = &_serverBlock->getLocationBlockRef(matchedLocation);
 
 	setHeader("Date", getCurrentDate());
-	// if (!_request->isValid()){
-	// 	_statusCode = _request->getErrorCode();
-	// 	setBody(getErrorPage(_request->getErrorCode()));
-	// 	setHeader("Content-Type", "text/html");
-	// 	return;
-	// }
-	if (!_request->isValid()){	//delete when merged with updated request
-		_statusCode = 400;
-		setBody(getErrorPage(400));
+	if (!_request->isValid()){
+		_statusCode = _request->getErrorCode();
+		setBody(getErrorPage(_request->getErrorCode()));
 		setHeader("Content-Type", "text/html");
 		return;
 	}
@@ -159,7 +153,7 @@ void Response::handleResponse() {
 	
 	if (_locationBlock && _locationBlock->hasRedirect()) {
 		redirect = _locationBlock->getRedirect();
-
+		
 		if (_request->getMethod() == "POST") {
 			delayedRedirect = true;
 		} else {
@@ -172,7 +166,19 @@ void Response::handleResponse() {
 		}
 	}
 	
+	//check for unsupported methods first
 	const std::string& method = _request->getMethod();
+	if (method != "GET" && method != "POST" && method != "DELETE") {
+		_statusCode = 501;
+		setBody(getErrorPage(501));
+		setHeader("Content-Type", "text/html");
+		return;
+	}
+	// Check if method is allowed for this location SECOND
+	if (!isMethodAllowed()) {
+		setMethodNotAllowedResponse();
+		return;
+	}
 	if (method == "GET") {
 		handleGet();
 	} else if (method == "POST") {
@@ -533,6 +539,15 @@ void Response::readFile(const std::string& path) {
 *********************************************/
 
 void Response::handlePost() {
+	//if URI ends with / it has no filename and is a bad request
+	std::string uri = _request->getURI();
+	if (uri.back() == '/' || uri.find_last_of('/') == uri.length() - 1) {
+		_statusCode = 400;
+		setBody(getErrorPage(400));
+		setHeader("Content-Type", "text/html");
+		return;
+	}
+	
 	if (!_request->isParsed()) {			//NEEDED? isn't this already in epoll loop?
 		_statusCode = 400;
 		setBody(getErrorPage(400));
@@ -744,7 +759,7 @@ void Response::handleMultipartPost(const std::string& uploadDir) {
 	
 	std::string bodyPreview = _request->getBody().substr(0, std::min((size_t)500, _request->getBody().size()));
 
-    std::vector<MultipartFile> files = parseMultipartData(boundary);
+	std::vector<MultipartFile> files = parseMultipartData(boundary);
 
 	if (files.empty()) {
 		_statusCode = 400;

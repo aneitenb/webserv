@@ -128,7 +128,7 @@ void	Request::reset(void) {
 
 // private methods
 void	Request::_parseRequestLine(std::string line) {
-	static std::regex	validReqLine("(GET|POST|DELETE) +[^\\x00-\\x1F\"#<>{}|\\\\^[\\]`\\x7F]+ +HTTP\\/1\\.1\\r\\n");
+	static std::regex	validReqLine("([A-Z]+) +[^\\x00-\\x1F\"#<>{}|\\\\^[\\]`\\x7F]+ +HTTP\\/1\\.1\\r\\n");
 
 #ifdef __DEBUG
 	std::cerr << SGR_REQUEST << "_parseRequestLine: Request-Line: " << line.substr(0, line.length() - 2) << SGR_RESET << "\n";
