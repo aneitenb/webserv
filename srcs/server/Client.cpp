@@ -136,13 +136,24 @@ std::unordered_map<std::string, ServerBlock*> Client::getServerBlocks() const{
 }
 
 ServerBlock* Client::getSBforResponse(std::string name){
-    auto it = name.find(':'); //should I have a check if it fails?
-    std::string nameNoPort = name.substr(0, it);
-    std::cout << nameNoPort << ": should be name without the port\n";
-    if (_allServerNames.count(nameNoPort) > 0)
-        return (_allServerNames.at(nameNoPort));
-    std::cout << "Going to local host hopefully: " <<_firstKey << "\n check also: " << _allServerNames.at(_firstKey)->getHost() << std::endl;
-    return (_allServerNames.at(_firstKey));
+    // remove port from host header if present ("specific.com:8080" -> "specific.com")
+    auto colonPos = name.find(':');
+    std::string nameNoPort = (colonPos != std::string::npos) ? name.substr(0, colonPos) : name;
+
+    // try exact match with the server_name
+    if (_allServerNames.count(nameNoPort) > 0) {
+        return _allServerNames.at(nameNoPort);
+    }
+    
+    // If no exact match, try to find by server_name field in ServerBlock
+    for (const auto& pair : _allServerNames) {
+        if (pair.second->getServerName() == nameNoPort) {
+            return pair.second;
+        }
+    }
+    
+    // fall back to default (first server for this listener)
+    return _allServerNames.at(_firstKey);
 }
 
 void Client::setKey(std::string key){
@@ -355,8 +366,15 @@ int Client::saveRequest(){
 }
 
 void Client::saveResponse(){
-    std::string name = _requesting.getHeader("Host");
-    Response curR(&_requesting, getSBforResponse(name));
+    std::string hostHeader;
+    
+    try {
+        hostHeader = _requesting.getHeader("Host");
+    } catch (const Request::FieldNotFoundException& e) {
+        hostHeader = _firstKey; // Use the default server
+    }
+
+    Response curR(&_requesting, getSBforResponse(hostHeader));
     _responding = std::move(curR);
     _responding.prepareResponse();
 }
