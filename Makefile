@@ -9,7 +9,11 @@
 
 NAME	=	webserv
 
+ifeq ($(shell git branch --show-current), main)
 BUILD	=	normal
+else
+BUILD	=	fsan
+endif
 
 ifeq ($(BUILD), normal)
 CC		=	c++
