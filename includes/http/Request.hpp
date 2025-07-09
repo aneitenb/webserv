@@ -19,7 +19,7 @@
 #include <sstream>
 #include <exception>
 
-#define REQUEST_MAX_HEADER_SIZE	2048
+#define REQUEST_MAX_HEADER_SIZE	16384
 
 typedef std::map<std::string, std::string>	headerlist_t;
 
