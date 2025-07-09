@@ -10,12 +10,11 @@
 #pragma once 
 
 #include <fstream>
-#include <sstream>
 
-inline std::ofstream& getLogFile(){
-    static std::ofstream _log("file.log", std::ios::out | std::ios::trunc | std::ios::app);
-    if (!_log)
-        throw std::runtime_error("Failed to open file.log");
-    return _log;
+inline std::ofstream& getLogFile(void) {
+	static std::ofstream _log("debug.log", std::ios::out | std::ios::trunc);
+
+	if (!_log)
+		throw std::runtime_error("Failed to open debug log");
+	return _log;
 }
-
