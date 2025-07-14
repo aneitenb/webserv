@@ -276,19 +276,19 @@ int Listener::setSocketFd(void){
 // }
 
 
-const std::vector<Client>& Listener::getClients(void) const{
+const std::list<Client>& Listener::getClients(void) const{
     return (_activeClients);
 }
 
-void Listener::delClient(Client* cur){
-    if (!cur)
-        return ;
-    for (std::size_t i = 0; i < _activeClients.size(); i++){
-        if (_activeClients.at(i) == *cur){
-            _activeClients.erase(_activeClients.begin() + i);
-            return ;}
-    }
-}
+// void Listener::delClient(Client* cur){
+//     if (!cur)
+//         return ;
+//     for (std::size_t i = 0; i < _activeClients.size(); i++){
+//         if (_activeClients.at(i) == *cur){
+//             _activeClients.erase(_activeClients.begin() + i);
+//             return ;}
+//     }
+// }
 
 /*Overriden*/
 int* Listener::getSocketFd(void){
@@ -315,7 +315,7 @@ int Listener::handleEvent(uint32_t ev){
         std::cout << curC.getState() << " newly made client state\n";
         if (curC.setFd(&curFd) == -1) //pass the socket into Client
             return (-1);
-        _activeClients.push_back(std::move(curC));
+        _activeClients.push_back(std::move(curC));   //move into stable list
         //delete
         int status = fcntl(*_activeClients.back().getSocketFd(), F_GETFD);
         if (status == -1) {
@@ -346,17 +346,21 @@ std::vector<EventHandler*> Listener::resolveAccept(void) {
 }
 
 void Listener::resolveClose(){
-    if (_activeClients.size() == 0)
-        return ;
-    ssize_t i = 0;
+    if (_activeClients.empty())
+        return;
+    
+    // use iterator properly - no mixing with indices
     for (auto it = _activeClients.begin(); it != _activeClients.end(); ){
-        if (_activeClients.at(i).getState() == TOCLOSE){
-            _activeClients.at(i).setState(CLOSED);
-            closeFd(_activeClients.at(i).getSocketFd());
-            it = _activeClients.erase(it); }// erase returns the next valid iterator
-        else {
+        if (it->getState() == TOCLOSE || it->getState() == CLOSED){
+            // close the file descriptor if it's still valid
+            if (*(it->getSocketFd()) >= 0) {
+                close(*(it->getSocketFd()));
+                *(it->getSocketFd()) = -1;  // Mark as closed
+            }
+            it->setState(CLOSED);
+            it = _activeClients.erase(it);  // erase returns next valid iterator
+        } else {
             ++it;
-            i++;
         }
     }
 }

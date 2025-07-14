@@ -31,32 +31,48 @@ std::vector<EventHandler*> EventLoop::findValue(int *fd){
     return (_activeFds.at(fd));
 }
 
-//start the run with init
 int EventLoop::run(std::vector<EventHandler*> listFds){
     if (this->startRun() == -1)
         return (-1);
     this->addListeners(listFds);
-	std::cout << "should be listener (5): " << listFds.at(0)->getState() << std::endl;
+    std::cout << "should be listener (5): " << listFds.at(0)->getState() << std::endl;
 
     while(gSignal){
         std::cout << "Entered the loop\n";
+        
+        //cleanup first
+        resolvingClosing();
+        
         int events2Resolve = epoll_wait(_epollFd, _events, MAX_EVENTS, -1);
         std::cout << "How many events to resolve: " << events2Resolve << std::endl;
-        // if (events2Resolve <= 0){
-        //     continue ;
-        // }
+        
+        if (events2Resolve <= 0) {
+            if (events2Resolve == -1 && errno != EINTR) {
+                std::cerr << "epoll_wait error: " << strerror(errno) << std::endl;
+                break;
+            }
+            continue;
+        }
+
         for (int i = 0; i < events2Resolve; i++){
             EventHandler* curE = static_cast<EventHandler*>(_events[i].data.ptr);
-            std::cout << "After receiving events\n";
-            if (curE->handleEvent(_events[i].events) == -1){
-                //error occurred
-                if (curE->getState() == LISTENER)
-                    condemnClients(curE); 
-                else
-                    curE->setState(CLOSE);
+
+            if (!curE) {
+                std::cout << "NULL event handler encountered, skipping\n";
                 continue;
             }
-            std::cout << "After handling\n";
+            
+            std::cout << "Processing event - FD: " << *(curE->getSocketFd()) 
+                      << " State: " << curE->getState() << std::endl;
+
+            if (curE->handleEvent(_events[i].events) == -1){
+                if (curE->getState() == LISTENER)
+                    condemnClients(curE); 
+                else{
+                    curE->setState(CLOSE);
+                }
+                continue; //skip state processing for closed clients
+            }
 
             State curS = curE->getState();
             switch (curS){
@@ -64,27 +80,24 @@ int EventLoop::run(std::vector<EventHandler*> listFds){
                     resolvingAccept(curE);
                     break;
                 case TOWRITE:
-                    resolvingModify(curE, EPOLLOUT);  //handled event was receiving, now it needs to be sending
+                    resolvingModify(curE, EPOLLOUT);
                     break;
                 case TOREAD:
-                    resolvingModify(curE, EPOLLIN); //handled event was sending, now it needs to be receiving 
+                    resolvingModify(curE, EPOLLIN);
                     break;
                 case TOCGI:
                     addCGI(curE);
                     break;
                 case CGITOREAD:
                 case CGIREAD:
-                    handleCGI(curE); //when you send and receive
+                    handleCGI(curE);
+                    break;
+                case CLOSE:
                     break;
                 default:
                     break;
             }
-            std::cout << "After one loop\n";
-            curE = nullptr;
         }
-        //timeout?
-        resolvingClosing();
-        std::cout << "After closing\n";
     }
     return (0);   
 }
@@ -213,34 +226,35 @@ EventHandler* EventLoop::getListener(int *fd){
     return {};
 }
 
-//resolve closing and removing of the done/disconnected clients
 void EventLoop::resolvingClosing(){
     for (auto& [keyPtr, vect] : _activeFds){
         if (*keyPtr != -1){
-            //update vectors
-            // std::size_t i = 0;
             EventHandler* curL = getListener(keyPtr);
-            std::cout << *keyPtr << " current Listener through which we are iterating for closing\n";
-            vect = curL->resolveAccept();
-            std::cout << std::boolalpha;
-            std::cout << "check if empty: " << vect.empty() << std::endl;
-            std:: cout << std::noboolalpha;
+            
             if (vect.empty() == true)
-                continue ; //i think this was the issue!!
+                continue;
+                
+            // CRITICAL FIX: Actually mark clients as TOCLOSE
+            bool foundClientsToClose = false;
             for (size_t i = 0; i < vect.size(); i++){
                 if (vect.at(i)->getState() == CLOSE){
-                    std::cout << "Client" << vect.at(i)->getSocketFd() << "going to be closed\n";
-                    //cleanup Request, Response, buffer
-                    delEpoll(vect.at(i)->getSocketFd());
+                    // Remove from epoll BEFORE changing state
+                    if (vect.at(i)->getSocketFd() && *(vect.at(i)->getSocketFd()) >= 0) {
+                        delEpoll(vect.at(i)->getSocketFd());
+                    }
+                    // NOW change the state to TOCLOSE
                     vect.at(i)->setState(TOCLOSE);
+                    foundClientsToClose = true;
                 }
             }
-            curL->resolveClose();
-            vect = curL->resolveAccept();
-            std::cout << std::boolalpha;
-            std::cout << "Clients empty: " << vect.empty() << "\n";
-            std::cout << std::noboolalpha;
-            std::cout << "Client vector size: " << vect.size() << "\n";
+            
+            // Only call Listener::resolveClose if we actually found clients to close
+            if (foundClientsToClose) {
+                curL->resolveClose();
+                
+                // Update the vector after cleanup
+                vect = curL->resolveAccept();
+            }
         }
     }
 }
@@ -279,12 +293,18 @@ int EventLoop::modifyEpoll(int* fd, uint32_t event, EventHandler* object){
 
 //removing from the epoll
 int EventLoop::delEpoll(int* fd){
+    if (!fd || *fd < 0) {
+        return 0;
+    }
+    
     if (epoll_ctl(_epollFd, EPOLL_CTL_DEL, *fd, 0) == -1){
-        std::cerr << "Error: Could not delete the file descriptor from the epoll instance: ";
+        if (errno == ENOENT){   //FD not found in epoll (ENOENT), this is OK
+            return 0;
+        }
+        std::cerr << "ERROR: Could not delete FD " << *fd << " from epoll: ";
         std::cerr << strerror(errno) << "\n";
         return (-1);
     }
-    std::cout << *fd << "got deleted from monitoring!\n";
     return (0);
 }
 

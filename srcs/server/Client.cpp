@@ -32,13 +32,13 @@ Client::Client(std::unordered_map<std::string, ServerBlock*> cur): _allServerNam
 
 Client::~Client(){
     std::cout << "Client destructor called:" << _clFd << std::endl;
-    if (_clFd != -1){
-        close (_clFd);
+    if (_clFd >= 0){
+        // close (_clFd);   //CHANGED:don't close if sstill in epoll, eventloop will handle proper cleanup
         _clFd = -1;
     }
 }
 
-Client::Client(Client&& other) noexcept : _clFd(-1), _requesting(other._requesting), \
+Client::Client(Client&& other) noexcept : _clFd(-1), _requesting(std::move(other._requesting)), \
     _responding(std::move(other._responding)), _theCgi(std::move(other._theCgi)){
     _allServerNames = other._allServerNames;
     _firstKey = other._firstKey;
@@ -71,6 +71,8 @@ Client& Client::operator=(Client&& other) noexcept{
         other._result = nullptr;
         /*_curR = other._curR;*/
         this->setState(other.getState());
+        _requesting = std::move(other._requesting);
+        _responding = std::move(other._responding);
         _theCgi = std::move(other._theCgi);
     }
     return (*this);
@@ -194,6 +196,8 @@ bool Client::conditionMet(std::unordered_map<int*, std::vector<EventHandler*>>& 
 
 int Client::handleEvent(uint32_t ev){
     if (ev & EPOLLERR || ev & EPOLLHUP){
+        std::cout << "Client FD " << _clFd << " got EPOLLERR/EPOLLHUP - closing\n";
+        this->setState(CLOSE);
         return (-1);
     }
     if (ev & EPOLLIN){
@@ -209,6 +213,7 @@ int Client::handleEvent(uint32_t ev){
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
                 return (0); //No more data available right now
             }
+            this->setState(CLOSE);  //ADDED
             return (-1); // binary data or real errors close the connection
         }
         else if (recvResult == 0) {
@@ -234,7 +239,8 @@ int Client::handleEvent(uint32_t ev){
                 _buffer.clear();
                 return (0);
             }
-            _buffer.clear(); 
+            _buffer.clear();
+            this->setState(CLOSE);
             return (-1);    // Error occurred
         } else if (saveResult == 1) {
             // don't clear buffer - keep accumulating data
@@ -243,24 +249,25 @@ int Client::handleEvent(uint32_t ev){
             // Request complete (saveResult == 0)
             _buffer.clear(); // CRITICAL
             
-        // Check for CGI
-        if (_requesting.getURI().find(".py") != std::string::npos) {
-            this->setState(TOCGI);
-            return (0);
-        }
+            // Check for CGI
+            if (_requesting.getURI().find(".py") != std::string::npos) {
+                this->setState(TOCGI);
+                return (0);
+            }
         
-        // Prepare response
-        saveResponse();
-        this->setState(TOWRITE);
-        return (0);
+            // Prepare response
+            saveResponse();
+            this->setState(TOWRITE);
+            return (0);
         }
     }
     if (ev & EPOLLOUT){
         if (sending_stuff() == -1){
             _count++;
-            if (_count == 50){
+            if (_count >= 50){
                 _count = 0;
                 _responding.clear();
+                this->setState(CLOSE); //ADDED
                 return (-1);    //close after too many send failures
             }
             return (0); // Try again
@@ -268,10 +275,21 @@ int Client::handleEvent(uint32_t ev){
         
         if (_responding.isComplete() == true){
             // Reset for next request
-            _requesting.reset();
-            _responding.clear();
-            this->setState(TOREAD);
-            _count = 0;
+           if (!_requesting.getMethod().empty() && _requesting.isParsed()) {
+                std::cout << "Valid request (" << _requesting.getMethod() << "), resetting\n";
+                _requesting.reset();
+                _responding.clear();
+                this->setState(TOREAD);
+                _count = 0;
+            } else {
+                std::cout << "Invalid or empty request, closing connection\n";
+                this->setState(CLOSE);
+                return (-1);
+            }
+            // BELOW would be replace above if/else if we don't want to implement keep-alive
+            // std::cout << "Response sent, closing connection (no keep-alive)\n";
+            // this->setState(CLOSE);
+            // return (-1);  // Always close after response
         }
         return (0);
     }
@@ -310,21 +328,26 @@ int Client::sending_stuff(){
 }
 
 int Client::receiving_stuff(){
-    ssize_t len = 0;
+    if (_clFd < 0){
+        return -1;
+    }
+    // ssize_t len = 0;
     std::string temp_buff;
     temp_buff.resize(4096);
 
-    len = recv(_clFd, &temp_buff[0], temp_buff.size(), 0);
+    std::cout << "Attempting recv on FD: " << _clFd << std::endl;
+    ssize_t len = recv(_clFd, &temp_buff[0], temp_buff.size(), 0);
+    // len = recv(_clFd, &temp_buff[0], temp_buff.size(), 0);
     
     if (len == 0) { //Client closed connection
         return (-1);
     }
-    else if (len < 0) { //No more data available
+    else if (len < 0) { 
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
-            return (0);
+            return (0); //No more data available
         }
         std::cerr << "DEBUG: recv() error: " << strerror(errno) << std::endl;
-        return (-1);
+        return (-1); //real error
     }
     else {  //something was returned
         temp_buff.resize(len);
@@ -332,11 +355,10 @@ int Client::receiving_stuff(){
         if (temp_buff.size() <= _buffer.max_size() - _buffer.size()) {
             _buffer.append(temp_buff);
         } else {
-            return (-1);    //buffer would overflow
+            return (-1);    //buffer overflow
         }
         temp_buff.clear();
     }
-    
     return (len);
 }
 
