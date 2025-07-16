@@ -16,12 +16,14 @@ BUILD	=	fsan
 endif
 
 ifeq ($(BUILD), normal)
-CC		=	c++
+CC			=	c++
+LOG_LEVEL	=	3
 else
-CC		=	g++
+CC			=	g++
+LOG_LEVEL	=	4
 endif
 
-cflags.common	=	-Wall -Wextra -Werror -std=c++17
+cflags.common	=	-Wall -Wextra -Werror -std=c++17 -DLOG_LEVEL=$(LOG_LEVEL)
 cflags.debug	=	-g -D__DEBUG
 cflags.fsan		=	$(cflags.debug) -fsanitize=address,undefined
 cflags.normal	=	-O3
@@ -34,6 +36,7 @@ OBJDIR	=	obj
 INCDIR	=	includes
 
 HTTPDIR		=	http
+UTILSDIR	=	utils
 CONFIGDIR	=	config
 SERVERDIR	=	server
 
@@ -53,6 +56,7 @@ CONFIGFILES	=	ConfigErrors.cpp \
 
 FILES	=	main.cpp \
 			CommonFunctions.cpp \
+			$(UTILSDIR)/message.cpp \
 			$(addprefix $(HTTPDIR)/, $(HTTPFILES)) \
 			$(addprefix $(CONFIGDIR)/, $(CONFIGFILES)) \
 			$(addprefix $(SERVERDIR)/, $(SERVERFILES))
@@ -83,6 +87,7 @@ $(NAME): $(OBJDIR) $(OBJS)
 $(OBJDIR):
 	@printf "\e[1;38;5;42mWEBSERV >\e[m Creating objdir\n"
 	@mkdir -p $(OBJDIR)/$(HTTPDIR)
+	@mkdir -p $(OBJDIR)/$(UTILSDIR)
 	@mkdir -p $(OBJDIR)/$(CONFIGDIR)
 	@mkdir -p $(OBJDIR)/$(SERVERDIR)
 
