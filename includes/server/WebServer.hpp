@@ -40,8 +40,10 @@ class	WebServer{
 		std::vector<Listener>& getListeners(void);
 		// std::vector<VirtualHost> getVHosts(void) const;
 		// bool doesExist(std::string port, std::string host);
-		bool doesListenerExist(std::string port, std::string host);
+		bool doesListenerExist(std::string port);
 		int resolveListener(std::string port, std::string host, ServerBlock& serBlock);
+		Listener* findListenerByPort(std::string port);	//new
+		std::string createUniqueKey(const std::string& host, const std::string& port, const std::string& serverName);	//new
 };
 
 // void ftMemset(void *dest, std::size_t count);

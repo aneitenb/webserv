@@ -56,74 +56,89 @@ WebServer::~WebServer(){}
 //     return true;
 // }
 
-/*check if the [port : host] combination exists and add it if it doesn't*/
-bool WebServer::doesListenerExist(std::string port, std::string host){
-    // std::cout << "entered doesExistPort\n";
-    if (_portHost.count(port) > 0){
-        std::cout << "Found port: " << _portHost.count(port) << std::endl;
-        for (std::size_t i = 0; i < _portHost.at(port).size(); i++){
-            if (_portHost.at(port).at(i) == host)
-                return true;
+
+// CHANGED: Now checks only for port (not port+host combo)
+bool WebServer::doesListenerExist(std::string port){
+    // check if we already have a listener for this port
+    for (std::size_t i = 0; i < _theLList.size(); i++){
+        if (_theLList.at(i).getPort() == port) {
+            return true;
         }
     }
-    _portHost[port].push_back(host);
     return false;
 }
 
-int WebServer::resolveListener(std::string port, std::string host, ServerBlock& serBlock){
-    //check if port exists, if yes go to the next check
-    if (doesListenerExist(port, host) == true) //exists
-    {
-        std::cout << "Apparently, the port host combo exists\n";
-        for (std::size_t j = 0; j < _theLList.size(); j++){
-            if (_theLList.at(j).getHost() == host)
-                _theLList.at(j).addServBlock(serBlock, serBlock.getServerName()); //add down too
+Listener* WebServer::findListenerByPort(std::string port){
+    for (std::size_t i = 0; i < _theLList.size(); i++){
+        if (_theLList.at(i).getPort() == port) {
+            return &_theLList.at(i);
         }
     }
-    else{
-        std::cout << "PortHost doesn't exits, adding\n";
-        Listener curL(port, host);
-        curL.addServBlock(serBlock, serBlock.getServerName());
-        // curL.setFirst(serBlock.getServerName());
+    return nullptr;
+}
+
+std::string WebServer::createUniqueKey(const std::string& host, const std::string& port, const std::string& serverName) {
+    if (serverName.empty()) {
+        // if no server name, use host:port
+        return host + ":" + port;
+    } else {
+        // Use server_name@host:port
+        return serverName + "@" + host + ":" + port;
+    }
+}
+
+// CHANGED: Create one listener per port, add all server blocks to it
+int WebServer::resolveListener(std::string port, std::string host, ServerBlock& serBlock){
+    // Check if we already have a listener for this port
+    if (doesListenerExist(port)) {
+        std::cout << "Found existing listener for port " << port << ", adding server block\n";
+        
+        // Find the existing listener and add this server block to it
+        Listener* existingListener = findListenerByPort(port);
+        if (existingListener) {
+            std::string key = createUniqueKey(host, port, serBlock.getServerName());
+            
+            existingListener->addServBlock(serBlock, key);
+            std::cout << "Added server block with key: " << key << std::endl;
+        }
+    }
+    else {
+        // create new listener that binds to wildcard (0.0.0.0)
+        Listener curL(port, "0.0.0.0");
+        
+        std::string key = createUniqueKey(host, port, serBlock.getServerName());
+        curL.addServBlock(serBlock, key);
+        
         if (curL.setSocketFd() == -1){
             curL.freeAddress();
-            return (-1);}
+            return (-1);
+        }
+        
         _theLList.push_back(std::move(curL));
-        std::cout << *(_theLList.back().getSocketFd()) << "    this is the listeners true fd\n";
-        std::cout << *(curL.getSocketFd()) << "       this is the fd you want to close\n\n";
+        std::cout << "Created listener for port " << port << " with key: " << key << std::endl;
+        std::cout << "Listener FD: " << *(_theLList.back().getSocketFd()) << std::endl;
     }
     return (0);
 }
 
-//shorten?
+// CHANGED: Updated to work with new logic
 int WebServer::initialize(std::vector<ServerBlock>& serBlocks){
-    std::vector<std::string> curPorts; //can have more than one port in a server block
+    std::vector<std::string> curPorts;
     std::size_t maxPorts;
-    std::string curHost; //IP
-    // int countL = 0;
+    std::string curHost;
 
-    for (std::size_t countS = 0; countS < serBlocks.size(); countS++){ //counter for serverblocks
-        // std::cout << "serverNamesCheck " << serBlocks.at(countS).getServerName() << std::endl;
-        curPorts = serBlocks.at(countS).getListen(); //get all the ports from the server block
-        // std::cout << "checking the first port in a server block " << curPorts.at(0) << std::endl;
-        maxPorts = curPorts.size(); //get the number of ports in the server block
-        // std::cout << "how many ports in a server block " <<curPorts.size() << std::endl;
-        curHost = serBlocks.at(countS).getHost(); //get the current IP address
-        std::cout << "Cur host: " << curHost << std::endl;
+    for (std::size_t countS = 0; countS < serBlocks.size(); countS++){
+        curPorts = serBlocks.at(countS).getListen();
+        maxPorts = curPorts.size();
+        curHost = serBlocks.at(countS).getHost();
+        
         for (std::size_t countP = 0; countP < maxPorts; countP++){
             if (this->resolveListener(curPorts.at(countP), curHost, serBlocks.at(countS)) == -1)
                 return (-1);
-            // _theVHList[_theLList.at(countL).getSocketFd()].push_back(std::move(curVH));
-            // std::cout << "testing: " << curVH.getIP() << std::endl;
         }
     }
     return (0);
 }
-//go through the info from the server blocks add socket_fd
-//save stuff in virtualhost or do we even need this, maybe we just add it to the server block?
-//check for multiple hosts and save listeners
-//make listeners nonbloccking etc
-//figure out error handling
 
 
 void WebServer::freeStuff(void){

@@ -137,20 +137,77 @@ std::unordered_map<std::string, ServerBlock*> Client::getServerBlocks() const{
     return (_allServerNames);
 }
 
-ServerBlock* Client::getSBforResponse(std::string name){
-    // remove port from host header if present ("specific.com:8080" -> "specific.com")
-    auto colonPos = name.find(':');
-    std::string nameNoPort = (colonPos != std::string::npos) ? name.substr(0, colonPos) : name;
+std::string Client::getLocalConnectionIP() {
+    struct sockaddr_in localAddr;   //structure that holds IPv4 address information
+    socklen_t addrLen = sizeof(localAddr);
+    
+    // getsockname() is a system call that gets the socket's local address
+    // _clFd is the client socket file descriptor
+    // (struct sockaddr*)&localAddr is where to store the answer (with casting for compatibility)
+    // returns -1 if something goes wrong
+    if (getsockname(_clFd, (struct sockaddr*)&localAddr, &addrLen) == -1) {
+        std::cerr << "ERROR: getsockname failed: " << strerror(errno) << std::endl;
+        return "127.0.0.1"; // fallback
+    }
+    // inet_ntoa() converts binary IP to human-readable string 
+    return std::string(inet_ntoa(localAddr.sin_addr));
+}
 
-    // try exact match with the server_name
-    if (_allServerNames.count(nameNoPort) > 0) {
-        return _allServerNames.at(nameNoPort);
+std::string Client::getLocalConnectionPort() {
+    struct sockaddr_in localAddr;
+    socklen_t addrLen = sizeof(localAddr);
+    
+    if (getsockname(_clFd, (struct sockaddr*)&localAddr, &addrLen) == -1) {
+        std::cerr << "ERROR: getsockname failed: " << strerror(errno) << std::endl;
+        return "8080"; // fallback
     }
     
-    // If no exact match, try to find by server_name field in ServerBlock
+    return std::to_string(ntohs(localAddr.sin_port));
+}
+
+ServerBlock* Client::getSBforResponse(std::string hostHeader){
+    // remove port from host header (example.com:8080 -> example.com)
+    auto colonPos = hostHeader.find(':');
+    std::string serverNameFromHeader = (colonPos != std::string::npos) ? hostHeader.substr(0, colonPos) : hostHeader;
+
+    // get the IP and port the client actually connected to
+    std::string connectionIP = getLocalConnectionIP();
+    std::string connectionPort = getLocalConnectionPort();
+
+    // try exact match with server_name@connection_ip:connection_port
+    std::string exactKey = serverNameFromHeader + "@" + connectionIP + ":" + connectionPort;
+    if (_allServerNames.count(exactKey) > 0) {
+        return _allServerNames.at(exactKey);
+    }
+    
+    // try match with server_name@wildcard:connection_port
+    std::string wildcardKey = serverNameFromHeader + "@0.0.0.0:" + connectionPort;
+    if (_allServerNames.count(wildcardKey) > 0) {
+        return _allServerNames.at(wildcardKey);
+    }
+    
+    // try connection_ip:connection_port (for empty server names)
+    std::string ipPortKey = connectionIP + ":" + connectionPort;
+    if (_allServerNames.count(ipPortKey) > 0) {
+        return _allServerNames.at(ipPortKey);
+    }
+    
+    // try wildcard IP with port (for empty server names)
+    std::string wildcardIpPortKey = "0.0.0.0:" + connectionPort;
+    if (_allServerNames.count(wildcardIpPortKey) > 0) {
+        return _allServerNames.at(wildcardIpPortKey);
+    }
+    
+    // try to match based on the server_name part only (fallback)
     for (const auto& pair : _allServerNames) {
-        if (pair.second->getServerName() == nameNoPort) {
-            return pair.second;
+        std::string key = pair.first;
+        size_t atPos = key.find('@');
+        
+        if (atPos != std::string::npos) {
+            std::string keyServerName = key.substr(0, atPos);
+            if (keyServerName == serverNameFromHeader) {
+                return pair.second;
+            }
         }
     }
     
@@ -286,7 +343,7 @@ int Client::handleEvent(uint32_t ev){
                 this->setState(CLOSE);
                 return (-1);
             }
-            // BELOW would be replace above if/else if we don't want to implement keep-alive
+            // BELOW would replace above if/else if we don't want to implement keep-alive
             // std::cout << "Response sent, closing connection (no keep-alive)\n";
             // this->setState(CLOSE);
             // return (-1);  // Always close after response
