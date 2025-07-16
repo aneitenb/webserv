@@ -7,6 +7,7 @@
 //
 // <<main.cpp>> -- <<Aida, Ilmari, Milica>>
 
+#include "utils/message.hpp"
 #include "config/ConfigFile.hpp"
 #include "config/ConfigErrors.hpp"
 #include "server/WebServer.hpp"
@@ -25,19 +26,18 @@ void displayServerInfo(const ConfigurationFile& config);
 so that client C code can link to (use) the function using a C compatible header file 
 that contains just the declaration of the function*/
 
-extern "C" void signalHandler(int signum){
+extern "C" void signalHandler(int signum) {
 	gSignal = 0;
-	std::cout << signum << std::endl; //delete
-	return;
+	Debug("\nSignal received: " << signum);
+	return ;
 }
 
 
-int program(char** av){
-	// Parse configuration file
+int program(char** av) {
 	ConfigurationFile config;
 	try {
 		config.initialize((std::string)av[1]);
-		std::cout << "Configuration file parsed successfully!" << std::endl;
+		info("Configuration file parsed successfully");
 		displayServerInfo(config);
 
 		WebServer instance;
@@ -45,9 +45,10 @@ int program(char** av){
 		std::vector<EventHandler*> listPtrs;
 
 		//use ServerBlocks to init webserver instance
-		if (instance.initialize(config.getAllServerBlocks()) == -1){
+		if (instance.initialize(config.getAllServerBlocks()) == -1) {
 			instance.freeStuff();
-			return 1;} //free addresses?
+			return 1; //free addresses?
+		}
 
 		//Listener -> EventHandler* so I can pass it to EventLoop
 		std::vector<Listener>& listeners = instance.getListeners();
@@ -61,131 +62,103 @@ int program(char** av){
 			listPtrs.push_back(&obj);
 		epolling.run(listPtrs);
 		instance.freeStuff();
-	}
-	catch (const ConfigError& e) {
-		std::cerr << e.getErrorType() << ": " << e.what() << std::endl;
+	} catch (const ConfigError& e) {
+		Error("Fatal: " << e.getErrorType() << ": " << e.what());
 		return 1;
-	}
-	catch (const std::exception& e) {
-		std::cerr << "Unexpected error: " << e.what() << std::endl;
+	} catch (const std::exception& e) {
+		Error("Fatal: Unexpected error: " << e.what());
 		return 1;
 	}
 	return 0;	
 }
 
 
-int main(int ac, char **av)
-{
+int main(int ac, char **av) {
+	signal(SIGPIPE, SIG_IGN);
 	std::signal(SIGINT, signalHandler);
-	// std::signal(SIGPIPE, signalHandler);
 	std::signal(SIGCHLD, signalHandler);
-	signal(SIGPIPE, SIG_IGN);  // Ignore SIGPIPE globally so if pipe fails program doesn't crash
 
-	if (ac != 2 || av[1] == nullptr || av[1][0] == '\0')
-	{
-		std::cerr << "Error: expecting only configuration file as argument" << std::endl;
+	if (ac != 2 || av[1] == nullptr || av[1][0] == '\0') {
+		error("Fatal: Expected only configuration file as argument");
 		return 1;
 	}
 	
 	try {
 		if (opendir(av[1]) != NULL) {
-			throw std::invalid_argument("argument is a directory");
+			throw std::invalid_argument("Argument is a directory");
 		}
-		if (std::filesystem::exists((std::string)av[1]) && std::filesystem::file_size((std::string)av[1]) == 0) 
-		{
-			std::cerr << "Error: config file is empty" << std::endl;
+		if (std::filesystem::exists((std::string)av[1]) && std::filesystem::file_size((std::string)av[1]) == 0) {
+			error("Fatal: Configuration file is empty");
 			return 1;
 		}
-	} 
-	catch (std::exception& e)
-	{
-		std::cerr << "Error: " << e.what() << std::endl;
+	} catch (std::exception& e) {
+		Error("Fatal: " << e.what());
 		return 1; 
 	}
 	
-	program(av);
-	
-	return 0;
+	return program(av);
 }
 
-void displayServerInfo(const ConfigurationFile& config)
-{
-	size_t serverCount = config.getServerCount();
-	std::cout << "\n-------------------------------------" << std::endl;
-	std::cout << "Found " << serverCount << " server(s)" << std::endl;
+void displayServerInfo(const ConfigurationFile& config) {
+	std::stringstream	tmp;
+	size_t				serverCount = config.getServerCount();
+
+	Info("\nFound " << serverCount << " server" << ((serverCount > 1) ? 's' : '\0'));
 	
 	for (size_t i = 0; i < serverCount; i++) {
 		const ServerBlock& server = config.getServerBlock(i);
 		
-		std::cout << "\n----- Server " << i + 1 << " -----" << std::endl;
-		std::cout << "Host: " << server.getHost() << std::endl;
-		std::cout << "Ports: ";
+		Info("\nServer " << i + 1 << ':');
+		Info("  Name:            " << server.getServerName());
+		tmp = std::stringstream("") << "  Address:         " << server.getHost() << ':';
 		const std::vector<std::string>& ports = server.getListen();
 		for (size_t i = 0; i < ports.size(); ++i) {
-   		 std::cout << ports[i];
+			tmp << ports[i];
 			if (i < ports.size() - 1) {
-	 		   std::cout << ", ";
+				tmp << ':';
 			}
 		}
-		std::cout << std::endl;
-		std::cout << "Server Name: " << server.getServerName() << std::endl;
-		std::cout << "Root: " << server.getRoot() << std::endl;
-		std::cout << "Max Body Size: " << server.getClientMaxBodySize() << " bytes" << std::endl;
-		std::cout << "Index: " << server.getIndex() << std::endl;
-		if (server.hasAllowedMethods()) {
-			std::cout << "Allowed Methods: " << server.allowedMethodsToString() << std::endl;
-		}
+		info(tmp);
+		Info("  Root:            " << server.getRoot());
+		Info("  Index:           " << server.getIndex());
+		Info("  Max Body Size:   " << server.getClientMaxBodySize() << 'B');
+		if (server.hasAllowedMethods())
+			Info("  Allowed Methods: " << server.allowedMethodsToString());
 
-		std::cout << std::endl;
 		// Display error pages
 		std::vector<std::pair<int, std::string>> errorPages = server.getErrorPages();
 		if (!errorPages.empty()) {
-			std::cout << "Error Pages:" << std::endl;
-			for (const auto& page : errorPages) {
-				std::cout << "  " << page.first << ": " << page.second << std::endl;
-			}
+			info("\n  Special Error Pages:");
+			for (const auto& page : errorPages)
+				Info("    "<< page.first << ": " << page.second);
 		}
+
 		//Default error pages
 		std::vector<std::pair<int, std::string>> defaultErrorPages = server.getDefaultErrorPages();
-		std::cout << "Default Error Pages:" << std::endl;
-			for (const auto& page : defaultErrorPages) {
-				std::cout << "  " << page.first << ": " << page.second << std::endl;
-			}
-		std::cout << std::endl;
+		debug("\n  Default Error Pages:");
+		for (const auto& page : defaultErrorPages)
+			Debug("    "<< page.first << ": " << page.second);
 		
 		// Display location blocks
 		std::map<std::string, LocationBlock> locations = server.getLocationBlocks();
 		if (!locations.empty()) {
-			std::cout << "Location Blocks:" << std::endl;
+			Info("\n  Location Blocks:");
 			for (const auto& loc : locations) {
-				std::cout << "  Location: " << loc.first << std::endl;
-				
-				if (loc.second.hasRedirect()) {
-					std::cout << "    Redirect: " << loc.second.getRedirect().first 
-							  << " -> " << loc.second.getRedirect().second << std::endl;
-				}
-				
-				std::cout << "    Autoindex: " << (loc.second.getAutoindex() ? "on" : "off") << std::endl;
-				
-				if (loc.second.hasCgiPass()) {
-					std::cout << "    CGI Pass: " << loc.second.getCgiPass() << std::endl;
-				}
-
-				if (loc.second.hasUploadStore()) {
-					std::cout << "    Upload Store: " << loc.second.getUploadStore() << std::endl;
-				}
-				
-				if (loc.second.hasAlias()) {
-					std::cout << "    Alias: " << loc.second.getAlias() << std::endl;
-				}
-
-				if (loc.second.hasIndex()) {
-					std::cout << "    Index: " << loc.second.getIndex() << std::endl;
-				}
-				
-				std::cout << "    Allowed Methods: " << loc.second.allowedMethodsToString() << std::endl;
+				Info("    Location: " << loc.first);
+				if (loc.second.hasRedirect())
+					Info("      Redirect: " << loc.second.getRedirect().first << " -> " << loc.second.getRedirect().second);
+				Info("      Autoindex: " << ((loc.second.getAutoindex()) ? "on" : "off"));
+				if (loc.second.hasCgiPass())
+					Info("      CGI Pass: " << loc.second.getCgiPass());
+				if (loc.second.hasUploadStore())
+					Info("      Upload Store: " << loc.second.getUploadStore());
+				if (loc.second.hasAlias())
+					Info("      Alias: " << loc.second.getAlias());
+				if (loc.second.hasIndex())
+					Info("      Index: " << loc.second.getIndex());
+				Info("      Allowed Methods: " << loc.second.allowedMethodsToString());
 			}
 		}
 	}
-	std::cout << "-------------------------------------\n" << std::endl;
+	info("");
 }

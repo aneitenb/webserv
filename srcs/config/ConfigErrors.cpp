@@ -19,7 +19,7 @@ const char* ConfigError::what() const throw() {
 }
 
 std::string ConfigError::getErrorType() const {
-	return "Configuration Error";
+	return "Configuration error";
 }
 
 // ===== ErrorOpeningConfFile =====
@@ -27,7 +27,7 @@ ErrorOpeningConfFile::ErrorOpeningConfFile(const std::string& message)
 	: ConfigError(message) {}
 
 std::string ErrorOpeningConfFile::getErrorType() const {
-	return "File Error";
+	return "File error";
 }
 
 // ===== ErrorInvalidConfig =====
@@ -35,7 +35,7 @@ ErrorInvalidConfig::ErrorInvalidConfig(const std::string& message)
 	: ConfigError(message) {}
 
 std::string ErrorInvalidConfig::getErrorType() const {
-	return "Config Format Error";
+	return "Config format error";
 }
 
 // ===== ErrorInvalidPort =====
@@ -43,7 +43,7 @@ ErrorInvalidPort::ErrorInvalidPort(const std::string& message)
 	: ConfigError(message) {}
 
 std::string ErrorInvalidPort::getErrorType() const {
-	return "Port Error";
+	return "Port error";
 }
 
 // ===== ErrorInvalidIP =====
@@ -51,7 +51,7 @@ ErrorInvalidIP::ErrorInvalidIP(const std::string& message)
 	: ConfigError(message) {}
 
 std::string ErrorInvalidIP::getErrorType() const {
-	return "IP Address Error";
+	return "IP address error";
 }
 
 // ===== ErrorNoMatchingServer =====
@@ -59,5 +59,5 @@ ErrorNoMatchingServer::ErrorNoMatchingServer(const std::string& message)
     : ConfigError(message) {}
 
 std::string ErrorNoMatchingServer::getErrorType() const {
-    return "Server Matching Error";
+    return "Server matching error";
 }
