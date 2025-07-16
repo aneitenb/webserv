@@ -89,6 +89,8 @@ class Client : public EventHandler {
         bool conditionMet(std::unordered_map<int*, std::vector<EventHandler*>>& _activeFds, int& epollFd) override;
         bool ready2Switch() override;
         struct epoll_event& getCgiEvent(int flag) override;
+        std::string getLocalConnectionIP(); //new
+        std::string getLocalConnectionPort();  //new
         
         //timeout??
 };
