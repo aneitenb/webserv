@@ -15,7 +15,7 @@
 #define MAX_SERVER_NAME_LENGTH 50
 #define MAX_PATH_LENGTH 50
 #define MAX_ROOT_PATH_LENGTH 255
-#define MAX_BODY_SIZE 20971520	//20MB
+#define MAX_BODY_SIZE 104857601	//100MB
 
 class ServerBlock {
 private:

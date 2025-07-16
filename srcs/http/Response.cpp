@@ -141,47 +141,62 @@ void Response::handleResponse() {
 		_locationBlock = &_serverBlock->getLocationBlockRef(matchedLocation);
 
 	setHeader("Date", getCurrentDate());
-	// if (!_request->isValid()){
-	// 	_statusCode = _request->getErrorCode();
-	// 	setBody(getErrorPage(_request->getErrorCode()));
-	// 	setHeader("Content-Type", "text/html");
-	// 	return;
-	// }
-	if (!_request->isValid()){	//delete when merged with updated request
-		_statusCode = 400;
-		setBody(getErrorPage(400));
+	if (!_request->isValid()){
+		_statusCode = _request->getErrorCode();
+		setBody(getErrorPage(_request->getErrorCode()));
 		setHeader("Content-Type", "text/html");
 		return;
 	}
 
-	bool delayedRedirect = false;
+	// bool delayedRedirect = false;
 	std::pair<int, std::string> redirect;
 	
+	// if (_locationBlock && _locationBlock->hasRedirect()) {
+	// 	redirect = _locationBlock->getRedirect();
+		
+	// 	if (_request->getMethod() == "POST") {
+	// 		delayedRedirect = true;
+	// 	} else {
+	// 		// for non-POST requests, handle redirect immediately
+	// 		_statusCode = redirect.first;
+	// 		setHeader("Location", redirect.second);
+	// 		setBody("");
+	// 		setHeader("Content-Type", "text/html");
+	// 		return;
+	// 	}
+	// }
+
 	if (_locationBlock && _locationBlock->hasRedirect()) {
 		redirect = _locationBlock->getRedirect();
-
-		if (_request->getMethod() == "POST") {
-			delayedRedirect = true;
-		} else {
-			// for non-POST requests, handle redirect immediately
-			_statusCode = redirect.first;
-			setHeader("Location", redirect.second);
-			setBody("");
-			setHeader("Content-Type", "text/html");
-			return;
-		}
+		_statusCode = redirect.first;
+		setHeader("Location", redirect.second);
+		setBody("");
+		setHeader("Content-Type", "text/html");
+		return;
 	}
 	
+	//check for unsupported methods first
 	const std::string& method = _request->getMethod();
+	if (method != "GET" && method != "POST" && method != "DELETE") {
+		_statusCode = 501;
+		setBody(getErrorPage(501));
+		setHeader("Content-Type", "text/html");
+		return;
+	}
+	// Check if method is allowed for this location SECOND
+	if (!isMethodAllowed()) {
+		setMethodNotAllowedResponse();
+		return;
+	}
 	if (method == "GET") {
 		handleGet();
 	} else if (method == "POST") {
 		handlePost();
-		if (delayedRedirect && (_statusCode == 200 || _statusCode == 201)) {
-			_statusCode = redirect.first;
-			setHeader("Location", redirect.second);
-			setBody("");
-		}
+		// if (delayedRedirect && (_statusCode == 200 || _statusCode == 201)) {
+		// 	_statusCode = redirect.first;
+		// 	setHeader("Location", redirect.second);
+		// 	setBody("");
+		// }
 	} else if (method == "DELETE") {
 		handleDelete();
 	} else {
@@ -539,6 +554,19 @@ void Response::handlePost() {
 		setHeader("Content-Type", "text/html");
 		return;
 	}
+
+	std::string uri = _request->getURI();
+	
+	bool isMultipart = isMultipartRequest();
+	
+	// only reject directory paths for non-multipart requests 
+	// (files can't be posted to a directory without an explicit name)
+	if (!isMultipart && (uri.empty() || uri.back() == '/')) {
+		_statusCode = 400;
+		setBody(getErrorPage(400));
+		setHeader("Content-Type", "text/html");
+		return;
+	}
 	std::string path = resolveUploadPath();
 	
 	if (!checkDir(path)) {
@@ -744,7 +772,7 @@ void Response::handleMultipartPost(const std::string& uploadDir) {
 	
 	std::string bodyPreview = _request->getBody().substr(0, std::min((size_t)500, _request->getBody().size()));
 
-    std::vector<MultipartFile> files = parseMultipartData(boundary);
+	std::vector<MultipartFile> files = parseMultipartData(boundary);
 
 	if (files.empty()) {
 		_statusCode = 400;
@@ -923,10 +951,34 @@ bool Response::isMethodAllowed() const {
 
 std::string Response::getErrorPage(int statusCode) const {
 	std::string errorPage = _serverBlock->getErrorPage(statusCode);
-	if (!errorPage.empty() && fileExists(errorPage) && hasReadPermission(errorPage))
-		return errorPage;
 	
-	//make default error page if it doesn't exist or have permissions
+	// Try original path first
+	if (!errorPage.empty() && fileExists(errorPage) && hasReadPermission(errorPage)) {
+		// Read the file content
+		std::ifstream file(errorPage.c_str());
+		if (file.is_open()) {
+			std::stringstream buffer;
+			buffer << file.rdbuf();
+			file.close();
+			return buffer.str();
+		}
+	}
+	
+	// if og path fails and it's absolute, try relative path
+	if (!errorPage.empty() && errorPage[0] == '/') {
+		std::string relativePath = errorPage.substr(1); // Remove leading /
+		if (fileExists(relativePath) && hasReadPermission(relativePath)) {
+			std::ifstream file(relativePath.c_str());
+			if (file.is_open()) {
+				std::stringstream buffer;
+				buffer << file.rdbuf();
+				file.close();
+				return buffer.str();
+			}
+		}
+	}
+	
+	// default HTML if both paths fail
 	std::stringstream ss;
 	ss << "<!DOCTYPE html>\n<html>\n<head>\n<title>Error " << statusCode << "</title>\n</head>\n<body>\n";
 	ss << "<h1>Error " << statusCode << "</h1>\n";

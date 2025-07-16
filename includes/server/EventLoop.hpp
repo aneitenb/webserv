@@ -64,7 +64,6 @@ public:
     void condemnClients(EventHandler* cur);
     void handleCGI(EventHandler* cur);
 
-
     //getters, setters
     std::vector<EventHandler*> findValue(int *fd);
     EventHandler* getListener(int *fd);

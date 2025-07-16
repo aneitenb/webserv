@@ -21,6 +21,7 @@
 #include "EventHandler.hpp"
 #include "EventLoop.hpp"
 #include "Client.hpp"
+#include <list>
 
 class Listener : public EventHandler {
     private:
@@ -28,7 +29,7 @@ class Listener : public EventHandler {
         // std::vector<VirtualHost> _knownVHs;
         std::string _port;
         std::string _host;
-        std::vector<Client> _activeClients;
+        std::list<Client> _activeClients;   //changed to list for stable memory addresses
         std::unordered_map<std::string, ServerBlock*> _allServerNames;
         std::string _firstKey;
         struct addrinfo*    _result; //needs to be freed freeaddrinfo() but be careful because when copying, pointing to the same address
@@ -73,7 +74,7 @@ class Listener : public EventHandler {
         struct epoll_event& getCgiEvent(int flag) override;
 
         // void addClient(Client& cur);
-        const std::vector<Client>& getClients(void) const;
+        const std::list<Client>& getClients(void) const;    //changed return type to be list instead of vector
         void delClient(Client* cur);
 
         //from VH
