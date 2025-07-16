@@ -74,6 +74,8 @@ int program(char** av) {
 
 
 int main(int ac, char **av) {
+	DIR	*dir;
+
 	signal(SIGPIPE, SIG_IGN);
 	std::signal(SIGINT, signalHandler);
 	std::signal(SIGCHLD, signalHandler);
@@ -84,7 +86,9 @@ int main(int ac, char **av) {
 	}
 	
 	try {
-		if (opendir(av[1]) != NULL) {
+		dir = opendir(av[1]);
+		if (dir != NULL) {
+			closedir(dir);
 			throw std::invalid_argument("Argument is a directory");
 		}
 		if (std::filesystem::exists((std::string)av[1]) && std::filesystem::file_size((std::string)av[1]) == 0) {
