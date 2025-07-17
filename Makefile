@@ -79,7 +79,7 @@ $(REQUEST_TEST): $(SRCDIR)/$(HTTPDIR)/Request.cpp $(SRCDIR)/$(CONFIGDIR)/ServerB
 	@printf "\e[1;38;5;42mWEBSERV >\e[m Compiling Request test\n" $@
 	@$(CC) $(CFLAGS) -I$(INCDIR) $^ -o $@
 
-$(NAME): $(OBJDIR) $(OBJS)
+$(NAME): $(OBJDIR) .WAIT $(OBJS)
 	@printf "\e[1;38;5;42mWEBSERV >\e[m Compiling %s\n" $@
 	@$(CC) $(CFLAGS) -I$(INCDIR) $(OBJS) -o $@
 	@printf "\e[1;38;5;42mWEBSERV >\e[m \e[1mDone!\e[m\n"
@@ -105,7 +105,7 @@ fclean: clean tclean
 	@rm -rf $(OBJDIR)
 	@rm -f $(NAME)
 
-re: fclean all
+re: fclean .WAIT all
 
 retest: tclean tests
 
