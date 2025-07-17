@@ -8,6 +8,10 @@
 // <<Response.cpp>> -- <<Aida, Ilmari, Milica>>
 
 #include "http/Response.hpp"
+#include "utils/message.hpp"
+
+#undef Info
+#define Info(msg)	(info(std::stringstream("") << msg, COLOR_RESPONSE))
 
 static const std::map<int, std::string> statusMessages = {
 	{200, "OK"},
@@ -127,6 +131,22 @@ std::string Response::getMimeType(const std::string& path) const {
 
 void  Response::prepareResponse() {
 	handleResponse();
+	auto msg = statusMessages.find(_statusCode);
+	info("\nResponse prepared:", COLOR_RESPONSE);
+	info("\tVersion:        HTTP/1.1", COLOR_RESPONSE);
+	Info("\tStatus code:    " << _statusCode);
+	Info("\tStatus message: " << ((msg != statusMessages.end()) ? msg->second : "Unknown"));
+#ifdef __DEBUG_RES_SHOW_HEADERS
+	info("\n\tHeaders: ", COLOR_RESPONSE);
+	for (const auto &field : _headers)
+		Info("\t\t" << field.first << ": " << field.second);
+#endif /* __DEBUG_RES_SHOW_HEADERS */
+#ifdef __DEBUG_RES_SHOW_BODY
+	if (_body.size() != 0) {
+		info("\n\tBody: ", COLOR_RESPONSE);
+		printBody(_headers["Content-Type"], _body, COLOR_RESPONSE);
+	}
+#endif /* __DEBUG_RES_SHOW_BODY */
 	_fullResponse = getStatusLine() + getHeadersString() + _body;
 	_bytesSent = 0;
 }

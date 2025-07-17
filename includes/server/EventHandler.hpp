@@ -80,7 +80,6 @@ class EventHandler{
             _event.events = EPOLLIN;
             _event.data.fd  = *(getSocketFd());
             _event.data.ptr = static_cast<void*>(this);
-            std::cout << "EventHandler with fd " << *(getSocketFd()) << " got their event initialised\n";
         };
         struct epoll_event* getEvent(){
             return (&_event);

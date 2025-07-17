@@ -7,11 +7,11 @@
 //
 // <<Request.cpp>> -- <<Aida, Ilmari, Milica>>
 
-#ifdef __DEBUG
-#include <iostream>
-#endif /* __DEBUG */
-
 #include "http/Request.hpp"
+#include "utils/message.hpp"
+
+#undef Info
+#define Info(msg)	(info(std::stringstream("") << msg, COLOR_REQUEST))
 
 #define _ERR_BAD_REQUEST		400
 #define _ERR_ENTITY_TOO_LARGE	413
@@ -19,8 +19,7 @@
 #define _find(c, x)	(std::find(c.cbegin(), c.cend(), x))
 #define _trimLWS(s)	(s.erase(0, s.find_first_not_of(LWS)), s.erase(s.find_last_not_of(LWS) + 1))
 
-[[maybe_unused]] static inline std::string	_printRawRequest(const std::string &reqData);
-static inline bool							_getChunkSize(std::stringstream &bodySection, std::string &remainder, size_t &chunkSize);
+static inline bool	_getChunkSize(std::stringstream &bodySection, std::string &remainder, size_t &chunkSize);
 
 Request::Request(void): _contentLength(0), _maxBodySize(MAX_BODY_SIZE), _chunkSize(0), _parsingStage(REQUESTLINE), _trailers(false), _chunked(false), _parsed(false), _valid(false) {}
 
@@ -72,17 +71,13 @@ Request::~Request(void) {}
 void	Request::append(const std::string &reqData) {
 	size_t	end;
 
-#ifdef __DEBUG
-	std::cerr << SGR_REQUEST << "append: current remainder: {\n" << _printRawRequest(this->_remainder) << "\n}" << SGR_RESET << "\n";
-	std::cerr << SGR_REQUEST << "append: new request data: {\n" << _printRawRequest(reqData) << "\n}" << SGR_RESET << "\n";
-#endif /* __DEBUG */
 	this->_remainder += reqData;
 	switch (this->_parsingStage) {
 		case REQUESTLINE:
 			this->_parsed = false;
 			end = this->_remainder.find(CRLF);
 			if (end == std::string::npos)
-				break ;
+				return ;
 			end += 2;
 			try {
 				this->_valid = true;
@@ -95,7 +90,7 @@ void	Request::append(const std::string &reqData) {
 		case HEADERS:
 			end = this->_remainder.find(CRLF CRLF);
 			if (end == std::string::npos)
-				break ;
+				return ;
 			end += 4;
 			try {
 				this->_parseHeaders(std::stringstream(this->_remainder.substr(0, end)));
@@ -106,9 +101,28 @@ void	Request::append(const std::string &reqData) {
 			[[fallthrough]];
 		case BODY:
 			if (!this->_processBody(this->_remainder))
-				break ;
+				return ;
 			this->_parsingStage = REQUESTLINE;
 			this->_parsed = true;
+	}
+	if (!this->_valid)
+		Info("\nInvalid request received: Error " << this->_errorCode);
+	else {
+		info("\nNew request received:", COLOR_REQUEST);
+		Info("\tMethod:  " << this->_method);
+		Info("\tURI:     " << this->_uri);
+		Info("\tVersion: " << this->_version);
+#ifdef __DEBUG_REQ_SHOW_HEADERS
+		info("\n\tHeaders:", COLOR_REQUEST);
+		for (const auto &field : this->_headers)
+			Info("\t\t" << field.first << ": " << field.second);
+#endif /* __DEBUG_REQ_SHOW_HEADERS */
+#ifdef __DEBUG_REQ_SHOW_BODY
+		if (this->_body.size() != 0) {
+			info("\n\tBody:", COLOR_REQUEST);
+			printBody(this->_contentType, this->_body, COLOR_REQUEST);
+		}
+#endif /* __DEBUG_REQ_SHOW_BODY */
 	}
 }
 
@@ -122,9 +136,6 @@ void	Request::reset(void) {
 void	Request::_parseRequestLine(std::string line) {
 	static std::regex	validReqLine("([A-Z]+) +[^\\x00-\\x1F\"#<>{}|\\\\^[\\]`\\x7F]+ +HTTP\\/1\\.1\\r\\n");
 
-#ifdef __DEBUG
-	std::cerr << SGR_REQUEST << "_parseRequestLine: Request-Line: " << line.substr(0, line.length() - 2) << SGR_RESET << "\n";
-#endif /* __DEBUG */
 	if (!std::regex_match(line, validReqLine))
 		throw Request::InvalidRequestLineException();
 	std::stringstream(line) >> this->_method >> this->_uri >> this->_version;
@@ -143,9 +154,6 @@ void	Request::_parseHeaders(std::stringstream rawHeaders) {
 	valid = true;
 	while (std::getline(rawHeaders, line)) {
 		if (!line.empty() && line != CR) {
-#ifdef __DEBUG
-			std::cerr << SGR_REQUEST << "_parseHeaders: current header line: " << line << SGR_RESET << "\n";
-#endif /* __DEBUG */
 			if (line[line.length() - 1] == *CR)
 				line.erase(line.length() - 1);
 			sep = line.find(":");
@@ -199,9 +207,6 @@ bool	Request::_processBody(const std::string &rawBody) {
 	if (this->_chunked)
 		rv = this->_processChunkedBody(std::stringstream(rawBody));
 	else {
-#ifdef __DEBUG
-		std::cerr << SGR_REQUEST << "_processBody: current body segment: '" << rawBody << "'" << SGR_RESET << "\n";
-#endif /* __DEBUG */
 		this->_body += rawBody;
 		if (this->_body.size() > this->_maxBodySize) {
 			this->_valid = false;
@@ -231,9 +236,6 @@ bool	Request::_processChunkedBody(std::stringstream bodySection) {
 		case CHUNKSIZE:
 			if (!_getChunkSize(bodySection, this->_remainder, this->_chunkSize))
 				return false;
-#ifdef __DEBUG
-			std::cerr << SGR_REQUEST << "_processChunkedBody: next chunk size: " << this->_chunkSize << SGR_RESET << "\n";
-#endif /* __DEBUG */
 			this->_remainder.clear();
 			parsingStage = CHUNK;
 			[[fallthrough]];
@@ -246,9 +248,6 @@ bool	Request::_processChunkedBody(std::stringstream bodySection) {
 					this->_remainder = chunkData.c_str();
 					return false ;
 				}
-#ifdef __DEBUG
-				std::cerr << SGR_REQUEST << "_processChunkedBody: next chunk data: '" << chunkData << "'" << SGR_RESET << "\n";
-#endif /* __DEBUG */
 				this->_contentLength += this->_chunkSize;
 				this->_body += chunkData;
 				parsingStage = CHUNKSIZE;
@@ -259,9 +258,6 @@ bool	Request::_processChunkedBody(std::stringstream bodySection) {
 				}
 				if (!_getChunkSize(bodySection, this->_remainder, this->_chunkSize))
 					return false;
-#ifdef __DEBUG
-				std::cerr << SGR_REQUEST << "_processChunkedBody: next chunk size: " << this->_chunkSize << SGR_RESET << "\n";
-#endif /* __DEBUG */
 				parsingStage = CHUNK;
 			}
 			this->_remainder.clear();
@@ -284,23 +280,6 @@ bool	Request::_processChunkedBody(std::stringstream bodySection) {
 	}
 	this->_chunked = false;
 	return true;
-}
-
-[[maybe_unused]] static inline std::string	_printRawRequest(const std::string &reqData) {
-	std::string	escaped;
-
-	escaped.clear();;
-	for (const char c : reqData) {
-		if (isprint(c) || c == '\n')
-			escaped += c;
-		else if (c == '\r')
-			escaped += "\\r";
-		else if (c && c < ' ') {
-			escaped += '^';
-			escaped += c + '@';
-		}
-	}
-	return escaped;
 }
 
 static inline bool	_getChunkSize(std::stringstream &bodySection, std::string &remainder, size_t &chunkSize) {

@@ -19,9 +19,26 @@
 #define CRLF CR LF
 #define LWS CRLF SP HT
 
-#define SGR_RESPONSE	"\x1b[1;38;5;190m"
-#define SGR_REQUEST		"\x1b[1;38;5;202m"
-#define SGR_RESET		"\x1b[m"
+#define SGR_RESET	"\x1b[m"
+
+#ifdef __DEBUG
+ #ifndef __DEBUG_NO_REQ
+  #ifndef __DEBUG_NO_REQ_HEADERS
+   #define __DEBUG_REQ_SHOW_HEADERS
+  #endif /* __DEBUG_NO_REQ_HEADERS */
+  #ifndef __DEBUG_NO_REQ_BODY
+   #define __DEBUG_REQ_SHOW_BODY
+  #endif /* __DEBUG_NO_REQ_BODY */
+ #endif /* __DEBUG_NO_REQ */
+ #ifndef __DEBUG_NO_RES
+  #ifndef __DEBUG_NO_RES_HEADERS
+   #define __DEBUG_RES_SHOW_HEADERS
+  #endif /* __DEBUG_NO_RES_HEADERS */
+  #ifndef __DEBUG_NO_RES_BODY
+   #define __DEBUG_RES_SHOW_BODY
+  #endif /* __DEBUG_NO_RES_BODY */
+ #endif /* __DEBUG_NO_RES */
+#endif /* __DEBUG */
 
 typedef int8_t		i8;
 typedef int16_t		i16;
