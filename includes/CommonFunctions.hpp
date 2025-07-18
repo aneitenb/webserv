@@ -9,6 +9,8 @@
 
 #pragma once
 
+#include "defs.hpp"
+
 #include <regex>
 #include <dirent.h>
 #include <filesystem>
@@ -29,5 +31,7 @@
 #include <unistd.h>
 
 #include <exception>
+
+void	printBody(const std::string &contentType, const std::string &body, const u8 color);
 
 void ftMemset(void *dest, std::size_t count);

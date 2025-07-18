@@ -7,14 +7,15 @@
 //
 // <<Listener.cpp>> -- <<Aida, Ilmari, Milica>>
 
-#include "server/Listener.hpp"
-#include "server/Client.hpp"
 #include <unistd.h>
 #include <string.h>
 #include <fcntl.h>
 #include <netdb.h> //getaddrinfo
 #include <cstring> //memset
 
+#include "utils/message.hpp"
+#include "server/Client.hpp"
+#include "server/Listener.hpp"
 
 /*Constructors and Destructor and Operators*/
 Listener::Listener() : _sockFd(-1), _result(nullptr){};
@@ -86,9 +87,6 @@ void Listener::addServBlock(ServerBlock& cur, std::string name){
     if (_allServerNames.empty() == true)
         _firstKey = name;
     _allServerNames[name] = &cur;
-    std::cout << name << " should have added the key with the name\n";
-    std::string check = std::to_string(_allServerNames.at(name)->getAllowedMethods());
-    std::cout << "This should be accessible: " << check << std::endl;
     // _relevant = cur;
 }
 
@@ -147,25 +145,22 @@ int Listener::addressInfo(void){
     hints.ai_socktype = SOCK_STREAM; //TCP
     hints.ai_flags = AI_PASSIVE; //for binding (listening) maybe not needed if we always provide an IP or hostname
     if ((status = getaddrinfo(_host.c_str(), _port.c_str(), &hints, &_result)) != 0){
-        std::cerr << "Error: getaddrinfo() failed: ";
-        if (status == EAI_SYSTEM)
-            std::cerr << strerror(errno) << "\n";
-        else
-            std::cerr << gai_strerror(status) << "\n";
+		Warn("Listener::addressInfo(): getaddrinfo(" << _host << ", " << _port << ", "
+			 << "{AF_PASSIVE, AF_INET, SOCK_STREAM, 0, 0, NULL, NULL, NULL}, &_result) failed: "
+			 << ((status == EAI_SYSTEM) ? strerror(errno) : gai_strerror(status)));
         return (-1);
     }
     if (_result && _result->ai_family != AF_INET){
-        std::cerr << "Error: getaddrinfo failed but unclear why.\n";
+		Warn("Listener::addressInfo(): Unexpected error: _result->ai_family not AF_INET");
         return (-1);
     }
-    std::cout << "Listener address set up!\n";
+	Debug("Completed fetching listener address info");
     return (0);
 }
 
 int Listener::makeNonBlock(int* fd){
     if ((fcntl(*fd, F_SETFL, O_NONBLOCK)) == -1){
-        std::cerr << "Error: fcntl() failed\n";
-        std::cerr << strerror(errno) << "\n";
+		Warn("Listener::makeNonBlock(" << *fd << "): fcntl(" << *fd << ", F_SETFL, O_NONBLOCK) failed: " << strerror(errno));
         return (-1);
     }
     return (0);
@@ -190,13 +185,11 @@ int Listener::setuping(int *fd){
 		return (-1);
 #endif /* __DEBUG */
     if ((bind(*fd, this->getAddress(), sizeof(struct sockaddr)) == -1)){
-        std::cerr << "Error: bind() failed\n";
-        std::cerr << strerror(errno) << "\n";
+		Warn("Listener::setuping(" << *fd << "): bind(" << *fd << ", this->_getAddress(), 16) failed: " << strerror(errno));
         return (-1);        
     }
     if ((listen(*fd, 20) == -1)){
-        std::cerr << "Error: listen() failed\n";
-        std::cerr << strerror(errno) << "\n";
+		Warn("Listener::setuping(" << *fd << "): listern(" << *fd << ", 20) failed: " << strerror(errno));
         return (-1);   
     }
     // // After socket(), before bind()/listen():
@@ -232,21 +225,19 @@ int Listener::setuping(int *fd){
 int Listener::setSocketFd(void){
     if (_sockFd != -1){
         close(_sockFd);
-        _sockFd = -1;}
+        _sockFd = -1;
+	}
     if ((_sockFd = socket(PF_INET, SOCK_STREAM, 0)) == -1){
-        std::cerr << "Error: socket() failed\n";
-        std::cerr << strerror(errno) << "\n";
+		Warn("Listener::setSocketFd(): socket(PF_INET, SOCK_STREAM, 0) failed: " << strerror(errno));
         return (-1);
     }
     if (this->addressInfo() == -1)
         return (-1);
-    std::cout << "This socket has the fd: " << _sockFd << std::endl;
     if ((setuping(&_sockFd)) == -1)
         return (-1);
     int status = fcntl(_sockFd, F_GETFD); //delete
-    if (status == -1) {
-        perror("File descriptor is not valid");
-    }
+    if (status == -1)
+		Warn("Listener::setSocketFd(): fcntl(" << _sockFd << ", F_GETFD) failed: " << strerror(errno));
     return (0);
 }
 
@@ -297,14 +288,13 @@ int* Listener::getSocketFd(void){
 
 int Listener::handleEvent(uint32_t ev){
     if (ev & EPOLLIN){ //accept incoming clients while there are clients to be accepted
-        std::cout << "ACCEPTING A CLIENT\n";
+		debug("\nNew client connection received");
         int curFd = accept(_sockFd, nullptr, nullptr); //think about taking in the client info for security reasons maybe
-        std::cout << curFd << " newly made fd\n";
         if (curFd == -1){
             if (errno == EAGAIN || errno == EWOULDBLOCK)
                 return (0); //means there are no more clients that wait to be accepted
-            std::cerr << "Error: accept() failed: ";
-            std::cerr << strerror(errno) << "\n";
+			Warn("Listener::handleEvent(): accept(" << _sockFd
+				 << ", NULL, NULL) failed: " << strerror(errno));
             return (-1);
         }
         //separate setuping into making it nonblocking
@@ -312,23 +302,21 @@ int Listener::handleEvent(uint32_t ev){
             return (-1);
         Client curC(this->getServBlock());
         curC.setKey(_firstKey);
-        std::cout << curC.getState() << " newly made client state\n";
         if (curC.setFd(&curFd) == -1) //pass the socket into Client
             return (-1);
         _activeClients.push_back(std::move(curC));   //move into stable list
         //delete
         int status = fcntl(*_activeClients.back().getSocketFd(), F_GETFD);
-        if (status == -1) {
-            perror("File descriptor is not valid");
-        }
+        if (status == -1)
+			Warn("Listener::handleEvent(): fcntl(" << *_activeClients.back().getSocketFd()
+				 << ", F_GETFD) failed: " << strerror(errno));
         // curFd = -1; //i think this won't keep the fds open haha
         // curEL->addClient(&(_activeClients.at(_activeClients.size() - 1)));
-    }
-    else {
+    } else {
         //rare but it could happen
         //in the case of err, socket is unusable
         //in the case of hup, socket is hanging
-        std::cerr << "Fatal error occurred with the socket. Shutting down.\n";
+		Error("\nFatal: Listener::handleEvent(): Socket " << ((ev & EPOLLERR) ? "unusable" : "hanging"));
         return (-1); //cleanup
     }
     return (0);
@@ -367,34 +355,7 @@ void Listener::resolveClose(){
 
 EventHandler* Listener::getCgi() { return {}; }
 
-bool Listener::conditionMet(std::unordered_map<int*, std::vector<EventHandler*>>& _activeFds, int& epollFd) { 
-    std::cout << "\nPRINTING ALL VALUES IN LISTENER\n";
-    std::cout << "_sockfd: " << _sockFd << "\n";
-    std::cout << "_port: " << _port << "\n";
-    std::cout << "_host: " << _host << "\n";
-    std::cout << "_firstKey: " << _firstKey << "\n";
-    for (auto& pair : _allServerNames){
-        std::cout << "server name: " << pair.first << "\n";
-    }
-    std::cout << "_result random check: " << _result->ai_family << "\n";
-    std::cout << "State: " << this->getState() << "\n";
-    std::cout << "Event " << this->getEvent()->events << "\n";
-    
-    // Verify:
-    int flags = fcntl(_sockFd, F_GETFL, 0);
-    printf("listen_fd access mode: ");
-    switch (flags & O_ACCMODE) {
-    case O_RDONLY:  printf("read-only");  break;
-    case O_WRONLY:  printf("write-only"); break;
-    case O_RDWR:    printf("read/write"); break;
-    default:        printf("unknown");    break;
-    }
-    printf("\nstatus flags: %sO_NONBLOCK\n",
-        (flags & O_NONBLOCK) ? "" : "(!) ");
-
-    std::cout << "\n\n";
-    (void)_activeFds;
-    (void)epollFd;
+bool Listener::conditionMet([[maybe_unused]] std::unordered_map<int*, std::vector<EventHandler*>>& _activeFds, [[maybe_unused]] int& epollFd) {
     return false; 
 }
 

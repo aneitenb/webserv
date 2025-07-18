@@ -75,7 +75,7 @@ httptests: $(REQUEST_TEST)
 	@./run_test Request $(REQUEST_TEST)
 	@printf "\e[1;38;5;42mWEBSERV >\e[m All http tests passed!\n"
 
-$(REQUEST_TEST): $(SRCDIR)/$(HTTPDIR)/Request.cpp $(SRCDIR)/$(CONFIGDIR)/ServerBlock.cpp $(SRCDIR)/$(CONFIGDIR)/LocationBlock.cpp $(SRCDIR)/$(CONFIGDIR)/ConfigErrors.cpp $(TESTDIR)/$(HTTPDIR)/Request.cpp
+$(REQUEST_TEST): $(SRCDIR)/$(UTILSDIR)/message.cpp $(SRCDIR)/$(HTTPDIR)/Request.cpp $(SRCDIR)/$(CONFIGDIR)/ServerBlock.cpp $(SRCDIR)/$(CONFIGDIR)/LocationBlock.cpp $(SRCDIR)/$(CONFIGDIR)/ConfigErrors.cpp $(TESTDIR)/$(HTTPDIR)/Request.cpp
 	@printf "\e[1;38;5;42mWEBSERV >\e[m Compiling Request test\n" $@
 	@$(CC) $(CFLAGS) -I$(INCDIR) $^ -o $@
 

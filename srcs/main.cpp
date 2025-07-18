@@ -53,11 +53,6 @@ int program(char** av) {
 		//Listener -> EventHandler* so I can pass it to EventLoop
 		std::vector<Listener>& listeners = instance.getListeners();
 		listPtrs.reserve(listeners.size());
-		for (std::size_t m = 0; m < listeners.size(); m++){
-			std::cout << listeners.at(m).getFirstKey() << ": first key\n";
-			std::cout << *(listeners.at(m).getSocketFd()) << ": fd\n\n";
-		}
-		std::cout << "Came here\n\n";
 		for (auto& obj : listeners)
 			listPtrs.push_back(&obj);
 		epolling.run(listPtrs);

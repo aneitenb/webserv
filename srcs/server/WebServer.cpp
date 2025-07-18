@@ -7,10 +7,12 @@
 //
 // <<WebServer.cpp>> -- <<Aida, Ilmari, Milica>>
 
-#include "server/WebServer.hpp"
 #include <string.h>
 #include <netdb.h> //getaddrinfo
 #include <fcntl.h> //delete after
+
+#include "utils/message.hpp"
+#include "server/WebServer.hpp"
 
 WebServer::WebServer(){}
 WebServer::~WebServer(){}
@@ -91,18 +93,16 @@ std::string WebServer::createUniqueKey(const std::string& host, const std::strin
 int WebServer::resolveListener(std::string port, std::string host, ServerBlock& serBlock){
     // Check if we already have a listener for this port
     if (doesListenerExist(port)) {
-        std::cout << "Found existing listener for port " << port << ", adding server block\n";
-        
+		Debug("Found existing listener for port " << port);
         // Find the existing listener and add this server block to it
         Listener* existingListener = findListenerByPort(port);
         if (existingListener) {
             std::string key = createUniqueKey(host, port, serBlock.getServerName());
             
             existingListener->addServBlock(serBlock, key);
-            std::cout << "Added server block with key: " << key << std::endl;
+			Debug("Added server block with key " << key << " to listener for port " << port);
         }
-    }
-    else {
+    } else {
         // create new listener that binds to wildcard (0.0.0.0)
         Listener curL(port, "0.0.0.0");
         
@@ -115,8 +115,7 @@ int WebServer::resolveListener(std::string port, std::string host, ServerBlock& 
         }
         
         _theLList.push_back(std::move(curL));
-        std::cout << "Created listener for port " << port << " with key: " << key << std::endl;
-        std::cout << "Listener FD: " << *(_theLList.back().getSocketFd()) << std::endl;
+		Debug("Created listener for port " << port << " with key " << key << " on socket #" << *(_theLList.back().getSocketFd()) << '\n');
     }
     return (0);
 }
@@ -142,10 +141,8 @@ int WebServer::initialize(std::vector<ServerBlock>& serBlocks){
 
 
 void WebServer::freeStuff(void){
-    for (std::size_t i = 0; i < _theLList.size(); i++) {
+    for (std::size_t i = 0; i < _theLList.size(); i++)
         _theLList.at(i).freeAddress();
-        std::cout << "Did the free\n";
-    }
 }
 
 std::vector<Listener>& WebServer::getListeners(void){

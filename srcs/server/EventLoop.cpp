@@ -7,13 +7,14 @@
 //
 // <<EventLoop.cpp>> -- <<Aida, Ilmari, Milica>>
 
-#include "server/EventLoop.hpp"
-#include "server/EventHandler.hpp"
 #include <string.h>
 #include <iostream> //cerr
 #include <unistd.h> //close
 #include <csignal>
-// #include "CgiHandler.hpp"
+
+#include "utils/message.hpp"
+#include "server/EventLoop.hpp"
+#include "server/EventHandler.hpp"
 
 extern sig_atomic_t gSignal;
 
@@ -35,35 +36,34 @@ int EventLoop::run(std::vector<EventHandler*> listFds){
     if (this->startRun() == -1)
         return (-1);
     this->addListeners(listFds);
-    std::cout << "should be listener (5): " << listFds.at(0)->getState() << std::endl;
 
+	debug("");
+	info("Server init done, listening for clients\n");
     while(gSignal){
-        std::cout << "Entered the loop\n";
         
         //cleanup first
         resolvingClosing();
         
         int events2Resolve = epoll_wait(_epollFd, _events, MAX_EVENTS, -1);
-        std::cout << "How many events to resolve: " << events2Resolve << std::endl;
         
         if (events2Resolve <= 0) {
             if (events2Resolve == -1 && errno != EINTR) {
-                std::cerr << "epoll_wait error: " << strerror(errno) << std::endl;
+				Error("Fatal: EventLoop::run(): epoll_wait(" << _epollFd << ", _events, "
+					  << MAX_EVENTS << ", -1) failed: " << strerror(errno));
                 break;
             }
             continue;
         }
 
+		Debug("Received " << events2Resolve << " new event" << ((events2Resolve > 1) ? 's' : '\0'));
+
         for (int i = 0; i < events2Resolve; i++){
             EventHandler* curE = static_cast<EventHandler*>(_events[i].data.ptr);
 
             if (!curE) {
-                std::cout << "NULL event handler encountered, skipping\n";
+				Warn("EventLoop::run(): no event handler found for event #" << i + 1);
                 continue;
             }
-            
-            std::cout << "Processing event - FD: " << *(curE->getSocketFd()) 
-                      << " State: " << curE->getState() << std::endl;
 
             if (curE->handleEvent(_events[i].events) == -1){
                 if (curE->getState() == LISTENER)
@@ -98,6 +98,8 @@ int EventLoop::run(std::vector<EventHandler*> listFds){
                     break;
             }
         }
+
+		debug("");
     }
     return (0);   
 }
@@ -151,11 +153,10 @@ void EventLoop::addCGI(EventHandler* cur){
 int EventLoop::startRun(void){
     //set up
     if ((_epollFd = epoll_create1(0)) == -1){
-        std::cerr << "Error: Could not create epoll instance: ";
-        std::cerr << strerror(errno) << "\n";
+		Error("Fatal: EventLoop::startRun(): epoll_create1(0) failed: " << strerror(errno));
         return (-1);
     }
-    std::cout << "Epoll instance created: " << _epollFd << "\n\n";
+	debug("Epoll instance successfully created");
     return (0);
 }
 
@@ -165,8 +166,9 @@ void EventLoop::addListeners(std::vector<EventHandler*> listFds){
         listFds.at(i)->initEvent();
 
         if (*(listFds.at(i)->getSocketFd()) == -1 || epoll_ctl(_epollFd, EPOLL_CTL_ADD, *listFds.at(i)->getSocketFd(), listFds.at(i)->getEvent()) == -1){
-            std::cerr << "Error: Could not add the listening socket to the epoll instance: ";
-            std::cerr << strerror(errno) << "\n";
+			Warn("EventLoop::addListeners(): epoll_ctl(" << _epollFd 
+				 << ", EPOLL_CTL_ADD, " << *listFds.at(i)->getSocketFd()
+				 << ") failed: " << strerror(errno));
             listFds.at(i)->setState(CLOSED);
             listFds.at(i)->closeFd(listFds.at(i)->getSocketFd());
             continue;
@@ -174,14 +176,8 @@ void EventLoop::addListeners(std::vector<EventHandler*> listFds){
 
         listFds.at(i)->setState(LISTENER); //set state to listener
         _activeFds[listFds.at(i)->getSocketFd()]; //add fd to the unordered map 
-        for (auto& x : _activeFds){
-            std::cout << "checking active Fds: " << *(x.first) << std::endl;
-        }
     }
     _listeners = listFds;
-    for (auto& x : _listeners){
-        x->conditionMet(_activeFds, _epollFd);
-    }
 }
 
 void EventLoop::condemnClients(EventHandler* cur){
@@ -196,7 +192,7 @@ void EventLoop::condemnClients(EventHandler* cur){
 void EventLoop::resolvingAccept(EventHandler* cur){
     std::vector<EventHandler*> curClients = cur->resolveAccept();
     // if (curClients.empty())
-    std::cout << "Trying to add clients\n";
+	Debug("Registering accepted client" << ((curClients.size() > 1) ? 's' : '\0'));
     for (size_t i = 0; i < curClients.size(); i++){
         if (*curClients.at(i)->getSocketFd() != -1 && curClients.at(i)->getState() == TOADD){
             if (addToEpoll(curClients.at(i)->getSocketFd(), curClients.at(i)) == -1){
@@ -206,7 +202,7 @@ void EventLoop::resolvingAccept(EventHandler* cur){
                 continue;}
             curClients.at(i)->setState(READING);
             _activeFds.at(cur->getSocketFd()).push_back(curClients.at(i));
-            std::cout << "Client added with fd: " << *(_activeFds.at(cur->getSocketFd()).at(i)->getSocketFd()) << std::endl;
+			Debug("Registered new client at socket #" << *_activeFds.at(cur->getSocketFd()).at(i)->getSocketFd());
         }
     }
 }
@@ -215,15 +211,14 @@ void EventLoop::resolvingAccept(EventHandler* cur){
 void EventLoop::resolvingModify(EventHandler* cur, uint32_t event){
     if (modifyEpoll(cur->getSocketFd(), event, cur) == -1)
         cur->setState(CLOSE);
-    std::cout << "Client event changed\n";
 }
 
 EventHandler* EventLoop::getListener(int *fd){
-    for (auto& it : _listeners)
-        if (fd == it->getSocketFd())
-            return (it);
-    std::cout << "SHOULD NEVER HAPPEN\n";
-    return {};
+	for (auto& it : _listeners)
+		if (fd == it->getSocketFd())
+			return (it);
+	Error("EventLoop::getListener(" << fd << " (" << *fd << ")): Panic: Listener not found in _listeners");
+	return {};
 }
 
 void EventLoop::resolvingClosing(){
@@ -267,8 +262,9 @@ int EventLoop::addToEpoll(int* fd, EventHandler* object){
     // curE.data.ptr = static_cast<void*>(object);
     object->initEvent();
     if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, *fd, object->getEvent()) == -1){
-        std::cerr << "Error: Could not add the file descriptor to the epoll instance: ";
-        std::cerr << strerror(errno) << "\n";
+		Warn("EventLoop::addToEpoll(" << *fd << ", object): epoll_ctl(" << _epollFd <<
+			 ", EPOLL_CTL_ADD, " << *fd << ", object-getEvent()) failed: "
+			 << strerror(errno));
         return (-1);
     }
     // object->setLoop(*this);
@@ -284,8 +280,9 @@ int EventLoop::modifyEpoll(int* fd, uint32_t event, EventHandler* object){
     object->changeEvent(event);
 
     if (epoll_ctl(_epollFd, EPOLL_CTL_MOD, *fd, object->getEvent()) == -1){
-        std::cerr << "Error: Could not modify the file descriptor in the epoll instance: ";
-        std::cerr << strerror(errno) << "\n";
+		Warn("EventLoop::modifyEpoll(" << *fd << ", " << event << "object): epoll_ctl("
+			 << _epollFd << ", EPOLL_CTL_MOD, " << *fd << ", object-getEvent()) failed: "
+			 << strerror(errno));
         return (-1);
     }
     return (0);
@@ -301,8 +298,8 @@ int EventLoop::delEpoll(int* fd){
         if (errno == ENOENT){   //FD not found in epoll (ENOENT), this is OK
             return 0;
         }
-        std::cerr << "ERROR: Could not delete FD " << *fd << " from epoll: ";
-        std::cerr << strerror(errno) << "\n";
+		Warn("EventLoop::delEpoll(" << *fd << "): epoll_ctl(" << _epollFd
+			 << ", EPOLL_CTL_DEL, " << *fd << ", 0) failed: " << strerror(errno));
         return (-1);
     }
     return (0);

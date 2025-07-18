@@ -39,6 +39,14 @@
 # define COLOR_DEBUG	85
 #endif
 
+#ifndef COLOR_REQUEST
+# define COLOR_REQUEST	125
+#endif
+
+#ifndef COLOR_RESPONSE
+# define COLOR_RESPONSE	154
+#endif
+
 void	error(const std::stringstream &msg, const u8 color = COLOR_ERROR);
 void	warn(const std::stringstream &msg, const u8 color = COLOR_WARN);
 void	info(const std::stringstream &msg, const u8 color = COLOR_INFO);
