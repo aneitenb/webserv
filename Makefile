@@ -115,3 +115,5 @@ db:
 	@printf "\e[1;38;5;42mWEBSERV >\e[m \e[1mDone!\e[m\n"
 
 .PHONY: all tests httptests clean tclean fclean re retest db
+
+.WAIT:
