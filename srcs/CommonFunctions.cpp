@@ -16,7 +16,7 @@
 #define Info(msg, color)	(info(std::stringstream("") << msg, color))
 
 void	printBody(const std::string &contentType, const std::string &body, const u8 color) {
-	Info("\t\tContent-Type: " << contentType << " {", color);
+	Info("    Content-Type: " << contentType << " {", color);
 	std::cerr << "\x1b[1;38;5;" << static_cast<i32>(color) << "m";
 	for (const char &c : body) {
 		if (isprint(c) || c == '\n')
