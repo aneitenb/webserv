@@ -373,6 +373,8 @@ struct epoll_event& Listener::getCgiEvent(int flag) {
 }
 
 int Listener::ready2Switch() { return 1; }
+
+void Listener::setErrorCgi() {}
 //FOR LISTENERS
 // void EventLoop::addClient(Client* cur){
 //     _activeClients.push_back(cur);

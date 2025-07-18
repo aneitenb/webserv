@@ -225,9 +225,9 @@ void EventLoop::addListeners(std::vector<EventHandler*> listFds){
     for (std::size_t i = 0; i < listFds.size(); i++){
         listFds.at(i)->initEvent();
 
-        if (*(listFds.at(i)->getSocketFd()) == -1 || epoll_ctl(_epollFd, EPOLL_CTL_ADD, *listFds.at(i)->getSocketFd(), listFds.at(i)->getEvent()) == -1){
+        if (*(listFds.at(i)->getSocketFd(0)) == -1 || epoll_ctl(_epollFd, EPOLL_CTL_ADD, *listFds.at(i)->getSocketFd(0), listFds.at(i)->getEvent()) == -1){
 			Warn("EventLoop::addListeners(): epoll_ctl(" << _epollFd 
-				 << ", EPOLL_CTL_ADD, " << *listFds.at(i)->getSocketFd()
+				 << ", EPOLL_CTL_ADD, " << *listFds.at(i)->getSocketFd(0)
 				 << ") failed: " << strerror(errno));
             listFds.at(i)->setState(CLOSED);
             listFds.at(i)->closeFd(listFds.at(i)->getSocketFd(0));

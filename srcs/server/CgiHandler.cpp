@@ -474,7 +474,7 @@ int* CgiHandler::getSocketFd(int flag){
 //     return (fromCGI._event);
 // }
 
-int CgiHandler::conditionMet(std::unordered_map<int*, std::vector<EventHandler*>>& _activeFds, int& epollFd) { 
+bool CgiHandler::conditionMet(std::unordered_map<int*, std::vector<EventHandler*>>& _activeFds, int& epollFd) { 
     if (this->forking(_activeFds, epollFd) == 1){
         // this->setProgress(ERROR);
         return 1;}

@@ -67,11 +67,11 @@ class Client : public EventHandler {
 
         int handleEvent(uint32_t ev) override;
         bool shouldClose() const;
-        int* getSocketFd(void) override;
+        int* getSocketFd(int flag) override;
         std::vector<EventHandler*> resolveAccept(void) override;
         void resolveClose() override;
         EventHandler* getCgi() override;
-        int conditionMet(std::unordered_map<int*, std::vector<EventHandler*>>& _activeFds, int& epollFd) override;
+        bool conditionMet(std::unordered_map<int*, std::vector<EventHandler*>>& _activeFds, int& epollFd) override;
         int ready2Switch() override;
         struct epoll_event& getCgiEvent(int flag) override;
         std::string getLocalConnectionIP(); //new

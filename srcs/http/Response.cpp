@@ -86,7 +86,6 @@ Response::Response(Request* request, ServerBlock* serverBlock)
 }
 
 void Response::clear() {
-	getLogFile() << "CLEARING RESPONSE\n";
 	_statusCode = 200;
 	_headers.clear();
 	_body.clear();
@@ -159,7 +158,6 @@ void  Response::prepareResponse() {
 void Response::handleResponse() {
 	std::string uri = _request->getURI();
 	std::string matchedLocation = findMatchingLocation(uri);
-	getLogFile() << "Entered handlleResponse\n";
 	
 	if (matchedLocation.empty())
 		_locationBlock = NULL;
@@ -230,7 +228,6 @@ void Response::handleResponse() {
 		setBody(getErrorPage(501));
 		setHeader("Content-Type", "text/html");
 	}
-	getLogFile() << "Exited handlleResponse\n";
 }
 
 bool Response::isComplete() const {
