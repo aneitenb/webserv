@@ -16,6 +16,7 @@
 #include "http/Request.hpp"
 #include "http/Response.hpp"
 #include "log.hpp"
+#include "utils/message.hpp"
 
 /*Constructors and Destructor and Operators*/
 
@@ -115,7 +116,7 @@ Progress CgiHandler::getProgress() const{
 
 void CgiHandler::setProgress(Progress value){
     if (value == ERROR){
-        getLogFile() << "setProgress: error detected\n";
+        error("setProgress: error detected");
     }
     _curr = value;
 }
@@ -142,7 +143,6 @@ int CgiHandler::cgiDone(){
         return (-1);
     }
     else if (_curr == WAIT){
-        getLogFile() << "cgiDone: waiting, waiiiiiiting\n";
         int status;
         pid_t result = waitpid(_pid, &status, WNOHANG); //see if the child was terminated
         if (result == _pid){
@@ -161,8 +161,6 @@ int CgiHandler::run(){
     }
     else
         _curr = RECEIVING;
-    getLogFile() << "progress = 1/receviign, 2/sending; state 12 = cgiread, 11 = cgitoread\n";
-    getLogFile() << "Current progress of the cgi: " << _curr << " and state:" << this->getState() << "\n";
     if (setupPipes() == 1)
         return 1;//error
     if (setupEnv() == 1)
@@ -186,7 +184,6 @@ int CgiHandler::setupPipes(){
     fromCGI._event.data.fd = fromCGI._fd[0];
     fromCGI._event.data.ptr = static_cast<void*>(this); //this shouldnt be an issue, right?
 
-    getLogFile() << "Cgi: Pipe setup complete!\n";
     return 0;
 }
 
@@ -213,14 +210,11 @@ int CgiHandler::check_paths(){
     std::string uri = _request->getURI();
     if (uri.at(0) == '/')
         uri = uri.substr(1);
-    getLogFile() << "URI is " << uri << std::endl;
     size_t found = uri.find_last_of('/');
     if (found == std::string::npos)
         return 1; //invalid path
     _absPath = uri.substr(0, found);
-    getLogFile() << "Cgi: abspath: " << _absPath << "\n";
     if (access(_absPath.c_str(), X_OK) != 0){
-        getLogFile() << "could not pass the check\n";
         return 1;
     }
     if (_request->getMethod() == "GET"){
@@ -229,11 +223,9 @@ int CgiHandler::check_paths(){
             return 1;
         _scriptPath = '.' + uri.substr(0, found);
         _query = uri.substr(found, uri.size() - found);
-        getLogFile() << "Cgi: query: " << _query << "\n";
         return (0);               
     }
     _scriptPath = uri;
-    getLogFile() << "Cgi: script: " << _scriptPath << "\n";
     if (access(_scriptPath.c_str(), X_OK) != 0){
         //script not accessible/readable 500 or 404
         return 1;
@@ -245,7 +237,6 @@ int CgiHandler::check_paths(){
         _scriptName = _scriptPath.substr(found + 1, _scriptPath.size() - (found + 1));
     }
     _scriptName = "./" + _scriptName;
-    getLogFile() << "Cgi: Script name: " << _scriptName << "\n";
     return 0;
 }
 
@@ -256,7 +247,6 @@ int CgiHandler::setupEnv(){
     _envp.clear();
     //check if file can be opened i guess
     if (check_paths() == 1){
-        getLogFile() << "The paths are messed up?";
         return 1;}
     // envS.push_back("SERVER_PROTOCOL=HTTP/1.1");
     // envS.push_back("GATEWAY_INTERFACE=CGI/1.1");
@@ -272,13 +262,10 @@ int CgiHandler::setupEnv(){
 
     _envp.reserve(_envS.size() + 1);
     for (size_t i = 0; i < _envS.size(); i++){
-        getLogFile() << "Check the envp string: " << _envS.at(i) << "\n";
         _envp.push_back(const_cast<char*>(_envS.at(i).c_str()));
     }
 
     _envp.push_back(nullptr);
-
-    getLogFile() << "Cgi: Environment setup complete!\n";
     return 0;
 }
 
@@ -288,12 +275,6 @@ int CgiHandler::forking(std::unordered_map<int*, std::vector<EventHandler*>>& _a
     if (_pid == 0){ //child
         char* argv[3] = {0};
 
-        std::ofstream _childLog("chiildFile.log", std::ios::app);
-        if (!_childLog){
-            std::cerr << errno << " Child: failed to open\n";
-        }
-
-        _childLog << "CGI: This is the child!\n" << std::flush;
         //close everything else, cleanup epoll
         for(auto& pair : _activeFds){
             for (size_t i = 0; i < pair.second.size(); i++){
@@ -303,10 +284,6 @@ int CgiHandler::forking(std::unordered_map<int*, std::vector<EventHandler*>>& _a
         }
 
         closeFd(&epollFd);
-
-
-        _childLog << "CHILD: forking: child, closed everything except what is needed\n" << std::flush;
-        _childLog << "CHILD: state of _curr should be 2 if sending, 1 if receiving " << _curr << "\n" << std::flush;
 
         if (_curr == SENDING && (dup2(toCGI._fd[0], STDIN_FILENO) == -1)){
             std::cerr << "CHILD: Error: dup2 failed\n";
@@ -331,18 +308,13 @@ int CgiHandler::forking(std::unordered_map<int*, std::vector<EventHandler*>>& _a
         argv[2] = 0;
 
         //execve
-        _childLog << "CHILD: calling execve\n" << std::flush;
-        _childLog << "argv[0] == " << argv[0] << std::flush;
-        _childLog << "\nargv[1] == " << argv[1] << std::flush;
         // _childLog << "\nargv[2] == " << argv[2] << std::flush;
-        _childLog << "\ntemparg == " << temparg << std::flush;
         execve(temparg.c_str(), const_cast<char* const*>(argv), _envp.data());
         //will continue only if exit
         //set response to error?
         _exit(1); //to avoid flushing parent I/O buffers
     }
     else if (_pid > 0){ //parent
-        getLogFile() << "Cgi: This is the parent!\n";
         closeFd(&fromCGI._fd[1]);
         closeFd(&toCGI._fd[0]);
         /*
@@ -380,11 +352,9 @@ bool CgiHandler::requestComplete(){
 
 int CgiHandler::handleEvent(uint32_t ev){
     std::string buffer = {0};
-    getLogFile() << "I'm handling it!\n";
     if (ev & EPOLLIN){
         buffer.clear();
         buffer.resize(4096);
-        getLogFile() << "Cgi: Receiving\n";
         ssize_t len = read(fromCGI._fd[0], &buffer[0], buffer.size()); //sizeof(buffer) - 1?
         if (len < 1){ //either means that there is no more data to read or error or client closed connection (len == 0)
             //SAVE response!!!!either error or fullresponse
@@ -407,8 +377,6 @@ int CgiHandler::handleEvent(uint32_t ev){
         }
         else{ // means something was returned
             buffer.resize(len);
-            getLogFile() << "What's here  " << buffer << std::endl;
-            getLogFile() << "Says here: " << buffer.size() << "     " << _rawdata.size() << "\n";
             if (buffer.size() <= _rawdata.max_size() - buffer.size())
                 _rawdata.append(buffer); //append temp to buffer
             if (requestComplete() == true){
@@ -423,36 +391,27 @@ int CgiHandler::handleEvent(uint32_t ev){
         }   
     }
     else if (ev & EPOLLOUT){
-        getLogFile() << "Cgi: Sending\n";
         buffer = _request->getBody();
         if (buffer.size() == 0){
             setProgress(ERROR);
             return (0);}
-        getLogFile() << std::endl;
-        getLogFile() << std::endl;
-        getLogFile() << "BUFFER:    " << buffer << std::endl;
         if (_offset != buffer.size()){
             ssize_t len = write(toCGI._fd[1], buffer.c_str() + _offset, buffer.size() - _offset);
             if (len < 1){
                 if (_offset == buffer.size()){
                     _curr = SWITCH;
-                    getLogFile() << "Set to switch but in error\n";
                     return (0);
                 }
-                getLogFile() << "Error could not send " << errno << "\n";
                 //timeout
                 setProgress(ERROR);
                 // return (0);
             }
             else{ // len > 0
                 _offset += len;
-                getLogFile() << len << ": len, some data sent\n";
                 if (_offset == buffer.size())
                 {
-                    getLogFile() << "Set to switch\n";
                     _curr = SWITCH;
                 }
-                getLogFile() << _offset << "how much was sent " << buffer.size() << " how much is left\n";
                 //clear rawData?
             }
         }
@@ -496,7 +455,6 @@ int CgiHandler::ready2Switch() {
 std::vector<EventHandler*> CgiHandler::resolveAccept(void){ return {};}
 
 void CgiHandler::resolveClose(){
-    getLogFile() << "CALLED CGI RESOLVE CLOSE\n";
     closeFd(&fromCGI._fd[0]);
     closeFd(&fromCGI._fd[1]);
     closeFd(&toCGI._fd[0]);

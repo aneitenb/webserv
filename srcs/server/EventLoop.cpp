@@ -111,6 +111,8 @@ int EventLoop::run(std::vector<EventHandler*> listFds){
                     addCGI(curE);
                     break;
                 case CGITOREAD:
+                    handleCGI(curE);
+                    break;
                 case CGIREAD:
                     handleCGI(curE);
                     break;
@@ -125,31 +127,35 @@ int EventLoop::run(std::vector<EventHandler*> listFds){
     return (0);   
 }
 
-void EventLoop::handleCGI(EventHandler* cur){
-    getLogFile() << cur->getState() << " :State\n";
-    if (cur->getState() == CGITOREAD){
+void EventLoop::handleCGI(EventHandler* cur) {
+    if (cur->getState() == CGITOREAD) {
+
         int status = cur->ready2Switch();
-        if ( status == 1)
-            return ;
-        else if (status == 0){ //might loop here, timeout
-            getLogFile() << "handleCGI: time to change state\n";
+        if (status == 0) { // Done writing, switch to reading
             cur->setState(CGIREAD);
+            // Remove write pipe from epoll and close it
             delEpoll(cur->getSocketFd(1));
             cur->closeFd(cur->getSocketFd(1));
-            getLogFile() << "checking if the fd has been closed: " << cur->getSocketFd(1) << "\n";
-            return ;
+            return;
+        } else if (status == -1) { // Error occurred
+            delEpoll(cur->getSocketFd(1));
+            cur->closeFd(cur->getSocketFd(1));
+            cur->setState(CGICLOSED);
+            return;
         }
-        getLogFile() << "handleCGI: error flag detected or done with sending\n";
-        delEpoll(cur->getSocketFd(1));
-        cur->closeFd(cur->getSocketFd(1));
+        // status == 2 means still writing, continue
+        return;
     }
-    int status = cur->ready2Switch();
-    if (status == 2)
-        return ;
-    getLogFile() << "handleCGI: done with receiving\n";
-    delEpoll(cur->getSocketFd(0));
-    cur->closeFd(cur->getSocketFd(0));
-    cur->setState(CGICLOSED);
+    // CGIREAD state means there's existing code
+    if (cur->getState() == CGIREAD) {
+        int status = cur->ready2Switch();
+        if (status == 2) return; // Still reading
+        
+        // Done reading
+        delEpoll(cur->getSocketFd(0));
+        cur->closeFd(cur->getSocketFd(0));
+        cur->setState(CGICLOSED);
+    }
 }
 
 void EventLoop::addCGI(EventHandler* cur){
@@ -157,14 +163,11 @@ void EventLoop::addCGI(EventHandler* cur){
     if (!theCGI){
         //set response to 500 or 404
         // theCGI->resolveClose();
-        getLogFile() << "addCGI: setup failed\n";
         cur->setErrorCgi();
         cur->setState(FORCGI);
         resolvingModify(cur, EPOLLOUT);
         return ;
     }
-    getLogFile() << "CGI SETUP COMPLETE\n";
-    getLogFile() << theCGI->getState() << " : yet another check\n";
     int toBeOrNot = cur->conditionMet(_activeFds, _epollFd);
     // if (toBeOrNot == 2)
     //     return ;
@@ -173,10 +176,8 @@ void EventLoop::addCGI(EventHandler* cur){
 
     // theCGI->setState(CGIREAD);
     if (toBeOrNot == 0){ //pass the activefds so they can close in the child
-        getLogFile() << "addCGI: this is a post request with a body\n";
         // theCGI->setState(CGITOREAD);
         if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, *(theCGI->getSocketFd(1)), &curSend) == -1){ //not correct
-            getLogFile() << "addCGI: error in the first adding of the fd\n";
             theCGI->resolveClose();
             cur->setErrorCgi();
             cur->setState(FORCGI);
@@ -186,7 +187,6 @@ void EventLoop::addCGI(EventHandler* cur){
     }
     if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, *(theCGI->getSocketFd(0)), &curGet) == -1){ //not correct
         //set response
-        getLogFile() << "addCGI: error in the second adding of the fd\n";
         if (toBeOrNot == 0)
             delEpoll(theCGI->getSocketFd(1));
         theCGI->resolveClose();
@@ -197,9 +197,7 @@ void EventLoop::addCGI(EventHandler* cur){
     }
     cur->setState(FORCGI);
     resolvingModify(cur, EPOLLOUT);
-    getLogFile() << "State update for current client: " << cur->getState() << " and its cgi: " << theCGI->getState() << "\n";
     if (theCGI->conditionMet(_activeFds, _epollFd) == 1){
-        getLogFile() << "addCGI: forking somehow failed\n";
         if (toBeOrNot == 0)
             delEpoll(theCGI->getSocketFd(1));
         delEpoll(theCGI->getSocketFd(0));

@@ -251,96 +251,6 @@ void Response::handleGet() {
 	getResource(path);
 }
 
-/*	BELOW VERSION WAS IN CGI, may need to re-implement
-if (isCgiRequest(path)) {
-		// handleCgi(path); //needs to be deleted?
-		getLogFile() << "Is CGI, is GET\n";
-		return;
-	}
-
-	std::string absPath = path;
-	if (!absPath.empty() && absPath[absPath.length()-1] == '/' && 
-		absPath.length() > 1)
-		{
-			absPath = absPath.substr(0, absPath.length()-1);
-		}
-
- 	if (directoryExists(absPath))
-	{
-		std::string indexFile;
-		if (_locationBlock && _locationBlock->hasIndex()) {
-			indexFile = _locationBlock->getIndex();
-		} else {
-			indexFile = _serverBlock->getIndex();
-		}
-		
-		// path has to end with slash for appending index file
-		if (!absPath.empty() && absPath[absPath.length()-1] != '/') {
-			absPath += '/';
-		}
-		
-		std::string indexPath = absPath + indexFile;
-		if (fileExists(indexPath) && hasReadPermission(indexPath)) {
-			readFile(indexPath);
-			return;
-		}
-		
-		// No directory listing and no index file
-		_statusCode = 403;
-		setBody(getErrorPage(403));
-		setHeader("Content-Type", "text/html");
-		return;
-	}
-	//check if path is a file
-	if (fileExists(absPath) && hasReadPermission(absPath)) {
-		readFile(absPath);
-		return;
-	}
-	//file not found
-	_statusCode = 404;
-	setBody(getErrorPage(404));
-	setHeader("Content-Type", "text/html");
-}
-
-void Response::handlePost(){
-	std::string path;
-	getLogFile() << "entered handlePost\n";
-
-	//check for upload_store directive
-	if (_locationBlock && _locationBlock->hasUploadStore()) {
-		std::string filename = _request->getURI();
-		size_t lastSlash = filename.find_last_of('/');
-		if (lastSlash != std::string::npos) {
-			filename = filename.substr(lastSlash + 1);
-		}
-		
-		// making sure upload dir ends with a slash
-		std::string uploadDir = _locationBlock->getUploadStore();
-		if (!uploadDir.empty() && uploadDir[uploadDir.length()-1] != '/') {
-			uploadDir += '/';
-		}
-		
-		path = uploadDir + filename;
-	} 
-	else {
-		path = resolvePath(_request->getURI());
-	}
-
-	if (isCgiRequest(path)) {
-		// handleCgi(path);
-		getLogFile() << "is CGI, is POST.\n";
-		return;
-	}
-
-	std::string dirPath = path.substr(0, path.find_last_of('/'));
-	if (!directoryExists(dirPath)) {
-		_statusCode = 404;
-		setBody(getErrorPage(404));
-		setHeader("Content-Type", "text/html");
-		return;
-	}
-*/
-
 std::string Response::resolvePath(const std::string& uri) {
 	// check if location block has an alias directive
 	if (_locationBlock && _locationBlock->hasAlias()) {
@@ -1225,72 +1135,102 @@ bool Response::isCgiRequest(const std::string& path) const {
 }
 
 void Response::handleCgi(const std::string& rawdata) {
-	_fullResponse = rawdata; 
-	//set status code
-	// std::size_t pos_rt;
-	// std::size_t found = rawdata.find("Status: ");
-	// if (found == std::string::npos)
-	// 	_statusCode = 200;
-	// else{
-	// 	pos_rt = rawdata.find(found, '\r');
-	// 	if (pos_rt != std::string::npos)
-	// 		_statusCode = std::stoi(rawdata.substr(found, pos_rt));
-	// 	else
-	// 		_statusCode = 501; //check
-	// set here everything and return
-	// }
-	// //set headers
-	// found = rawdata.find("Content-Type: ");
-	// if (found == std::string::npos)
-    // 	setHeader("Content-Type", "text/html");
-	// else{
-	// 	pos_rt = rawdata.find(found, '\r');
-	// 	if (pos_rt != std::string::npos)
-    // 		setHeader("Content-Type", "text/html");	
-	// 	else{
-	// 		std::string path = rawdata.substr(found, pos_rt);
-	// 		setContentType(path);
-	// 	}
-	// }
-	// //set body; does this need to go first?
-	// std::string body;
-	// found = rawdata.find("\r\n\r\n");
-	// if (found == std::string::npos)
-    // 	body = ""; //check
-	// else{
-	// 	body = rawdata.substr(found);
-	// 	if (body.size() == 4)
-	// 		body = "";
-	// }
-	// setHeader("Content-Length", std::to_string(body.size()));
-	// setBody(body);
+	if (rawdata.empty()) {
+		_statusCode = 500;
+		setBody(getErrorPage(500));
+		setHeader("Content-Type", "text/html");
+		return;
+	}
+	
+	// find header/body separator
+	size_t headerEnd = rawdata.find("\r\n\r\n");
+	if (headerEnd == std::string::npos) {
+		headerEnd = rawdata.find("\n\n");
+		if (headerEnd == std::string::npos) {
+			_statusCode = 502;
+			setBody(getErrorPage(502));
+			setHeader("Content-Type", "text/html");
+			return;
+		}
+		headerEnd += 2;
+	} else {
+		headerEnd += 4;
+	}
+	
+	std::string headerSection = rawdata.substr(0, headerEnd - 2);
+	std::string bodySection = rawdata.substr(headerEnd);
+	
+	// Parse headers
+	std::istringstream headerStream(headerSection);
+	std::string line;
+	_statusCode = 200;
+	
+	while (std::getline(headerStream, line)) {
+		if (!line.empty() && line.back() == '\r') {
+			line.pop_back(); // removes \r
+		}
+		
+		if (line.empty()) break; //end of headers if empty line
+		
+		size_t colonPos = line.find(':');
+		if (colonPos == std::string::npos) continue; // skip malformed lines
+		
+		std::string headerName = line.substr(0, colonPos);
+		std::string headerValue = line.substr(colonPos + 1);
+		
+		// trim whitespace
+		size_t start = headerValue.find_first_not_of(" \t");
+		if (start != std::string::npos) {
+			size_t end = headerValue.find_last_not_of(" \t");
+			headerValue = headerValue.substr(start, end - start + 1);
+		}
+		
+		if (headerName == "Status") {
+			size_t spacePos = headerValue.find(' ');
+			std::string statusStr = (spacePos != std::string::npos) ? headerValue.substr(0, spacePos) : headerValue;
+			try {
+				_statusCode = std::stoi(statusStr);
+			} catch (...) {
+				_statusCode = 200;
+			}
+		} else {
+			setHeader(headerName, headerValue);
+		}
+	}
+	
+	//default content type if not provided
+	if (_headers.find("Content-Type") == _headers.end()) {
+		setHeader("Content-Type", "text/html");
+	}
+	
+	setBody(bodySection);
 }
 
 void Response::handleCgiError(const std::string& path) {   
-    std::string scriptPath = path;
-    // std::string cgiExecutable = _locationBlock->getCgiPass();
-    
-    if (!fileExists(scriptPath)) {
-        _statusCode = 404;
-        setBody(getErrorPage(404));
-        setHeader("Content-Type", "text/html");
-        return;
-    }
-    
-    if (!hasReadPermission(scriptPath) || !hasExecPermission(scriptPath)) { //does this check if we can execute it too? should it?
-        _statusCode = 403;
-        setBody(getErrorPage(403));
-        setHeader("Content-Type", "text/html");
-        return;
-    }
-    
-    // TODO: Implement actual CGI execution
-    // 1. Setting up environment variables
-    // 2. Creating pipes for stdin/stdout
-    // 3. Forking a process
-    // 4. Executing the CGI script
-    // 5. Reading the response
-    // 6. Parsing headers from the response
+	std::string scriptPath = path;
+	// std::string cgiExecutable = _locationBlock->getCgiPass();
+	
+	if (!fileExists(scriptPath)) {
+		_statusCode = 404;
+		setBody(getErrorPage(404));
+		setHeader("Content-Type", "text/html");
+		return;
+	}
+	
+	if (!hasReadPermission(scriptPath) || !hasExecPermission(scriptPath)) { //does this check if we can execute it too? should it?
+		_statusCode = 403;
+		setBody(getErrorPage(403));
+		setHeader("Content-Type", "text/html");
+		return;
+	}
+	
+	// TODO: Implement actual CGI execution
+	// 1. Setting up environment variables
+	// 2. Creating pipes for stdin/stdout
+	// 3. Forking a process
+	// 4. Executing the CGI script
+	// 5. Reading the response
+	// 6. Parsing headers from the response
 
 	_statusCode = 501;
 	setBody(getErrorPage(501));
