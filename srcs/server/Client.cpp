@@ -262,7 +262,7 @@ EventHandler* Client::getCgi(){
     return (temp);
 }
 
-int Client::conditionMet(std::unordered_map<int*, std::vector<EventHandler*>>& _activeFds, int& epollFd){
+bool Client::conditionMet(std::unordered_map<int*, std::vector<EventHandler*>>& _activeFds, int& epollFd){
     //check if the method is post and if the POST body is not empty
     (void)_activeFds;
     (void)epollFd;
