@@ -36,7 +36,7 @@ private:
 	bool _maxBodySizeSet;
 	std::string _defaultErrorDir;
 	uint8_t _allowedMethods;
-	u64		_timeout = CLIENT_DEFAULT_TIMEOUT;
+	u64		_timeout;
 
 public:
 	ServerBlock();
