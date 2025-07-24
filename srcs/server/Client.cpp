@@ -7,28 +7,27 @@
 //
 // <<Client.cpp>> -- <<Aida, Ilmari, Milica>>
 
+#include <list>
+#include <fcntl.h>
+#include <string.h>
 #include <unistd.h>
 #include <sys/socket.h>
-#include <string.h>
-#include <fcntl.h>
 
 #include "utils/message.hpp"
 #include "server/Client.hpp"
 #include "server/CgiHandler.hpp"
 
 /*Orthodox Cannonical Form*/
-Client::Client(): /*_listfd(nullptr), */_clFd(-1), _count(0), /*_curR(EMPTY),*/ _theCgi(&_requesting, &_responding, &_clFd){
+Client::Client(): /*_listfd(nullptr), */_clFd(-1), _count(0), /*_curR(EMPTY),*/ _theCgi(&_requesting, &_responding, &_clFd), _timeout(CLIENT_DEFAULT_TIMEOUT){
 	_result = nullptr;
     setState(TOADD);
-    // ftMemset(&_event, sizeof(_event)); //do I leave this like this?
 }
 
 Client::Client(std::unordered_map<std::string, ServerBlock*> cur): _allServerNames(cur), /*_listfd(nullptr),*/ \
     _clFd(-1), _count(0), /*_curR(EMPTY),*/ \
-    _theCgi(CgiHandler(&_requesting, &_responding, &_clFd)){
+    _theCgi(CgiHandler(&_requesting, &_responding, &_clFd)), _timeout(CLIENT_DEFAULT_TIMEOUT){
 	_result = nullptr;
     setState(TOADD);
-    // ftMemset(&_event, sizeof(_event)); //do I leave this like this?
 }
 
 Client::~Client(){
@@ -52,6 +51,8 @@ Client::Client(Client&& other) noexcept : _clFd(-1), _requesting(std::move(other
     _result = other._result;
     other._result = nullptr;
     /*_curR = other._curR;*/
+	this->_disconnectAt = other._disconnectAt;
+	this->_timeout = other._timeout;
     this->setState(other.getState());
 }
 
@@ -70,6 +71,8 @@ Client& Client::operator=(Client&& other) noexcept{
         _result = other._result;
         other._result = nullptr;
         /*_curR = other._curR;*/
+		this->_disconnectAt = other._disconnectAt;
+		this->_timeout = other._timeout;
         this->setState(other.getState());
         _requesting = std::move(other._requesting);
         _responding = std::move(other._responding);
@@ -255,7 +258,6 @@ bool Client::conditionMet(std::unordered_map<int*, std::vector<EventHandler*>>& 
 
 int Client::handleEvent(uint32_t ev){
     if (ev & EPOLLERR || ev & EPOLLHUP){
-		Debug("\nClosing client at socket #" << _clFd);
         this->setState(CLOSE);
         return (-1);
     }
@@ -271,7 +273,6 @@ int Client::handleEvent(uint32_t ev){
         if (recvResult == -1) {
             if (errno == EAGAIN || errno == EWOULDBLOCK)
                 return (0); //No more data available right now
-			Debug("\nClosing client at socket #" << _clFd);
             this->setState(CLOSE);  //ADDED
             return (-1); // binary data or real errors close the connection
         } else if (recvResult == 0)
@@ -445,22 +446,8 @@ void Client::saveResponse(){
     _responding.prepareResponse();
 }
 
-//SIGNAL HANDLING???
-// static void sigint_handler(int signo)
-// {
-//   (void)close(tcp_server_fd);
-//   (void)close(tcp_client_fd);
-//   sleep(2);
-//   printf("Caught sigINT!\n");
-//   exit(EXIT_SUCCESS);
-// }
+void	Client::updateDisconnectTime(void) {
+	this->_disconnectAt = std::chrono::system_clock::now() + std::chrono::milliseconds(this->_timeout);
+}
 
-// void register_signal_handler(
-// int signum,
-// void (*handler)(int))
-// {
-//   if (signal(signum, handler) == SIG_ERR) {
-//      printf("Cannot handle signal\n");
-//      exit(EXIT_FAILURE);
-//   }
-// }
+const timestamp	&Client::getDisconnectTime(void) const { return this->_disconnectAt; }

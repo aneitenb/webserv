@@ -57,6 +57,7 @@ CONFIGFILES	=	ConfigErrors.cpp \
 FILES	=	main.cpp \
 			CommonFunctions.cpp \
 			$(UTILSDIR)/message.cpp \
+			$(UTILSDIR)/Timeout.cpp \
 			$(addprefix $(HTTPDIR)/, $(HTTPFILES)) \
 			$(addprefix $(CONFIGDIR)/, $(CONFIGFILES)) \
 			$(addprefix $(SERVERDIR)/, $(SERVERFILES))

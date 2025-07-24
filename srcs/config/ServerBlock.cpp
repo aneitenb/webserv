@@ -17,7 +17,8 @@ ServerBlock::ServerBlock() :
 	_hasCustomErrorPages(false),
 	_maxBodySizeSet(false),
 	_defaultErrorDir("/default_errors"),
-	_allowedMethods(0)
+	_allowedMethods(0),
+	_timeout(CLIENT_DEFAULT_TIMEOUT)
 {
 	_defaultErrorPages.emplace_back(400, _defaultErrorDir + "/400.html");
 	_defaultErrorPages.emplace_back(403, _defaultErrorDir + "/403.html");
@@ -51,6 +52,7 @@ ServerBlock::ServerBlock(const ServerBlock& other){
 	_hasCustomErrorPages = other._hasCustomErrorPages;
 	_defaultErrorDir = other._defaultErrorDir;
 	_allowedMethods = other._allowedMethods;
+	_timeout = other._timeout;
 }
 
 ServerBlock& ServerBlock::operator=(const ServerBlock& other){
@@ -66,7 +68,8 @@ ServerBlock& ServerBlock::operator=(const ServerBlock& other){
 	_locationBlocks = other._locationBlocks;
 	_hasCustomErrorPages = other._hasCustomErrorPages;
 	_defaultErrorDir = other._defaultErrorDir;
-	_allowedMethods = other._allowedMethods;}
+	_allowedMethods = other._allowedMethods;
+	_timeout = other._timeout;}
 	return (*this);
 }
 
@@ -82,7 +85,8 @@ bool ServerBlock::operator==(const ServerBlock& other) const{
 	&& this->_locationBlocks == other._locationBlocks \
 	&& this->_hasCustomErrorPages == other._hasCustomErrorPages \
 	&& this->_defaultErrorDir == other._defaultErrorDir \
-	&& this->_allowedMethods == other._allowedMethods)
+	&& this->_allowedMethods == other._allowedMethods \
+	&& this->_timeout == other._timeout)
 		return (true);
 	return (false);
 }
@@ -100,6 +104,7 @@ void ServerBlock::clear() {
 	_hasCustomErrorPages = false;
 	_defaultErrorDir = "/default_errors";
 	_allowedMethods = 0;
+	_timeout = CLIENT_DEFAULT_TIMEOUT;
 
 	_defaultErrorPages.clear();
 	_defaultErrorPages.emplace_back(400, _defaultErrorDir + "/400.html");

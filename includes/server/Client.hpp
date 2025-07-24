@@ -9,7 +9,9 @@
 
 #pragma once
 
+#include <chrono>
 #include <sys/epoll.h>
+
 #include "server/EventHandler.hpp"
 #include "server/EventLoop.hpp"
 #include "http/Request.hpp"
@@ -17,38 +19,21 @@
 #include "config/ServerBlock.hpp"
 #include "server/CgiHandler.hpp"
 
-
-// enum State {
-//     WRITING,
-//     READING,
-//     CLOSE,
-//     TOREAD,
-//     TOWRITE
-// };
-
-// enum RequestState {
-//     PARTIAL,
-//     EMPTY,
-//     COMPLETE,
-//     CLEAR
-// }; //only clear buffer when there is CLEAR marked
+typedef std::chrono::time_point<std::chrono::system_clock>	timestamp;
 
 class Client : public EventHandler {
     private:
         std::unordered_map<std::string, ServerBlock*> _allServerNames;
         std::string _firstKey;
-        // int*                _listfd; //do i need this
         int                 _clFd;
         int                 _count;
         struct sockaddr*    _result; //do i need this if when i accept i just take the fd?
-        // struct epoll_event  _event;
-        // State               _curS;
         std::string         _buffer;
-        // RequestState        _curR;
         Request             _requesting;
         Response            _responding;
         CgiHandler          _theCgi;
-        //size_t? _lastActive;
+		timestamp			_disconnectAt;
+		u64					_timeout;
 
         int sending_stuff();
         int receiving_stuff();
@@ -91,6 +76,10 @@ class Client : public EventHandler {
         struct epoll_event& getCgiEvent(int flag) override;
         std::string getLocalConnectionIP(); //new
         std::string getLocalConnectionPort();  //new
+
+		void	updateDisconnectTime(void);
+
+		const timestamp	&getDisconnectTime(void) const;
         
         //timeout??
 };

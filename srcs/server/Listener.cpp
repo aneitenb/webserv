@@ -14,8 +14,11 @@
 #include <cstring> //memset
 
 #include "utils/message.hpp"
+#include "utils/Timeout.hpp"
 #include "server/Client.hpp"
 #include "server/Listener.hpp"
+
+extern Timeout	timeouts;
 
 /*Constructors and Destructor and Operators*/
 Listener::Listener() : _sockFd(-1), _result(nullptr){};
@@ -312,6 +315,7 @@ int Listener::handleEvent(uint32_t ev){
 				 << ", F_GETFD) failed: " << strerror(errno));
         // curFd = -1; //i think this won't keep the fds open haha
         // curEL->addClient(&(_activeClients.at(_activeClients.size() - 1)));
+		timeouts.updateClient(_activeClients.back());
     } else {
         //rare but it could happen
         //in the case of err, socket is unusable
@@ -340,6 +344,7 @@ void Listener::resolveClose(){
     // use iterator properly - no mixing with indices
     for (auto it = _activeClients.begin(); it != _activeClients.end(); ){
         if (it->getState() == TOCLOSE || it->getState() == CLOSED){
+			Debug("\nClosing client at socket #" << *it->getSocketFd());
             // close the file descriptor if it's still valid
             if (*(it->getSocketFd()) >= 0) {
                 close(*(it->getSocketFd()));
@@ -347,6 +352,7 @@ void Listener::resolveClose(){
             }
             it->setState(CLOSED);
             it = _activeClients.erase(it);  // erase returns next valid iterator
+			timeouts.removeClient(*it);
         } else {
             ++it;
         }

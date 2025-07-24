@@ -7,16 +7,21 @@
 //
 // <<EventLoop.cpp>> -- <<Aida, Ilmari, Milica>>
 
-#include <string.h>
-#include <iostream> //cerr
-#include <unistd.h> //close
 #include <csignal>
+#include <string.h>
+#include <unistd.h> //close
 
 #include "utils/message.hpp"
+#include "utils/Timeout.hpp"
+#include "server/Client.hpp"
 #include "server/EventLoop.hpp"
 #include "server/EventHandler.hpp"
 
 extern sig_atomic_t gSignal;
+
+static inline i32	_getTimeTo(const timestamp t);
+
+Timeout	timeouts;
 
 EventLoop::EventLoop() : _epollFd(-1){}
 
@@ -33,37 +38,50 @@ std::vector<EventHandler*> EventLoop::findValue(int *fd){
 }
 
 int EventLoop::run(std::vector<EventHandler*> listFds){
+	EventHandler	*curE;
+
     if (this->startRun() == -1)
         return (-1);
     this->addListeners(listFds);
 
 	debug("");
-	info("Server init done, listening for clients\n");
+	info("Server init done, listening for clients");
     while(gSignal){
         
         //cleanup first
         resolvingClosing();
         
-        int events2Resolve = epoll_wait(_epollFd, _events, MAX_EVENTS, -1);
+        int events2Resolve = epoll_wait(_epollFd, _events, MAX_EVENTS, (!timeouts.empty()) ? _getTimeTo(timeouts.front().second) : -1);
         
-        if (events2Resolve <= 0) {
-            if (events2Resolve == -1 && errno != EINTR) {
+		if (events2Resolve == -1) {
+			if (errno != EINTR) {
 				Error("Fatal: EventLoop::run(): epoll_wait(" << _epollFd << ", _events, "
-					  << MAX_EVENTS << ", -1) failed: " << strerror(errno));
-                break;
-            }
-            continue;
-        }
+						<< MAX_EVENTS << ", -1) failed: " << strerror(errno));
+				break ;
+			}
+			continue ;
+		}
 
-		Debug("Received " << events2Resolve << " new event" << ((events2Resolve > 1) ? 's' : '\0'));
+		if (events2Resolve == 0) {
+			curE = &timeouts.front().first;
+			Debug("\nClient at socket #" << *curE->getSocketFd() << " timed out, closing connection");
+			curE->setState(CLOSE);
+			timeouts.pop();
+			continue ;
+		}
+
+		Debug("\nReceived " << events2Resolve << " new event" << ((events2Resolve > 1) ? 's' : '\0'));
 
         for (int i = 0; i < events2Resolve; i++){
-            EventHandler* curE = static_cast<EventHandler*>(_events[i].data.ptr);
+            curE = static_cast<EventHandler*>(_events[i].data.ptr);
 
             if (!curE) {
 				Warn("EventLoop::run(): no event handler found for event #" << i + 1);
                 continue;
             }
+
+			if (curE == dynamic_cast<Client *>(curE))
+				timeouts.updateClient(*dynamic_cast<Client *>(curE));
 
             if (curE->handleEvent(_events[i].events) == -1){
                 if (curE->getState() == LISTENER)
@@ -98,9 +116,8 @@ int EventLoop::run(std::vector<EventHandler*> listFds){
                     break;
             }
         }
-
-		debug("");
     }
+	timeouts.clear();
     return (0);   
 }
 
@@ -305,21 +322,9 @@ int EventLoop::delEpoll(int* fd){
     return (0);
 }
 
+static inline i32	_getTimeTo(const timestamp t) {
+	std::chrono::milliseconds	duration;
 
-//FOR LISTENERS
-// void EventLoop::addClient(Client* cur){
-//     _activeClients.push_back(cur);
-// }
-
-// std::vector<Client*> EventLoop::getClients(void) const{
-//     return (_activeClients);
-// }
-
-// void EventLoop::delClient(Client* cur){
-//     for (std::size_t i = 0; i < _activeClients.size(); i++){
-//         if (_activeClients.at(i) == cur){
-//             _activeClients.erase(_activeClients.begin() + i);
-//             return ;}
-//     }
-// }
-
+	duration = std::chrono::duration_cast<std::chrono::milliseconds>(t - std::chrono::system_clock::now());
+	return (duration.count() > 0) ? duration.count() : 0;
+}
