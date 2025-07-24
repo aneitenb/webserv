@@ -17,6 +17,10 @@
 #define MAX_ROOT_PATH_LENGTH 255
 #define MAX_BODY_SIZE 104857601	//100MB
 
+#ifndef CLIENT_DEFAULT_TIMEOUT
+# define CLIENT_DEFAULT_TIMEOUT	30000U // ms (30s)
+#endif
+
 class ServerBlock {
 private:
 	std::vector<std::string> _listen;
@@ -32,6 +36,7 @@ private:
 	bool _maxBodySizeSet;
 	std::string _defaultErrorDir;
 	uint8_t _allowedMethods;
+	u64		_timeout = CLIENT_DEFAULT_TIMEOUT;
 
 public:
 	ServerBlock();
