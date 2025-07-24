@@ -109,17 +109,17 @@ void	Request::append(const std::string &reqData) {
 		Info("\nInvalid request received: Error " << this->_errorCode);
 	else {
 		info("\nNew request received:", COLOR_REQUEST);
-		Info("\tMethod:  " << this->_method);
-		Info("\tURI:     " << this->_uri);
-		Info("\tVersion: " << this->_version);
+		Info("  Method:  " << this->_method);
+		Info("  URI:     " << this->_uri);
+		Info("  Version: " << this->_version);
 #ifdef __DEBUG_REQ_SHOW_HEADERS
-		info("\n\tHeaders:", COLOR_REQUEST);
+		info("\n  Headers:", COLOR_REQUEST);
 		for (const auto &field : this->_headers)
-			Info("\t\t" << field.first << ": " << field.second);
+			Info("    " << field.first << ": " << field.second);
 #endif /* __DEBUG_REQ_SHOW_HEADERS */
 #ifdef __DEBUG_REQ_SHOW_BODY
 		if (this->_body.size() != 0) {
-			info("\n\tBody:", COLOR_REQUEST);
+			info("\n  Body:", COLOR_REQUEST);
 			printBody(this->_contentType, this->_body, COLOR_REQUEST);
 		}
 #endif /* __DEBUG_REQ_SHOW_BODY */
