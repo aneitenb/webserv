@@ -655,6 +655,71 @@ bool Response::checkDir(const std::string& path) {
 	return true;
 }
 
+std::string Response::processRequestBody() {
+	const std::string& rawBody = _request->getBody();
+	
+	std::string contentType;
+	try {
+		contentType = _request->getHeader("Content-Type");
+	} catch (...) {
+		// if there's no Content-Type header, treat as raw data
+		return rawBody;
+	}
+	
+	if (contentType.find("application/x-www-form-urlencoded") != std::string::npos) {
+		// we need to decode it
+		return decodeFormData(rawBody);
+	}
+	return rawBody;
+}
+
+std::string Response::decodeFormData(const std::string& formBody) {
+	// in simple form data like "field=value", extract just the value
+	size_t equalPos = formBody.find('=');
+	if (equalPos == std::string::npos) {
+		// if there's no '=' found, return as it is, it might be malformed
+		return urlDecode(formBody);
+	}
+	
+	// get everything after the first '='
+	std::string encoded = formBody.substr(equalPos + 1);
+	
+	// handle multiple fields: take only the first one
+	//ex: "name=John+Doe&email=john%40example.com&age=25"
+	size_t ampPos = encoded.find('&');
+	if (ampPos != std::string::npos) {
+		encoded = encoded.substr(0, ampPos);
+	}
+	
+	return urlDecode(encoded);
+}
+
+std::string Response::urlDecode(const std::string& encoded) {
+	std::string decoded;
+	
+	for (size_t i = 0; i < encoded.length(); ++i) {
+		if (encoded[i] == '+') {
+			decoded += ' ';  // '+' becomes space in form data
+		}
+		else if (encoded[i] == '%' && i + 2 < encoded.length()) {
+			// Decode %XX sequences (message=Hello+World%21)
+			std::string hex = encoded.substr(i + 1, 2);	//gets the XX into hex
+			try {
+				char c = static_cast<char>(std::stoi(hex, 0, 16));	//convert hex to char(hex base is 16)
+				decoded += c;
+				i += 2;  // skip the XX part
+			} catch (...) {
+				// invalid hex, keep original
+				decoded += encoded[i];
+			}
+		}
+		else {
+			decoded += encoded[i];
+		}
+	}
+	return decoded;
+}
+
 void Response::postResource(const std::string& path) {
 	bool fileExisted = fileExists(path);
 	std::ofstream file(path, std::ios::binary | std::ios::trunc);
@@ -666,7 +731,9 @@ void Response::postResource(const std::string& path) {
 		return;
 	}
 	
-	file.write(_request->getBody().c_str(), _request->getBody().size());
+	std::string dataToWrite = processRequestBody();
+
+	file.write(dataToWrite.c_str(), dataToWrite.size());
 	file.close();
 
 	if (fileExisted) {
@@ -811,7 +878,9 @@ void Response::handleMultipartPost(const std::string& uploadDir) {
 	}
 	
 	bool allFilesSucceeded = true;
+	bool anyNewFilesCreated = false;
 	std::vector<std::string> savedFiles;
+	std::vector<std::string> updatedFiles;
 	
 	// process each file in the multipart struct
 	for (const auto& file : files) {
@@ -836,6 +905,8 @@ void Response::handleMultipartPost(const std::string& uploadDir) {
 			return;
 		}
 
+		bool fileExisted = fileExists(filePath);
+
 		std::ofstream outFile(filePath.c_str(), std::ios::binary);
 		if (!outFile.is_open()) {
 			allFilesSucceeded = false;
@@ -845,7 +916,12 @@ void Response::handleMultipartPost(const std::string& uploadDir) {
 		outFile.write(file.content.c_str(), file.content.size());
 		outFile.close();
 		
-		savedFiles.push_back(safeFilename);
+		if (fileExisted) {
+			updatedFiles.push_back(safeFilename);
+		} else {
+			savedFiles.push_back(safeFilename);
+			anyNewFilesCreated = true;
+		}
 	}
 	
 	if (!allFilesSucceeded) {
@@ -855,7 +931,10 @@ void Response::handleMultipartPost(const std::string& uploadDir) {
 		return;
 	}
 	
-	_statusCode = 201; // created
+	if (anyNewFilesCreated)
+		_statusCode = 201;
+	else
+		_statusCode = 200;
 	
 	std::stringstream response;
 	response << "<!DOCTYPE html>\n<html>\n<head>\n";
@@ -871,7 +950,7 @@ void Response::handleMultipartPost(const std::string& uploadDir) {
 		response << "</ul>\n";
 	}
 	
-	response << "<p><a href=\"/uploads/\">Back to uploads</a></p>\n";
+	response << "<p><a href=\"/uploads/\">Show all uploads</a></p>\n";
 	response << "</body>\n</html>";
 	
 	setBody(response.str());
@@ -1049,7 +1128,7 @@ bool Response::isCgiRequest(const std::string& path) const {
 
 void Response::handleCgi(const std::string& path) {    
 	std::string scriptPath = path;
-	std::string cgiExecutable = _locationBlock->getCgiPass();
+	// std::string cgiExecutable = _locationBlock->getCgiPass();
 	
 	if (!fileExists(scriptPath)) {
 		_statusCode = 404;
