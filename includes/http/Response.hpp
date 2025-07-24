@@ -62,6 +62,9 @@ private:
 	void handlePost();
 	std::string resolveUploadPath();
 	bool checkDir(const std::string& path);
+	std::string processRequestBody();
+	std::string decodeFormData(const std::string& formBody);
+	std::string urlDecode(const std::string& encoded);
 	void postResource(const std::string& path);
 	void handlePostRedirect();
 	
