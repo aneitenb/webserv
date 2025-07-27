@@ -17,7 +17,7 @@
 #include "http/Request.hpp"
 #include "http/Response.hpp"
 #include "config/ServerBlock.hpp"
-#include "server/CgiHandler.hpp"
+#include "server/CGIHandler.hpp"
 
 typedef std::chrono::time_point<std::chrono::system_clock>	timestamp;
 
@@ -31,18 +31,22 @@ class Client : public EventHandler {
         std::string         _buffer;
         Request             _requesting;
         Response            _responding;
-        CgiHandler          _theCgi;
+		CGIHandler			_CGIHandler;
 		timestamp			_disconnectAt;
 		u64					_timeout;
 
+        //size_t? _lastActive;
         int sending_stuff();
         int receiving_stuff();
         int saveRequest();
         void saveResponse();
     public:
-        Client();
-        Client(std::unordered_map<std::string, ServerBlock*> cur);
+        Client() = delete;
+        Client(std::unordered_map<std::string, ServerBlock*> cur, i32 &efd);
         ~Client();
+
+		Client(const Client& other) = delete;
+		Client& operator=(const Client& other) = delete;
 
         //move constructor
         Client(Client&& other) noexcept;
@@ -65,7 +69,7 @@ class Client : public EventHandler {
         // void setCgi();
 
 
-        int handleEvent(uint32_t ev) override;
+        int handleEvent(uint32_t ev, i32 &efd) override;
         bool shouldClose() const;
         int* getSocketFd(int flag) override;
         std::vector<EventHandler*> resolveAccept(void) override;

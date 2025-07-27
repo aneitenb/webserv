@@ -1199,11 +1199,29 @@ void Response::handleCgi(const std::string& rawdata) {
 	}
 	
 	//default content type if not provided
-	if (_headers.find("Content-Type") == _headers.end()) {
+	if (_headers.find("Content-Type") == _headers.end())
 		setHeader("Content-Type", "text/html");
-	}
-	
+	if (_headers.find("Date") == _headers.end())
+		setHeader("Date", getCurrentDate());
 	setBody(bodySection);
+	auto msg = statusMessages.find(_statusCode);
+	info("\nResponse prepared:", COLOR_RESPONSE);
+	info("\tVersion:        HTTP/1.1", COLOR_RESPONSE);
+	Info("\tStatus code:    " << _statusCode);
+	Info("\tStatus message: " << ((msg != statusMessages.end()) ? msg->second : "Unknown"));
+#ifdef __DEBUG_RES_SHOW_HEADERS
+	info("\n\tHeaders: ", COLOR_RESPONSE);
+	for (const auto &field : _headers)
+		Info("\t\t" << field.first << ": " << field.second);
+#endif /* __DEBUG_RES_SHOW_HEADERS */
+#ifdef __DEBUG_RES_SHOW_BODY
+	if (_body.size() != 0) {
+		info("\n\tBody: ", COLOR_RESPONSE);
+		printBody(_headers["Content-Type"], _body, COLOR_RESPONSE);
+	}
+#endif /* __DEBUG_RES_SHOW_BODY */
+	_fullResponse = getStatusLine() + getHeadersString() + _body;
+	_bytesSent = 0;
 }
 
 void Response::handleCgiError(const std::string& path) {   

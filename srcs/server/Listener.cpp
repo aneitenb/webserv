@@ -12,7 +12,6 @@
 #include <fcntl.h>
 #include <netdb.h> //getaddrinfo
 #include <cstring> //memset
-#include "log.hpp"
 
 #include "utils/message.hpp"
 #include "utils/Timeout.hpp"
@@ -291,7 +290,7 @@ int* Listener::getSocketFd(int flag){
     return(&_sockFd);
 }
 
-int Listener::handleEvent(uint32_t ev){
+int Listener::handleEvent(uint32_t ev, i32 &efd){
     if (ev & EPOLLIN){ //accept incoming clients while there are clients to be accepted
 		debug("\nNew client connection received");
         int curFd = accept(_sockFd, nullptr, nullptr); //think about taking in the client info for security reasons maybe
@@ -305,7 +304,7 @@ int Listener::handleEvent(uint32_t ev){
         //separate setuping into making it nonblocking
         if (makeNonBlock(&curFd) == -1) //set as nonblocking
             return (-1);
-        Client curC(this->getServBlock());
+        Client curC(this->getServBlock(), efd);
         curC.setKey(_firstKey);
         if (curC.setFd(&curFd) == -1) //pass the socket into Client
             return (-1);

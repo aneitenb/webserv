@@ -39,6 +39,10 @@
 # define COLOR_DEBUG	85
 #endif
 
+#ifndef COLOR_CGI
+# define COLOR_CGI		26
+#endif
+
 #ifndef COLOR_REQUEST
 # define COLOR_REQUEST	125
 #endif

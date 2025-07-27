@@ -13,9 +13,8 @@
 #include <vector>
 #include <unistd.h>
 #include <unordered_map>
-#include <iostream> //delete after
-// #include "EventLoop.hpp"
-#include "log.hpp"
+
+#include "defs.hpp"
 
 enum State {
     WRITING, //client is currently writing
@@ -29,9 +28,8 @@ enum State {
     TOCLOSE, //deleted from epoll, not yet from vector
     TOCGI, //is creating and starting the CGI
     FORCGI, //this is client waiting for cgi
-    CGITOREAD, //is cgi, needs to read
-    CGIREAD, //is cgi, has read
-    CGICLOSED //is cgi, idle
+	CGIWRITE,
+	CGIDONE
 }; 
 
 /*if epollin && towrite
@@ -51,7 +49,7 @@ class EventHandler{
         struct epoll_event _event;
     public:
         virtual ~EventHandler(){};
-        virtual int handleEvent(uint32_t ev) = 0;
+        virtual int handleEvent(uint32_t ev, i32 &efd) = 0;
         virtual int* getSocketFd(int flag) = 0; //add for the client too?
         virtual std::vector<EventHandler*> resolveAccept() = 0;
         virtual void resolveClose() = 0;

@@ -10,10 +10,8 @@
 #pragma once
 
 #include <vector>
-#include "VirtualHost.hpp"
 #include <sys/epoll.h>
 #include "EventHandler.hpp"
-// #include "Client.hpp"
 
 #define MAX_EVENTS 1024
 
@@ -33,7 +31,7 @@
 //     uint64_t  u64;
 // };
 
-
+class Client;
 
 // epoll/select handling
 class   EventLoop{
@@ -56,13 +54,12 @@ public:
     int delEpoll(int* fd);
     int startRun();
     void addListeners(std::vector<EventHandler*> listFds);\
-    void addCGI(EventHandler* cur);
+    void addCGI(Client *client);
     int run(std::vector<EventHandler*> listFds); //epoll_wait + resolve events: accept/send/recv
     void resolvingAccept(EventHandler* cur);
     void resolvingModify(EventHandler* cur, uint32_t event);
     void resolvingClosing(void);
     void condemnClients(EventHandler* cur);
-    void handleCGI(EventHandler* cur);
 
     //getters, setters
     // std::vector<EventHandler*> findValue(int *fd);

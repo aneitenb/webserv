@@ -15,6 +15,7 @@
 #include "utils/Timeout.hpp"
 #include "server/Client.hpp"
 #include "server/EventLoop.hpp"
+#include "server/CGIHandler.hpp"
 #include "server/EventHandler.hpp"
 
 extern sig_atomic_t gSignal;
@@ -83,16 +84,11 @@ int EventLoop::run(std::vector<EventHandler*> listFds){
 			if (curE == dynamic_cast<Client *>(curE))
 				timeouts.updateClient(*dynamic_cast<Client *>(curE));
 
-            if (curE->handleEvent(_events[i].events) == -1){
+            if (curE->handleEvent(_events[i].events, this->_epollFd) == -1){
                 if (curE->getState() == LISTENER)
                     condemnClients(curE); 
-                else if (curE->getState() == CGIREAD || curE->getState() == CGITOREAD || curE->getState() == CGICLOSED){
-                    handleCGI(curE);
-                    curE->setState(CGICLOSED);
-                } 
-                else{
+                else
                     curE->setState(CLOSE);
-                }
                 continue; //skip state processing for closed clients
             }
 
@@ -108,16 +104,10 @@ int EventLoop::run(std::vector<EventHandler*> listFds){
                     resolvingModify(curE, EPOLLIN);
                     break;
                 case TOCGI:
-                    addCGI(curE);
+                    addCGI(static_cast<Client *>(curE));
                     break;
-                case CGITOREAD:
-                    handleCGI(curE);
-                    break;
-                case CGIREAD:
-                    handleCGI(curE);
-                    break;
-                case CLOSE:
-                    break;
+				case CGIWRITE:
+					resolvingModify(static_cast<CGIHandler *>(curE)->getClient(), EPOLLOUT);
                 default:
                     break;
             }
@@ -127,84 +117,19 @@ int EventLoop::run(std::vector<EventHandler*> listFds){
     return (0);   
 }
 
-void EventLoop::handleCGI(EventHandler* cur) {
-    if (cur->getState() == CGITOREAD) {
+void EventLoop::addCGI(Client *client){
+	CGIHandler	*CGI;
 
-        int status = cur->ready2Switch();
-        if (status == 0) { // Done writing, switch to reading
-            cur->setState(CGIREAD);
-            // Remove write pipe from epoll and close it
-            delEpoll(cur->getSocketFd(1));
-            cur->closeFd(cur->getSocketFd(1));
-            return;
-        } else if (status == -1) { // Error occurred
-            delEpoll(cur->getSocketFd(1));
-            cur->closeFd(cur->getSocketFd(1));
-            cur->setState(CGICLOSED);
-            return;
-        }
-        // status == 2 means still writing, continue
-        return;
-    }
-    // CGIREAD state means there's existing code
-    if (cur->getState() == CGIREAD) {
-        int status = cur->ready2Switch();
-        if (status == 2) return; // Still reading
-        
-        // Done reading
-        delEpoll(cur->getSocketFd(0));
-        cur->closeFd(cur->getSocketFd(0));
-        cur->setState(CGICLOSED);
-    }
-}
-
-void EventLoop::addCGI(EventHandler* cur){
-    EventHandler* theCGI = cur->getCgi();
-    if (!theCGI){
-        //set response to 500 or 404
-        // theCGI->resolveClose();
-        cur->setErrorCgi();
-        cur->setState(FORCGI);
-        resolvingModify(cur, EPOLLOUT);
-        return ;
-    }
-    int toBeOrNot = cur->conditionMet(_activeFds, _epollFd);
-    // if (toBeOrNot == 2)
-    //     return ;
-    struct epoll_event& curSend = theCGI->getCgiEvent(1);
-    struct epoll_event& curGet = theCGI->getCgiEvent(0);
-
-    // theCGI->setState(CGIREAD);
-    if (toBeOrNot == 0){ //pass the activefds so they can close in the child
-        // theCGI->setState(CGITOREAD);
-        if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, *(theCGI->getSocketFd(1)), &curSend) == -1){ //not correct
-            theCGI->resolveClose();
-            cur->setErrorCgi();
-            cur->setState(FORCGI);
-            resolvingModify(cur, EPOLLOUT);
-            return ;
-        }
-    }
-    if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, *(theCGI->getSocketFd(0)), &curGet) == -1){ //not correct
-        //set response
-        if (toBeOrNot == 0)
-            delEpoll(theCGI->getSocketFd(1));
-        theCGI->resolveClose();
-        cur->setErrorCgi();
-        cur->setState(FORCGI);
-        resolvingModify(cur, EPOLLOUT);
-        return ;
-    }
-    cur->setState(FORCGI);
-    resolvingModify(cur, EPOLLOUT);
-    if (theCGI->conditionMet(_activeFds, _epollFd) == 1){
-        if (toBeOrNot == 0)
-            delEpoll(theCGI->getSocketFd(1));
-        delEpoll(theCGI->getSocketFd(0));
-        theCGI->resolveClose();
-        cur->setErrorCgi();
-        return;
-    }
+	CGI = static_cast<CGIHandler *>(client->getCgi());
+	if (!CGI) {
+		warn("EventLoop::addCGI(): No CGI handler found");
+		client->CGIResponse("");
+		return ;
+	}
+	if (!CGI->exec(this->_activeFds)) {
+		Warn("EventLoop::addCGI(): Unable to execute CGI: " << strerror(errno));
+		client->CGIResponse("");
+	}
 }
 
 //create an epoll instance
