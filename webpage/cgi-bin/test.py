@@ -3,7 +3,7 @@ import os
 import sys
 
 # Print the CGI header
-print("Content-type: text/html\n\n")
+print("Content-Type: text/html\r\n\r")
 
 # Generate a simple HTML page
 print("<html><head><title>CGI Test</title></head><body>")
