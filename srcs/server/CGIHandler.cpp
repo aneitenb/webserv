@@ -114,6 +114,11 @@ bool	CGIHandler::_setupEnv(const Request &req) {
 		root += '/';
 	if (uri.front() == '/')
 		uri = uri.substr(1);
+	i = uri.find_first_of('?');
+	if (i != std::string::npos) {
+		this->_query = uri.substr(i + 1);
+		uri.erase(i);
+	}
 	i = uri.find_last_of('/');
 	if (i == std::string::npos) {
 		Warn("CGIHandler::_setupEnv(): Invalid URI: '" << uri << '\'');
@@ -122,41 +127,29 @@ bool	CGIHandler::_setupEnv(const Request &req) {
 		return false;
 	}
 	this->_absPath = root + uri.substr(0, i);
-	if (access(this->_absPath.c_str(), F_OK) == -1) {
-		Warn("CGIHandler::_setupEnv(): access(" << this->_absPath << ", F_OK) failed: " << strerror(errno));
+	this->_scriptPath = root + uri;
+	if (access(this->_scriptPath.c_str(), F_OK) == -1) {
+		Warn("CGIHandler::_setupEnv(): access(" << this->_scriptPath << ", F_OK) failed: " << strerror(errno));
 		this->_errorCode = HTTP_NOT_FOUND;
 		this->_valid = false;
 		return false;
 	}
-	if (this->_method == CGIHandler::GET) {
-		i = uri.find_last_of('?');
-		if (i == std::string::npos) {
-			Warn("CGIHandler::_setupEnv(): Invalid URI: '" << uri << '\'');
-			this->_errorCode = HTTP_BAD_REQUEST;
-			this->_valid = false;
-			return false;
-		}
-		this->_scriptPath = '.' + uri.substr(0, i);
-		this->_query = uri.substr(i);
-	} else {
-		this->_scriptPath = root + uri;
-		if (access(this->_scriptPath.c_str(), X_OK) == -1) {
-			Warn("CGIHandler::_setupEnv(): access(" << this->_scriptPath << ", X_OK) failed: " << strerror(errno));
-			this->_errorCode = HTTP_FORBIDDEN;
-			this->_valid = false;
-			return false;
-		}
-		i = _scriptPath.find_last_of('/');
-		this->_scriptName = "./" + this->_scriptPath.substr((i != std::string::npos) ? i + 1 : 0);
+	if (access(this->_scriptPath.c_str(), X_OK) == -1) {
+		Warn("CGIHandler::_setupEnv(): access(" << this->_scriptPath << ", X_OK) failed: " << strerror(errno));
+		this->_errorCode = HTTP_FORBIDDEN;
+		this->_valid = false;
+		return false;
 	}
-	this->_env.push_back(makeVar("REQUEST_METHOD", req.getMethod()));
+	i = _scriptPath.find_last_of('/');
+	this->_scriptName = "./" + this->_scriptPath.substr((i != std::string::npos) ? i + 1 : 0);
 	this->_env.push_back(makeVar("SCRIPT_FILENAME", this->_scriptName));
+	this->_env.push_back(makeVar("REQUEST_METHOD", req.getMethod()));
+	this->_env.push_back(makeVar("QUERY_STRING", this->_query));
 	this->_env.push_back(makeVar("PATH_INFO", this->_absPath));
 	if (this->_method == CGIHandler::POST) {
 		this->_env.push_back(makeVar("CONTENT_LENGTH", std::to_string(req.getContentLength())));
 		this->_env.push_back(makeVar("CONTENT_TYPE", req.getContentType()));
-	} else
-		this->_env.push_back(makeVar("QUERY_STRING", this->_query));
+	}
 	for (std::string &var : this->_env)
 		this->_envp.push_back(var.c_str());
 	this->_envp.push_back(nullptr);
@@ -259,6 +252,10 @@ static inline bool	_pipe(i32 (*pfd)[2]) {
 // public methods
 bool	CGIHandler::init(const Request &req) {
 	Info("\nCGIHandler: Init started for client #" << *this->_client->getSocketFd(0));
+	this->_scriptName.clear();
+	this->_scriptPath.clear();
+	this->_absPath.clear();
+	this->_query.clear();
 	this->_buf.clear();
 	this->_valid = true;
 	this->setState(FORCGI);

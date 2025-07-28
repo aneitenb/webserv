@@ -293,7 +293,7 @@ int Client::handleEvent(uint32_t ev, [[maybe_unused]] i32 &efd){
             _buffer.clear(); // CRITICAL
             
             // Check for CGI
-            if (_requesting.getURI().find(".py") != std::string::npos) {
+            if (_requesting.getURI().find(".py") != std::string::npos || _requesting.getURI().find(".php") != std::string::npos) {
 				std::string hostHeader;
 
 				try {

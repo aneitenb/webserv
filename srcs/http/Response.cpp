@@ -1140,75 +1140,62 @@ bool Response::isCgiRequest(const std::string& path) const {
 }
 
 void Response::handleCgi(const CGIHandler &CGI) {
+	setHeader("Date", getCurrentDate());
+	setHeader("Content-Type", "text/html");
 	if (CGI.isValid()) {
 		const std::string	&rawData = CGI.getResponseData();
+		std::string			bodySection;
 
 		// find header/body separator
 		size_t headerEnd = rawData.find("\r\n\r\n");
-		if (headerEnd == std::string::npos) {
-			headerEnd = rawData.find("\n\n");
-			if (headerEnd == std::string::npos) {
-				_statusCode = 502;
-				setBody(getErrorPage(502));
-				setHeader("Content-Type", "text/html");
-				return;
-			}
-			headerEnd += 2;
-		} else {
+		if (headerEnd != std::string::npos) {
 			headerEnd += 4;
-		}
 
-		std::string headerSection = rawData.substr(0, headerEnd - 2);
-		std::string bodySection = rawData.substr(headerEnd);
+			std::string headerSection = rawData.substr(0, headerEnd - 2);
+			bodySection = rawData.substr(headerEnd);
 
-		// Parse headers
-		std::istringstream headerStream(headerSection);
-		std::string line;
-		_statusCode = 200;
+			// Parse headers
+			std::istringstream headerStream(headerSection);
+			std::string line;
+			_statusCode = 200;
 
-		while (std::getline(headerStream, line)) {
-			if (!line.empty() && line.back() == '\r') {
-				line.pop_back(); // removes \r
-			}
-
-			if (line.empty()) break; //end of headers if empty line
-
-			size_t colonPos = line.find(':');
-			if (colonPos == std::string::npos) continue; // skip malformed lines
-
-			std::string headerName = line.substr(0, colonPos);
-			std::string headerValue = line.substr(colonPos + 1);
-
-			// trim whitespace
-			size_t start = headerValue.find_first_not_of(" \t");
-			if (start != std::string::npos) {
-				size_t end = headerValue.find_last_not_of(" \t");
-				headerValue = headerValue.substr(start, end - start + 1);
-			}
-
-			if (headerName == "Status") {
-				size_t spacePos = headerValue.find(' ');
-				std::string statusStr = (spacePos != std::string::npos) ? headerValue.substr(0, spacePos) : headerValue;
-				try {
-					_statusCode = std::stoi(statusStr);
-				} catch (...) {
-					_statusCode = 200;
+			while (std::getline(headerStream, line)) {
+				if (!line.empty() && line.back() == '\r') {
+					line.pop_back(); // removes \r
 				}
-			} else {
-				setHeader(headerName, headerValue);
-			}
-		}
 
-		//default content type if not provided
-		if (_headers.find("Content-Type") == _headers.end())
-			setHeader("Content-Type", "text/html");
-		if (_headers.find("Date") == _headers.end())
-			setHeader("Date", getCurrentDate());
+				if (line.empty()) break; //end of headers if empty line
+
+				size_t colonPos = line.find(':');
+				if (colonPos == std::string::npos) continue; // skip malformed lines
+
+				std::string headerName = line.substr(0, colonPos);
+				std::string headerValue = line.substr(colonPos + 1);
+
+				// trim whitespace
+				size_t start = headerValue.find_first_not_of(" \t");
+				if (start != std::string::npos) {
+					size_t end = headerValue.find_last_not_of(" \t");
+					headerValue = headerValue.substr(start, end - start + 1);
+				}
+
+				if (headerName == "Status") {
+					size_t spacePos = headerValue.find(' ');
+					std::string statusStr = (spacePos != std::string::npos) ? headerValue.substr(0, spacePos) : headerValue;
+					try {
+						_statusCode = std::stoi(statusStr);
+					} catch (...) {
+						_statusCode = 200;
+					}
+				} else {
+					setHeader(headerName, headerValue);
+				}
+			}
+		} else
+			bodySection = rawData;
 		setBody(bodySection);
 	} else {
 		_statusCode = CGI.getErrorCode();
-		setHeader("Content-Type", "text/html");
-		setHeader("Date", getCurrentDate());
 		setBody(getErrorPage(_statusCode));
 	}
 	_printResponseInfo();
