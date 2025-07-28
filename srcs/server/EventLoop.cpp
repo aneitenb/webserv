@@ -65,7 +65,8 @@ int EventLoop::run(std::vector<EventHandler*> listFds){
 
 		if (events2Resolve == 0) {
 			curE = &timeouts.front().first;
-			Debug("\nClient at socket #" << *curE->getSocketFd() << " timed out, closing connection");
+			Debug("\nClient at socket #" << *curE->getSocketFd(0) << " timed out, closing connection");
+			static_cast<Client *>(curE)->stopCGI();
 			curE->setState(CLOSE);
 			timeouts.pop();
 			continue ;
@@ -83,6 +84,8 @@ int EventLoop::run(std::vector<EventHandler*> listFds){
 
 			if (curE == dynamic_cast<Client *>(curE))
 				timeouts.updateClient(*dynamic_cast<Client *>(curE));
+			else if (curE == dynamic_cast<CGIHandler *>(curE))
+				timeouts.updateClient(*dynamic_cast<CGIHandler *>(curE)->getClient());
 
             if (curE->handleEvent(_events[i].events, this->_epollFd) == -1){
                 if (curE->getState() == LISTENER)

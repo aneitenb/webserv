@@ -82,6 +82,7 @@ class Client : public EventHandler {
         std::string getLocalConnectionPort();  //new
 
 		void	updateDisconnectTime(void);
+		void	stopCGI(void);
 
 		const timestamp	&getDisconnectTime(void) const;
         

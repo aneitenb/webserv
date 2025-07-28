@@ -11,7 +11,7 @@
 #include "utils/message.hpp"
 #include "server/Client.hpp"
 
-Client::Client(std::unordered_map<std::string, ServerBlock*> cur, i32 &efd): _allServerNames(cur), _clFd(-1), _count(0), _CGIHandler(this, _clFd, efd) {
+Client::Client(std::unordered_map<std::string, ServerBlock*> cur, i32 &efd): _allServerNames(cur), _clFd(-1), _count(0), _CGIHandler(this, _clFd, efd), _timeout(CLIENT_DEFAULT_TIMEOUT) {
 	_result = nullptr;
     setState(TOADD);
 }
@@ -446,6 +446,10 @@ void Client::saveResponse(){
 
 void	Client::updateDisconnectTime(void) {
 	this->_disconnectAt = std::chrono::system_clock::now() + std::chrono::milliseconds(this->_timeout);
+}
+
+void	Client::stopCGI(void) {
+	this->_CGIHandler.stop();
 }
 
 const timestamp	&Client::getDisconnectTime(void) const { return this->_disconnectAt; }

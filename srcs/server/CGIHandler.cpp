@@ -144,8 +144,9 @@ bool	CGIHandler::_setupEnv(const Request &req) {
 	this->_scriptName = "./" + this->_scriptPath.substr((i != std::string::npos) ? i + 1 : 0);
 	this->_env.push_back(makeVar("SCRIPT_FILENAME", this->_scriptName));
 	this->_env.push_back(makeVar("REQUEST_METHOD", req.getMethod()));
-	this->_env.push_back(makeVar("QUERY_STRING", this->_query));
 	this->_env.push_back(makeVar("PATH_INFO", this->_absPath));
+	if (!this->_query.empty())
+		this->_env.push_back(makeVar("QUERY_STRING", this->_query));
 	if (this->_method == CGIHandler::POST) {
 		this->_env.push_back(makeVar("CONTENT_LENGTH", std::to_string(req.getContentLength())));
 		this->_env.push_back(makeVar("CONTENT_TYPE", req.getContentType()));
@@ -327,6 +328,13 @@ void	CGIHandler::resolveClose(void) {
 	closeFd(&this->_inputPipe.pfd[1]);
 }
 
+void	CGIHandler::stop(void) {
+	if (this->_pid) {
+		kill(this->_pid, SIGKILL);
+		this->_pid = 0;
+	}
+}
+
 i32	CGIHandler::handleEvent(const u32 ev, [[maybe_unused]] i32 &efd) {
 	return (ev & EPOLLOUT) ? this->_write() : this->_read();
 }
@@ -357,8 +365,6 @@ struct epoll_event	&CGIHandler::getCgiEvent([[maybe_unused]] i32 flag) { return 
 EventHandler	*CGIHandler::getCgi(void) { return nullptr; }
 
 bool	CGIHandler::conditionMet([[maybe_unused]] fdMap &activeFds, [[maybe_unused]] i32 &epollFd) { return false; }
-
-void	CGIHandler::setErrorCgi(void) {}
 
 i32	*CGIHandler::getSocketFd([[maybe_unused]] const i32 flag) { return &this->_socketFd; }
 

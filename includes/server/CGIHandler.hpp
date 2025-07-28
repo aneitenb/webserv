@@ -76,6 +76,7 @@ class CGIHandler: public EventHandler {
 
 		// public methods
 		void	resolveClose(void) override;
+		void	stop(void);
 		bool	init(const Request &req);
 		bool	exec(fdMap &activeFds);
 
@@ -102,8 +103,6 @@ class CGIHandler: public EventHandler {
 		EventHandler	*getCgi(void) override;
 
 		bool	conditionMet(fdMap &activeFds, i32 &epollFd) override;
-
-		void	setErrorCgi(void) override;
 
 		i32	*getSocketFd(const i32 flag) override;
 

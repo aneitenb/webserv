@@ -345,7 +345,7 @@ void Listener::resolveClose(){
     // use iterator properly - no mixing with indices
     for (auto it = _activeClients.begin(); it != _activeClients.end(); ){
         if (it->getState() == TOCLOSE || it->getState() == CLOSED){
-			Debug("\nClosing client at socket #" << *it->getSocketFd());
+			Debug("\nClosing client at socket #" << *it->getSocketFd(0));
             // close the file descriptor if it's still valid
             if (*(it->getSocketFd(0)) >= 0) {
                 close(*(it->getSocketFd(0)));
@@ -372,21 +372,3 @@ struct epoll_event& Listener::getCgiEvent(int flag) {
 }
 
 int Listener::ready2Switch() { return 1; }
-
-void Listener::setErrorCgi() {}
-//FOR LISTENERS
-// void EventLoop::addClient(Client* cur){
-//     _activeClients.push_back(cur);
-// }
-
-// std::vector<Client*> EventLoop::getClients(void) const{
-//     return (_activeClients);
-// }
-
-// void EventLoop::delClient(Client* cur){
-//     for (std::size_t i = 0; i < _activeClients.size(); i++){
-//         if (_activeClients.at(i) == cur){
-//             _activeClients.erase(_activeClients.begin() + i);
-//             return ;}
-//     }
-// }
