@@ -11,6 +11,7 @@
 
 #include "CommonFunctions.hpp"
 #include "Request.hpp"
+#include "server/CGIHandler.hpp"
 #include "config/ServerBlock.hpp"
 #include "config/LocationBlock.hpp"
 
@@ -80,6 +81,8 @@ private:
 	void handleMultipartPost(const std::string& uploadDir);
 	
 	bool isCgiRequest(const std::string& path) const;
+
+	void	_printResponseInfo(void);
 	
 	
 	public:
@@ -107,8 +110,7 @@ private:
 	void setContentType(const std::string& path);
 
 	void prepareResponse();
-	void handleCgiError(const std::string& path); //need it to be public
-	void handleCgi(const std::string& rawdata);
+	void handleCgi(const CGIHandler &CGI);
 	bool isComplete() const;
 
 	// std::string getString();

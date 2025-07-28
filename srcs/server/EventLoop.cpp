@@ -121,15 +121,8 @@ void EventLoop::addCGI(Client *client){
 	CGIHandler	*CGI;
 
 	CGI = static_cast<CGIHandler *>(client->getCgi());
-	if (!CGI) {
-		warn("EventLoop::addCGI(): No CGI handler found");
-		client->CGIResponse("");
-		return ;
-	}
-	if (!CGI->exec(this->_activeFds)) {
+	if (!CGI->exec(this->_activeFds))
 		Warn("EventLoop::addCGI(): Unable to execute CGI: " << strerror(errno));
-		client->CGIResponse("");
-	}
 }
 
 //create an epoll instance

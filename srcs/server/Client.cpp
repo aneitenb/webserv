@@ -6,33 +6,12 @@
 //  ╚══╝╚══╝     ╚══════╝    ╚═════╝     ╚══════╝    ╚══════╝    ╚═╝  ╚═╝      ╚═══╝
 //
 // <<Client.cpp>> -- <<Aida, Ilmari, Milica>>
-
-<<<<<<< HEAD
-#include <list>
-#include <fcntl.h>
-#include <string.h>
-#include <unistd.h>
-#include <sys/socket.h>
-=======
 #include <arpa/inet.h>
->>>>>>> ca168bf (Add new CGI handler)
 
 #include "utils/message.hpp"
 #include "server/Client.hpp"
 
-<<<<<<< HEAD
-/*Orthodox Cannonical Form*/
-Client::Client(): /*_listfd(nullptr), */_clFd(-1), _count(0), /*_curR(EMPTY),*/ _theCgi(&_requesting, &_responding, &_clFd), _timeout(CLIENT_DEFAULT_TIMEOUT){
-	_result = nullptr;
-    setState(TOADD);
-}
-
-Client::Client(std::unordered_map<std::string, ServerBlock*> cur): _allServerNames(cur), /*_listfd(nullptr),*/ \
-    _clFd(-1), _count(0), /*_curR(EMPTY),*/ \
-    _theCgi(CgiHandler(&_requesting, &_responding, &_clFd)), _timeout(CLIENT_DEFAULT_TIMEOUT){
-=======
 Client::Client(std::unordered_map<std::string, ServerBlock*> cur, i32 &efd): _allServerNames(cur), _clFd(-1), _count(0), _CGIHandler(this, _clFd, efd) {
->>>>>>> ca168bf (Add new CGI handler)
 	_result = nullptr;
     setState(TOADD);
 }
@@ -250,8 +229,6 @@ struct epoll_event& Client::getCgiEvent(int flag) {
 
 int Client::ready2Switch() { return 1; }
 
-void Client::setErrorCgi() {}
-
 EventHandler* Client::getCgi(){
 	return dynamic_cast<EventHandler *>(&this->_CGIHandler);
 }
@@ -325,8 +302,11 @@ int Client::handleEvent(uint32_t ev, [[maybe_unused]] i32 &efd){
 					hostHeader = _firstKey; // Use the default server
 				}
 				this->_CGIHandler.setServerBlock(getSBforResponse(hostHeader));
-				if (!this->_CGIHandler.init(this->_requesting))
-					return (-1);
+				this->_responding = Response(&this->_requesting, getSBforResponse(hostHeader));
+				if (!this->_CGIHandler.init(this->_requesting)) {
+					this->setState(TOWRITE);
+					return (0);
+				}
                 this->setState(TOCGI);
                 return (0);
             }
@@ -375,10 +355,11 @@ bool Client::shouldClose() const {
 /*Handle Event Helpers*/
 int Client::sending_stuff(){
     std::string buffer = {0};
-	if (this->_CGIHandler.getState() != CGIWRITE)
-		_responding.prepareResponse();
-	else
+	if (this->_CGIHandler.getState() == CGIWRITE) {
+		_responding.handleCgi(this->_CGIHandler);
 		this->_CGIHandler.setState(CGIDONE);
+	} else
+		_responding.prepareResponse();
     buffer = _responding.getFullResponse();
 	if (buffer.size() == 0)
 		return (-1);
@@ -463,25 +444,8 @@ void Client::saveResponse(){
     // _responding.prepareResponse();
 }
 
-<<<<<<< HEAD
 void	Client::updateDisconnectTime(void) {
 	this->_disconnectAt = std::chrono::system_clock::now() + std::chrono::milliseconds(this->_timeout);
 }
-=======
-void	Client::CGIResponse(const std::string &rawResponse) {
-	this->_responding.handleCgi(rawResponse);
-	this->setState(TOWRITE);
-}
-
-//SIGNAL HANDLING???
-// static void sigint_handler(int signo)
-// {
-//   (void)close(tcp_server_fd);
-//   (void)close(tcp_client_fd);
-//   sleep(2);
-//   printf("Caught sigINT!\n");
-//   exit(EXIT_SUCCESS);
-// }
->>>>>>> ca168bf (Add new CGI handler)
 
 const timestamp	&Client::getDisconnectTime(void) const { return this->_disconnectAt; }

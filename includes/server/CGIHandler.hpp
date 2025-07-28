@@ -33,6 +33,8 @@ class CGIHandler: public EventHandler {
 
 		pid_t	_pid;
 
+		bool	_valid;
+
 		struct {
 			struct epoll_event	event;
 			i32					pfd[2];
@@ -51,8 +53,10 @@ class CGIHandler: public EventHandler {
 		i32	&_socketFd;
 		i32	&_epollFd;
 
+		u16	_errorCode;
+
 		// private methods
-		bool	_setupPipes(void);
+		void	_setupPipes(void);
 		bool	_setupEnv(const Request &req);
 		bool	_done(void) const;
 
@@ -71,10 +75,9 @@ class CGIHandler: public EventHandler {
 		CGIHandler	&operator=(const CGIHandler &&other) noexcept;
 
 		// public methods
+		void	resolveClose(void) override;
 		bool	init(const Request &req);
 		bool	exec(fdMap &activeFds);
-
-		void	resolveClose(void) override;
 
 		i32	handleEvent(const u32 ev, i32 &efd) override;
 
@@ -83,11 +86,11 @@ class CGIHandler: public EventHandler {
 		void	setClient(Client *client);
 
 		// public getters
-		const struct epoll_event	&getOutputEvent(void) const;
-		const struct epoll_event	&getInputEvent(void) const;
+		const std::string	&getResponseData(void) const;
 
-		const i32	&getOutputFd(void) const;
-		const i32	&getInputFd(void) const;
+		const bool	&isValid(void) const;
+
+		const u16	&getErrorCode(void) const;
 
 		Client	*getClient(void) const;
 

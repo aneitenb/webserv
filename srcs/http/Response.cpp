@@ -85,6 +85,26 @@ Response::Response(Request* request, ServerBlock* serverBlock)
 	initializeMimeTypes();
 }
 
+void	Response::_printResponseInfo(void) {
+	auto msg = statusMessages.find(_statusCode);
+
+	info("\nResponse prepared:", COLOR_RESPONSE);
+	info("\tVersion:        HTTP/1.1", COLOR_RESPONSE);
+	Info("\tStatus code:    " << _statusCode);
+	Info("\tStatus message: " << ((msg != statusMessages.end()) ? msg->second : "Unknown"));
+#ifdef __DEBUG_RES_SHOW_HEADERS
+	info("\n\tHeaders: ", COLOR_RESPONSE);
+	for (const auto &field : _headers)
+		Info("\t\t" << field.first << ": " << field.second);
+#endif /* __DEBUG_RES_SHOW_HEADERS */
+#ifdef __DEBUG_RES_SHOW_BODY
+	if (_body.size() != 0) {
+		info("\n\tBody: ", COLOR_RESPONSE);
+		printBody(_headers["Content-Type"], _body, COLOR_RESPONSE);
+	}
+#endif /* __DEBUG_RES_SHOW_BODY */
+}
+
 void Response::clear() {
 	_statusCode = 200;
 	_headers.clear();
@@ -135,22 +155,7 @@ std::string Response::getMimeType(const std::string& path) const {
 
 void  Response::prepareResponse() {
 	handleResponse();
-	auto msg = statusMessages.find(_statusCode);
-	info("\nResponse prepared:", COLOR_RESPONSE);
-	info("  Version:        HTTP/1.1", COLOR_RESPONSE);
-	Info("  Status code:    " << _statusCode);
-	Info("  Status message: " << ((msg != statusMessages.end()) ? msg->second : "Unknown"));
-#ifdef __DEBUG_RES_SHOW_HEADERS
-	info("\n  Headers: ", COLOR_RESPONSE);
-	for (const auto &field : _headers)
-		Info("    " << field.first << ": " << field.second);
-#endif /* __DEBUG_RES_SHOW_HEADERS */
-#ifdef __DEBUG_RES_SHOW_BODY
-	if (_body.size() != 0) {
-		info("\n  Body: ", COLOR_RESPONSE);
-		printBody(_headers["Content-Type"], _body, COLOR_RESPONSE);
-	}
-#endif /* __DEBUG_RES_SHOW_BODY */
+	_printResponseInfo();
 	_fullResponse = getStatusLine() + getHeadersString() + _body;
 	_bytesSent = 0;
 }
@@ -1134,125 +1139,81 @@ bool Response::isCgiRequest(const std::string& path) const {
 	return (extension == CGI_EXTENSION);
 }
 
-void Response::handleCgi(const std::string& rawdata) {
-	if (rawdata.empty()) {
-		_statusCode = 500;
-		setBody(getErrorPage(500));
-		setHeader("Content-Type", "text/html");
-		return;
-	}
-	
-	// find header/body separator
-	size_t headerEnd = rawdata.find("\r\n\r\n");
-	if (headerEnd == std::string::npos) {
-		headerEnd = rawdata.find("\n\n");
+void Response::handleCgi(const CGIHandler &CGI) {
+	if (CGI.isValid()) {
+		const std::string	&rawData = CGI.getResponseData();
+
+		// find header/body separator
+		size_t headerEnd = rawData.find("\r\n\r\n");
 		if (headerEnd == std::string::npos) {
-			_statusCode = 502;
-			setBody(getErrorPage(502));
-			setHeader("Content-Type", "text/html");
-			return;
-		}
-		headerEnd += 2;
-	} else {
-		headerEnd += 4;
-	}
-	
-	std::string headerSection = rawdata.substr(0, headerEnd - 2);
-	std::string bodySection = rawdata.substr(headerEnd);
-	
-	// Parse headers
-	std::istringstream headerStream(headerSection);
-	std::string line;
-	_statusCode = 200;
-	
-	while (std::getline(headerStream, line)) {
-		if (!line.empty() && line.back() == '\r') {
-			line.pop_back(); // removes \r
-		}
-		
-		if (line.empty()) break; //end of headers if empty line
-		
-		size_t colonPos = line.find(':');
-		if (colonPos == std::string::npos) continue; // skip malformed lines
-		
-		std::string headerName = line.substr(0, colonPos);
-		std::string headerValue = line.substr(colonPos + 1);
-		
-		// trim whitespace
-		size_t start = headerValue.find_first_not_of(" \t");
-		if (start != std::string::npos) {
-			size_t end = headerValue.find_last_not_of(" \t");
-			headerValue = headerValue.substr(start, end - start + 1);
-		}
-		
-		if (headerName == "Status") {
-			size_t spacePos = headerValue.find(' ');
-			std::string statusStr = (spacePos != std::string::npos) ? headerValue.substr(0, spacePos) : headerValue;
-			try {
-				_statusCode = std::stoi(statusStr);
-			} catch (...) {
-				_statusCode = 200;
+			headerEnd = rawData.find("\n\n");
+			if (headerEnd == std::string::npos) {
+				_statusCode = 502;
+				setBody(getErrorPage(502));
+				setHeader("Content-Type", "text/html");
+				return;
 			}
+			headerEnd += 2;
 		} else {
-			setHeader(headerName, headerValue);
+			headerEnd += 4;
 		}
-	}
-	
-	//default content type if not provided
-	if (_headers.find("Content-Type") == _headers.end())
+
+		std::string headerSection = rawData.substr(0, headerEnd - 2);
+		std::string bodySection = rawData.substr(headerEnd);
+
+		// Parse headers
+		std::istringstream headerStream(headerSection);
+		std::string line;
+		_statusCode = 200;
+
+		while (std::getline(headerStream, line)) {
+			if (!line.empty() && line.back() == '\r') {
+				line.pop_back(); // removes \r
+			}
+
+			if (line.empty()) break; //end of headers if empty line
+
+			size_t colonPos = line.find(':');
+			if (colonPos == std::string::npos) continue; // skip malformed lines
+
+			std::string headerName = line.substr(0, colonPos);
+			std::string headerValue = line.substr(colonPos + 1);
+
+			// trim whitespace
+			size_t start = headerValue.find_first_not_of(" \t");
+			if (start != std::string::npos) {
+				size_t end = headerValue.find_last_not_of(" \t");
+				headerValue = headerValue.substr(start, end - start + 1);
+			}
+
+			if (headerName == "Status") {
+				size_t spacePos = headerValue.find(' ');
+				std::string statusStr = (spacePos != std::string::npos) ? headerValue.substr(0, spacePos) : headerValue;
+				try {
+					_statusCode = std::stoi(statusStr);
+				} catch (...) {
+					_statusCode = 200;
+				}
+			} else {
+				setHeader(headerName, headerValue);
+			}
+		}
+
+		//default content type if not provided
+		if (_headers.find("Content-Type") == _headers.end())
+			setHeader("Content-Type", "text/html");
+		if (_headers.find("Date") == _headers.end())
+			setHeader("Date", getCurrentDate());
+		setBody(bodySection);
+	} else {
+		_statusCode = CGI.getErrorCode();
 		setHeader("Content-Type", "text/html");
-	if (_headers.find("Date") == _headers.end())
 		setHeader("Date", getCurrentDate());
-	setBody(bodySection);
-	auto msg = statusMessages.find(_statusCode);
-	info("\nResponse prepared:", COLOR_RESPONSE);
-	info("\tVersion:        HTTP/1.1", COLOR_RESPONSE);
-	Info("\tStatus code:    " << _statusCode);
-	Info("\tStatus message: " << ((msg != statusMessages.end()) ? msg->second : "Unknown"));
-#ifdef __DEBUG_RES_SHOW_HEADERS
-	info("\n\tHeaders: ", COLOR_RESPONSE);
-	for (const auto &field : _headers)
-		Info("\t\t" << field.first << ": " << field.second);
-#endif /* __DEBUG_RES_SHOW_HEADERS */
-#ifdef __DEBUG_RES_SHOW_BODY
-	if (_body.size() != 0) {
-		info("\n\tBody: ", COLOR_RESPONSE);
-		printBody(_headers["Content-Type"], _body, COLOR_RESPONSE);
+		setBody(getErrorPage(_statusCode));
 	}
-#endif /* __DEBUG_RES_SHOW_BODY */
+	_printResponseInfo();
 	_fullResponse = getStatusLine() + getHeadersString() + _body;
 	_bytesSent = 0;
-}
-
-void Response::handleCgiError(const std::string& path) {   
-	std::string scriptPath = path;
-	// std::string cgiExecutable = _locationBlock->getCgiPass();
-	
-	if (!fileExists(scriptPath)) {
-		_statusCode = 404;
-		setBody(getErrorPage(404));
-		setHeader("Content-Type", "text/html");
-		return;
-	}
-	
-	if (!hasReadPermission(scriptPath) || !hasExecPermission(scriptPath)) { //does this check if we can execute it too? should it?
-		_statusCode = 403;
-		setBody(getErrorPage(403));
-		setHeader("Content-Type", "text/html");
-		return;
-	}
-	
-	// TODO: Implement actual CGI execution
-	// 1. Setting up environment variables
-	// 2. Creating pipes for stdin/stdout
-	// 3. Forking a process
-	// 4. Executing the CGI script
-	// 5. Reading the response
-	// 6. Parsing headers from the response
-
-	_statusCode = 501;
-	setBody(getErrorPage(501));
-	setHeader("Content-Type", "text/html");
 }
 
 std::string Response::getStatusLine() const {

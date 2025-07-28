@@ -23,8 +23,6 @@
 
 #define _BUF_SIZE	4096
 
-#define _PYTHON3_DEFAULT_PATH	"/usr/bin/python3"
-
 #define makeVar(var, val)	(std::string(std::string(var) + "=" + val))
 
 static inline bool	_pipe(i32 (*pfd)[2]);
@@ -71,32 +69,36 @@ CGIHandler	&CGIHandler::operator=(const CGIHandler &&other) noexcept {
 }
 
 // private methods
-bool	CGIHandler::_setupPipes(void) {
+void	CGIHandler::_setupPipes(void) {
 	this->_outputPipe.event.data.ptr = static_cast<void *>(this);
 	this->_inputPipe.event.data.ptr = static_cast<void *>(this);
-	if (!_pipe(&this->_outputPipe.pfd))
-		return false;
-	if (this->_method == CGIHandler::POST) {
+	if (!_pipe(&this->_outputPipe.pfd)) {
+		this->_errorCode = HTTP_INTERNAL_SERVER_ERROR;
+		this->_valid = false;
+	}
+	if (this->_valid && this->_method == CGIHandler::POST) {
 		if (!_pipe(&this->_inputPipe.pfd)) {
 			closeFd(&this->_outputPipe.pfd[0]);
 			closeFd(&this->_outputPipe.pfd[1]);
-			return false;
+			this->_errorCode = HTTP_INTERNAL_SERVER_ERROR;
+			this->_valid = false;
 		}
-		if (epoll_ctl(this->_epollFd, EPOLL_CTL_ADD, this->_inputPipe.pfd[1], &this->_inputPipe.event) == -1) {
+		if (this->_valid && epoll_ctl(this->_epollFd, EPOLL_CTL_ADD, this->_inputPipe.pfd[1], &this->_inputPipe.event) == -1) {
 			Warn("CGIHandler::_setupPipes(): epoll_ctl(" << this->_epollFd << ", EPOLL_CTL_ADD, " << this->_inputPipe.pfd[1]
 				 << ", &this->_inputPipe.event) failed: " << strerror(errno));
 			this->_client->setState(CLOSE);
 			this->resolveClose();
-			return false;
+			this->_errorCode = HTTP_INTERNAL_SERVER_ERROR;
+			this->_valid = false;
 		}
-	} else if (epoll_ctl(this->_epollFd, EPOLL_CTL_ADD, this->_outputPipe.pfd[0], &this->_outputPipe.event) == -1) {
+	} else if (this->_valid && epoll_ctl(this->_epollFd, EPOLL_CTL_ADD, this->_outputPipe.pfd[0], &this->_outputPipe.event) == -1) {
 		Warn("CGIHandler::_setupPipes(): epoll_ctl(" << this->_epollFd << ", EPOLL_CTL_ADD, " << this->_outputPipe.pfd[0]
 				<< ", &this->_outputPipe.event) failed: " << strerror(errno));
 		this->_client->setState(CLOSE);
 		this->resolveClose();
-		return false;
+		this->_errorCode = HTTP_INTERNAL_SERVER_ERROR;
+		this->_valid = false;
 	}
-	return true;
 }
 
 bool	CGIHandler::_setupEnv(const Request &req) {
@@ -115,17 +117,23 @@ bool	CGIHandler::_setupEnv(const Request &req) {
 	i = uri.find_last_of('/');
 	if (i == std::string::npos) {
 		Warn("CGIHandler::_setupEnv(): Invalid URI: '" << uri << '\'');
+		this->_errorCode = HTTP_BAD_REQUEST;
+		this->_valid = false;
 		return false;
 	}
 	this->_absPath = root + uri.substr(0, i);
 	if (access(this->_absPath.c_str(), F_OK) == -1) {
 		Warn("CGIHandler::_setupEnv(): access(" << this->_absPath << ", F_OK) failed: " << strerror(errno));
+		this->_errorCode = HTTP_NOT_FOUND;
+		this->_valid = false;
 		return false;
 	}
 	if (this->_method == CGIHandler::GET) {
 		i = uri.find_last_of('?');
 		if (i == std::string::npos) {
 			Warn("CGIHandler::_setupEnv(): Invalid URI: '" << uri << '\'');
+			this->_errorCode = HTTP_BAD_REQUEST;
+			this->_valid = false;
 			return false;
 		}
 		this->_scriptPath = '.' + uri.substr(0, i);
@@ -134,6 +142,8 @@ bool	CGIHandler::_setupEnv(const Request &req) {
 		this->_scriptPath = root + uri;
 		if (access(this->_scriptPath.c_str(), X_OK) == -1) {
 			Warn("CGIHandler::_setupEnv(): access(" << this->_scriptPath << ", X_OK) failed: " << strerror(errno));
+			this->_errorCode = HTTP_FORBIDDEN;
+			this->_valid = false;
 			return false;
 		}
 		i = _scriptPath.find_last_of('/');
@@ -167,6 +177,8 @@ i32	CGIHandler::_write(void) {
 	bytesWritten = write(_inputPipe.pfd[1], this->_buf.c_str(), this->_buf.size());
 	if (bytesWritten == -1) {
 		Warn("CGIHandler::_write(): write(" << _inputPipe.pfd[1] << ", this->_buf, " << this->_buf.size() << ") failed: " << strerror(errno));
+		this->_errorCode = HTTP_INTERNAL_SERVER_ERROR;
+		this->_valid = false;
 		return -1;
 	}
 	remaining = this->_buf.size() - bytesWritten;
@@ -176,15 +188,19 @@ i32	CGIHandler::_write(void) {
 		if (epoll_ctl(this->_epollFd, EPOLL_CTL_DEL, this->_inputPipe.pfd[1], 0) == -1) {
 			Warn("CGIHandler::_write(): epoll_ctl(" << this->_epollFd << ", EPOLL_CTL_DEL, "
 				 << this->_inputPipe.pfd[1] << ", 0) failed: " << strerror(errno));
+			this->_errorCode = HTTP_INTERNAL_SERVER_ERROR;
 			this->_client->setState(CLOSE);
 			this->resolveClose();
+			this->_valid = false;
 			return -1;
 		}
 		if (epoll_ctl(this->_epollFd, EPOLL_CTL_ADD, this->_outputPipe.pfd[0], &this->_outputPipe.event) == -1) {
 			Warn("CGIHandler::_write(): epoll_ctl(" << this->_epollFd << ", EPOLL_CTL_ADD, " << this->_outputPipe.pfd[0]
 				 << ", &this->_outputPipe.event) failed: " << strerror(errno));
+			this->_errorCode = HTTP_INTERNAL_SERVER_ERROR;
 			this->_client->setState(CLOSE);
 			this->resolveClose();
+			this->_valid = false;
 			return -1;
 		}
 	}
@@ -201,8 +217,10 @@ i32	CGIHandler::_read(void) {
 	if (bytesRead == -1) {
 		Warn("CGIHandler::_read(): read(" << this->_outputPipe.pfd[0] << ", buf, "
 				<< _BUF_SIZE << ") failed: " << strerror(errno));
+		this->_errorCode = HTTP_INTERNAL_SERVER_ERROR;
 		this->_client->setState(CLOSE);
 		this->resolveClose();
+		this->_valid = false;
 		return -1;
 	}
 	if (bytesRead > 0) {
@@ -214,11 +232,16 @@ i32	CGIHandler::_read(void) {
 		if (epoll_ctl(this->_epollFd, EPOLL_CTL_DEL, this->_outputPipe.pfd[0], 0) == -1) {
 			Warn("CGIHandler::_read(): epoll_ctl(" << this->_epollFd << ", EPOLL_CTL_DEL, "
 					<< this->_outputPipe.pfd[0] << ", 0) failed: " << strerror(errno));
+			this->_errorCode = HTTP_INTERNAL_SERVER_ERROR;
 			this->_client->setState(CLOSE);
 			this->resolveClose();
+			this->_valid = false;
 			return -1;
 		}
-		this->_client->CGIResponse(this->_buf);
+		if (this->_buf.size() == 0) {
+			this->_errorCode = HTTP_INTERNAL_SERVER_ERROR;
+			this->_valid = false;
+		}
 		this->setState(CGIWRITE);
 		this->resolveClose();
 	}
@@ -235,27 +258,38 @@ static inline bool	_pipe(i32 (*pfd)[2]) {
 
 // public methods
 bool	CGIHandler::init(const Request &req) {
-	Info("\nCGIHandler init started for client #" << *this->_client->getSocketFd(0));
+	Info("\nCGIHandler: Init started for client #" << *this->_client->getSocketFd(0));
+	this->_buf.clear();
+	this->_valid = true;
 	this->setState(FORCGI);
-	if (req.getMethod() == "POST") {
-		this->_method = CGIHandler::POST;
-		this->_buf = req.getBody();
-	} else if (req.getMethod() == "GET")
-		this->_method = CGIHandler::GET;
-	else
-		return false;
-	if (!this->_setupPipes())
-		return false;
-	return this->_setupEnv(req);
+	if (req.getMethod() == "DELETE") {
+		this->_errorCode = HTTP_METHOD_NOT_ALLOWED;
+		this->_valid = false;
+	} else {
+		if (req.getMethod() == "POST") {
+			this->_method = CGIHandler::POST;
+			this->_buf = req.getBody();
+		} else
+			this->_method = CGIHandler::GET;
+		if (this->_setupEnv(req))
+			this->_setupPipes();
+	}
+	if (this->_valid)
+		return true;
+	this->setState(CGIWRITE);
+	return false;
 }
 
 bool	CGIHandler::exec(fdMap &activeFds) {
-	const char	*av[3];
+	const char	*av[2];
 	size_t		i;
 
 	this->_pid = fork();
 	switch (_pid) {
 		case _PID_ERROR:
+			this->_errorCode = HTTP_INTERNAL_SERVER_ERROR;
+			this->setState(CGIWRITE);
+			this->_valid = false;
 			return false;
 		case _PID_CHILD:
 			for (auto &pair : activeFds) {
@@ -277,9 +311,8 @@ bool	CGIHandler::exec(fdMap &activeFds) {
 				Warn("CGIHandler::_exec: chdir(" << this->_absPath.c_str() << ") failed: " << strerror(errno));
 				_exit(1);
 			}
-			av[0] = _PYTHON3_DEFAULT_PATH;
-			av[1] = this->_scriptName.c_str();
-			av[2] = nullptr;
+			av[0] = this->_scriptName.c_str();
+			av[1] = nullptr;
 			execve(av[0], const_cast<char * const *>(av), const_cast<char * const *>(this->_envp.data()));
 			Warn("CGIHandler::_exec: execve(" << av[0] << av << this->_env.data() << ") failed: " << strerror(errno));
 			_exit(1);
@@ -311,13 +344,11 @@ void	CGIHandler::setClient(Client *client) {
 }
 
 // public getters
-const struct epoll_event	&CGIHandler::getOutputEvent(void) const { return this->_outputPipe.event; }
+const std::string	&CGIHandler::getResponseData(void) const { return this->_buf; }
 
-const struct epoll_event	&CGIHandler::getInputEvent(void) const { return this->_inputPipe.event; }
+const bool	&CGIHandler::isValid(void) const { return this->_valid; }
 
-const i32	&CGIHandler::getOutputFd(void) const { return this->_outputPipe.pfd[0]; }
-
-const i32	&CGIHandler::getInputFd(void) const { return this->_inputPipe.pfd[1]; }
+const u16	&CGIHandler::getErrorCode(void) const { return this->_errorCode; }
 
 Client	*CGIHandler::getClient(void) const { return this->_client; }
 
