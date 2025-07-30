@@ -24,4 +24,7 @@ if os.environ.get("REQUEST_METHOD") == "POST":
     print("<h2>POST Data:</h2>")
     print(f"<pre>{post_data}</pre>")
 
+# Add back button
+print("<p><a href=\"/index.html\">Back to Home</a></p>")
+
 print("</body></html>")

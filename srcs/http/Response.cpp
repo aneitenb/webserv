@@ -428,11 +428,14 @@ void Response::generateDirectoryListing(const std::string& path) {
 	}
 	
 	std::stringstream listing;
-	listing << "<!DOCTYPE html>\n<html>\n<head>\n";
 	listing << "<title>Index of " << _request->getURI() << "</title>\n";
+	listing << "<style>\n";
+	listing << "table { border-collapse: collapse; width: 100%; }\n";
+	listing << "th, td { text-align: left; padding: 8px 15px; }\n";  // Add padding
+	listing << ".file-date { min-width: 150px; }\n";  // Minimum width for date column
+	listing << ".file-size { min-width: 80px; }\n";   // Minimum width for size column
+	listing << "</style>\n";
 	listing << "</head>\n<body>\n";
-	listing << "<h1>Index of " << _request->getURI() << "</h1>\n";
-	listing << "<hr>\n";
 	
 	//start the table
 	listing << "<table>\n";
@@ -441,15 +444,6 @@ void Response::generateDirectoryListing(const std::string& path) {
 	listing << "    <th>Last Modified</th>\n";
 	listing << "    <th>Size</th>\n";
 	listing << "  </tr>\n";
-	
-	//add parent directory link if not at root
-	if (_request->getURI() != "/") {
-		listing << "  <tr>\n";
-		listing << "    <td><a href=\"..\">Parent Directory</a></td>\n";
-		listing << "    <td></td>\n";
-		listing << "    <td></td>\n";
-		listing << "  </tr>\n";
-	}
 	
 	// vector of entries for sorting. format: <filename, isDir>
 	std::vector<std::pair<std::string, bool>> entries;
@@ -466,26 +460,27 @@ void Response::generateDirectoryListing(const std::string& path) {
 		entries.push_back(std::make_pair(name, isDir));
 	}
 	
+	
 	// using lambda function(anonymous function)that is defined inline
 	// code between {...} contains the logic for comparing two directory entries
 	// sorts entries directories first, then files alphabetically
 	std::sort(entries.begin(), entries.end(), 
-		[](const std::pair<std::string, bool>& entry1, const std::pair<std::string, bool>& entry2) {
-			const std::string& fileName1 = entry1.first;
-			const std::string& fileName2 = entry2.first;
-			bool isDirectory1 = entry1.second;
-			bool isDirectory2 = entry2.second;
-			
-			// If one is a directory and one is a file, directories come first
-			if (isDirectory1 && !isDirectory2) {
-				return true;
-			}
-			if (!isDirectory1 && isDirectory2) {
-				return false; // file after directory
-			}
-			//both are the same type so sort alphabetically by name
-			return fileName1 < fileName2;
-		});
+	[](const std::pair<std::string, bool>& entry1, const std::pair<std::string, bool>& entry2) {
+		const std::string& fileName1 = entry1.first;
+		const std::string& fileName2 = entry2.first;
+		bool isDirectory1 = entry1.second;
+		bool isDirectory2 = entry2.second;
+		
+		// If one is a directory and one is a file, directories come first
+		if (isDirectory1 && !isDirectory2) {
+			return true;
+		}
+		if (!isDirectory1 && isDirectory2) {
+			return false; // file after directory
+		}
+		//both are the same type so sort alphabetically by name
+		return fileName1 < fileName2;
+	});
 	
 	// Add entries to the table
 	for (size_t i = 0; i < entries.size(); i++) {
@@ -501,7 +496,7 @@ void Response::generateDirectoryListing(const std::string& path) {
 		char timeBuffer[80];
 		struct tm* timeinfo = localtime(&fileStats.st_mtime);
 		strftime(timeBuffer, sizeof(timeBuffer), "%Y-%m-%d %H:%M:%S", timeinfo);
-
+		
 		std::string fileSize;
 		if (!isDir) {
 			if (fileStats.st_size < 1024) {
@@ -515,14 +510,23 @@ void Response::generateDirectoryListing(const std::string& path) {
 		
 		listing << "  <tr>\n";
 		listing << "    <td><a href=\"" 
-				<< (_request->getURI() == "/" ? "" : _request->getURI()) 
-				<< "/" << name << (isDir ? "/" : "") << "\">" 
-				<< name << (isDir ? "/" : "") << "</a></td>\n";
+		<< (_request->getURI() == "/" ? "" : _request->getURI()) 
+		<< "/" << name << (isDir ? "/" : "") << "\">" 
+		<< name << (isDir ? "/" : "") << "</a></td>\n";
 		listing << "    <td class=\"file-date\">" << timeBuffer << "</td>\n";
 		listing << "    <td class=\"file-size\">" << fileSize << "</td>\n";
 		listing << "  </tr>\n";
 	}
 	
+	//add parent directory link
+	if (_request->getURI() != "/") {
+		listing << "  <tr>\n";
+		listing << "    <td><a href=\"..\">Back to Home</a></td>\n";
+		listing << "    <td></td>\n";
+		listing << "    <td></td>\n";
+		listing << "  </tr>\n";
+	}
+
 	listing << "</table>\n";
 	listing << "<hr>\n";
 	listing << "</body>\n</html>";
@@ -751,7 +755,17 @@ void Response::postResource(const std::string& path) {
 		setHeader("Location", _request->getURI());
 		_statusCode = 201;
 	}
-	setBody("");
+
+	std::stringstream response;
+	response << "<!DOCTYPE html>\n<html>\n<head>\n";
+	response << "<title>Upload Successful</title>\n";
+	response << "</head>\n<body>\n";
+	response << "<h1>Upload Successful!</h1>\n";
+	response << "<p><a href=\"/uploads/\">View all uploads</a></p>\n";
+	response << "<p><a href=\"/\">Back to Home</a></p>\n";
+	response << "</body>\n</html>";
+
+	setBody(response.str());
 }
 
 /********************************************
@@ -950,16 +964,8 @@ void Response::handleMultipartPost(const std::string& uploadDir) {
 	response << "<title>Upload Successful</title>\n";
 	response << "</head>\n<body>\n";
 	response << "<h1>Upload Successful!</h1>\n";
-	
-	if (!savedFiles.empty()) {
-		response << "<ul>\n";
-		for (const auto& file : savedFiles) {
-			response << "<li>" << file << "</li>\n";
-		}
-		response << "</ul>\n";
-	}
-	
-	response << "<p><a href=\"/uploads/\">Show all uploads</a></p>\n";
+	response << "<p><a href=\"/uploads/\">View all uploads</a></p>\n";
+	response << "<p><a href=\"/\">Back to Home</a></p>\n";
 	response << "</body>\n</html>";
 	
 	setBody(response.str());
