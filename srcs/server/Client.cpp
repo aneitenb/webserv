@@ -364,8 +364,7 @@ int Client::sending_stuff(){
     if (this->_CGIHandler.getState() == CGIWRITE) {
         _responding.handleCgi(this->_CGIHandler);
         this->_CGIHandler.setState(CGIDONE);
-    } else if (_responding.getStatusCode() != 408)
-        _responding.prepareResponse();
+    } 
     buffer = _responding.getFullResponse();
     if (buffer.size() == 0)
         return (-1);
@@ -446,8 +445,7 @@ void Client::saveResponse(){
 
     Response curR(&_requesting, getSBforResponse(hostHeader));
     _responding = std::move(curR);
-    _responding.handleResponse();
-    // _responding.prepareResponse();
+    _responding.prepareResponse();
 }
 
 void	Client::updateDisconnectTime(void) {
