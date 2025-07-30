@@ -467,7 +467,6 @@ void Client::sendTimeoutResponse() {
     _responding.setHeader("Connection", "close");
     _responding.setHeader("Date", getCurrentDate());
     
-    // Hardcoded 408 error page - no ServerBlock needed
     std::string errorBody = 
         "<!DOCTYPE html>\n"
         "<html>\n"
