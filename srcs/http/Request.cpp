@@ -94,7 +94,12 @@ void	Request::append(const std::string &reqData) {
 			end += 4;
 			try {
 				this->_parseHeaders(std::stringstream(this->_remainder.substr(0, end)));
-			} catch (Request::InvalidHeaderException &) { this->_valid = false; this->_errorCode = _ERR_BAD_REQUEST; }
+			} catch (Request::InvalidHeaderException &) { 
+				if (this->_errorCode == 0) {
+					this->_valid = false; 
+					this->_errorCode = _ERR_BAD_REQUEST; 
+				} else {this->_valid = false;}
+			}
 			this->_remainder.erase(0, end);
 			this->_body.clear();
 			this->_parsingStage = BODY;
@@ -149,8 +154,10 @@ void	Request::_parseHeaders(std::stringstream rawHeaders) {
 	size_t		sep;
 	bool		valid;
 
-	if (rawHeaders.str().size() > REQUEST_MAX_HEADER_SIZE)
+	if (rawHeaders.str().size() > REQUEST_MAX_HEADER_SIZE){
+		this->_errorCode = 431;
 		throw Request::InvalidHeaderException();
+	}
 	valid = true;
 	while (std::getline(rawHeaders, line)) {
 		if (!line.empty() && line != CR) {

@@ -65,7 +65,9 @@ int EventLoop::run(std::vector<EventHandler*> listFds){
 
 		if (events2Resolve == 0) {
 			curE = &timeouts.front().first;
-			Debug("\nClient at socket #" << *curE->getSocketFd(0) << " timed out, closing connection");
+			// CHANGED: Get the socket FD BEFORE potentially destroying the object
+            int socketFd = (curE && curE->getSocketFd(0)) ? *curE->getSocketFd(0) : -1;
+            Debug("\nClient at socket #" << socketFd << " timed out, closing connection");
 			static_cast<Client *>(curE)->stopCGI();
 			curE->setState(CLOSE);
 			timeouts.pop();
@@ -212,6 +214,11 @@ void EventLoop::resolvingClosing(){
             bool foundClientsToClose = false;
             for (size_t i = 0; i < vect.size(); i++){
                 if (vect.at(i)->getState() == CLOSE){
+                    // CRITICAL: Remove client from timeout list BEFORE destroying
+                    Client* clientToRemove = dynamic_cast<Client*>(vect.at(i));
+                    if (clientToRemove) {
+                        timeouts.removeClient(*clientToRemove);
+                    }
                     // Remove from epoll BEFORE changing state
                     if (vect.at(i)->getSocketFd(0) && *(vect.at(i)->getSocketFd(0)) >= 0) {
                         delEpoll(vect.at(i)->getSocketFd(0));
@@ -227,7 +234,7 @@ void EventLoop::resolvingClosing(){
                 curL->resolveClose();
                 
                 // Update the vector after cleanup
-                vect = curL->resolveAccept();
+                // vect = curL->resolveAccept();
             }
         }
     }
