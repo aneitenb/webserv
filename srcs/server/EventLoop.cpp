@@ -10,6 +10,7 @@
 #include <csignal>
 #include <string.h>
 #include <unistd.h> //close
+#include <sys/socket.h> //send
 
 #include "utils/message.hpp"
 #include "utils/Timeout.hpp"
@@ -65,13 +66,25 @@ int EventLoop::run(std::vector<EventHandler*> listFds){
 
 		if (events2Resolve == 0) {
 			curE = &timeouts.front().first;
-			// CHANGED: Get the socket FD BEFORE potentially destroying the object
+            Client* timedOutClient = static_cast<Client*>(curE);
             int socketFd = (curE && curE->getSocketFd(0)) ? *curE->getSocketFd(0) : -1;
             Debug("\nClient at socket #" << socketFd << " timed out, closing connection");
-			static_cast<Client *>(curE)->stopCGI();
-			curE->setState(CLOSE);
-			timeouts.pop();
-			continue ;
+
+			// send 408 response directly
+            std::string timeoutResponse = 
+                "HTTP/1.1 408 Request Timeout\r\n"
+                "Content-Type: text/html\r\n"
+                "Connection: close\r\n"
+                "Content-Length: 54\r\n"
+                "\r\n"
+                "<html><body><h1>408 Request Timeout</h1></body></html>";
+
+            send(socketFd, timeoutResponse.c_str(), timeoutResponse.length(), 0);
+
+            timedOutClient->stopCGI();
+            curE->setState(CLOSE);
+            timeouts.pop();
+            continue;
 		}
 
 		Debug("\nReceived " << events2Resolve << " new event" << ((events2Resolve > 1) ? 's' : '\0'));
@@ -234,7 +247,7 @@ void EventLoop::resolvingClosing(){
                 curL->resolveClose();
                 
                 // Update the vector after cleanup
-                // vect = curL->resolveAccept();
+                vect = curL->resolveAccept();
             }
         }
     }

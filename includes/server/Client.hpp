@@ -85,6 +85,9 @@ class Client : public EventHandler {
 		void	stopCGI(void);
 
 		const timestamp	&getDisconnectTime(void) const;
+
+        void sendTimeoutResponse();
+        std::string getCurrentDate() const;
         
         //timeout??
 };
