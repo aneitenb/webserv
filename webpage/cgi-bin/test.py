@@ -3,7 +3,7 @@ import os
 import sys
 
 # Print the CGI header
-print("Content-type: text/html\n\n")
+print("Content-Type: text/html\r\n\r")
 
 # Generate a simple HTML page
 print("<html><head><title>CGI Test</title></head><body>")
@@ -23,5 +23,8 @@ if os.environ.get("REQUEST_METHOD") == "POST":
     
     print("<h2>POST Data:</h2>")
     print(f"<pre>{post_data}</pre>")
+
+# Add back button
+print("<p><a href=\"/index.html\">Back to Home</a></p>")
 
 print("</body></html>")

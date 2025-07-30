@@ -17,7 +17,7 @@
 #include "http/Request.hpp"
 #include "http/Response.hpp"
 #include "config/ServerBlock.hpp"
-#include "server/CgiHandler.hpp"
+#include "server/CGIHandler.hpp"
 
 typedef std::chrono::time_point<std::chrono::system_clock>	timestamp;
 
@@ -31,23 +31,27 @@ class Client : public EventHandler {
         std::string         _buffer;
         Request             _requesting;
         Response            _responding;
-        CgiHandler          _theCgi;
+		CGIHandler			_CGIHandler;
 		timestamp			_disconnectAt;
 		u64					_timeout;
 
+        //size_t? _lastActive;
         int sending_stuff();
         int receiving_stuff();
         int saveRequest();
         void saveResponse();
     public:
-        Client();
-        Client(std::unordered_map<std::string, ServerBlock*> cur);
+        Client() = delete;
+        Client(std::unordered_map<std::string, ServerBlock*> cur, i32 &efd);
         ~Client();
-        Client(const Client& other) = delete;
-        Client& operator=(const Client& other) = delete;        // int     getFlag(void) const;
+
+		Client(const Client& other) = delete;
+		Client& operator=(const Client& other) = delete;
+
         //move constructor
         Client(Client&& other) noexcept;
         Client& operator=(Client&& other) noexcept;
+
         bool operator==(const Client& other) const;
         int setFd(int *fd);
         // void setSockFd(int* fd);
@@ -65,19 +69,20 @@ class Client : public EventHandler {
         // void setCgi();
 
 
-        int handleEvent(uint32_t ev) override;
+        int handleEvent(uint32_t ev, i32 &efd) override;
         bool shouldClose() const;
-        int* getSocketFd(void) override;
+        int* getSocketFd(int flag) override;
         std::vector<EventHandler*> resolveAccept(void) override;
         void resolveClose() override;
         EventHandler* getCgi() override;
         bool conditionMet(std::unordered_map<int*, std::vector<EventHandler*>>& _activeFds, int& epollFd) override;
-        bool ready2Switch() override;
+        int ready2Switch() override;
         struct epoll_event& getCgiEvent(int flag) override;
         std::string getLocalConnectionIP(); //new
         std::string getLocalConnectionPort();  //new
 
 		void	updateDisconnectTime(void);
+		void	stopCGI(void);
 
 		const timestamp	&getDisconnectTime(void) const;
         

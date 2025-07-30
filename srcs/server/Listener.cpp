@@ -59,7 +59,7 @@ Listener::~Listener(){
     if (_sockFd != -1){
         close(_sockFd);
         _sockFd = -1;
-        // std::cout << "closed fd\n";
+        // getLogFile() << "closed fd\n";
     }
     freeAddress(); //check if double free but it shouldn't be
 }
@@ -285,11 +285,12 @@ const std::list<Client>& Listener::getClients(void) const{
 // }
 
 /*Overriden*/
-int* Listener::getSocketFd(void){
+int* Listener::getSocketFd(int flag){
+    (void)flag;
     return(&_sockFd);
 }
 
-int Listener::handleEvent(uint32_t ev){
+int Listener::handleEvent(uint32_t ev, i32 &efd){
     if (ev & EPOLLIN){ //accept incoming clients while there are clients to be accepted
 		debug("\nNew client connection received");
         int curFd = accept(_sockFd, nullptr, nullptr); //think about taking in the client info for security reasons maybe
@@ -303,15 +304,15 @@ int Listener::handleEvent(uint32_t ev){
         //separate setuping into making it nonblocking
         if (makeNonBlock(&curFd) == -1) //set as nonblocking
             return (-1);
-        Client curC(this->getServBlock());
+        Client curC(this->getServBlock(), efd);
         curC.setKey(_firstKey);
         if (curC.setFd(&curFd) == -1) //pass the socket into Client
             return (-1);
         _activeClients.push_back(std::move(curC));   //move into stable list
         //delete
-        int status = fcntl(*_activeClients.back().getSocketFd(), F_GETFD);
+        int status = fcntl(*_activeClients.back().getSocketFd(0), F_GETFD);
         if (status == -1)
-			Warn("Listener::handleEvent(): fcntl(" << *_activeClients.back().getSocketFd()
+			Warn("Listener::handleEvent(): fcntl(" << *_activeClients.back().getSocketFd(0)
 				 << ", F_GETFD) failed: " << strerror(errno));
         // curFd = -1; //i think this won't keep the fds open haha
         // curEL->addClient(&(_activeClients.at(_activeClients.size() - 1)));
@@ -344,11 +345,11 @@ void Listener::resolveClose(){
     // use iterator properly - no mixing with indices
     for (auto it = _activeClients.begin(); it != _activeClients.end(); ){
         if (it->getState() == TOCLOSE || it->getState() == CLOSED){
-			Debug("\nClosing client at socket #" << *it->getSocketFd());
+			Debug("\nClosing client at socket #" << *it->getSocketFd(0));
             // close the file descriptor if it's still valid
-            if (*(it->getSocketFd()) >= 0) {
-                close(*(it->getSocketFd()));
-                *(it->getSocketFd()) = -1;  // Mark as closed
+            if (*(it->getSocketFd(0)) >= 0) {
+                close(*(it->getSocketFd(0)));
+                *(it->getSocketFd(0)) = -1;  // Mark as closed
             }
             it->setState(CLOSED);
             it = _activeClients.erase(it);  // erase returns next valid iterator
@@ -370,20 +371,4 @@ struct epoll_event& Listener::getCgiEvent(int flag) {
     return (*this->getEvent()); //wont be used
 }
 
-bool Listener::ready2Switch() { return false; }
-//FOR LISTENERS
-// void EventLoop::addClient(Client* cur){
-//     _activeClients.push_back(cur);
-// }
-
-// std::vector<Client*> EventLoop::getClients(void) const{
-//     return (_activeClients);
-// }
-
-// void EventLoop::delClient(Client* cur){
-//     for (std::size_t i = 0; i < _activeClients.size(); i++){
-//         if (_activeClients.at(i) == cur){
-//             _activeClients.erase(_activeClients.begin() + i);
-//             return ;}
-//     }
-// }
+int Listener::ready2Switch() { return 1; }

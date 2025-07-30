@@ -64,13 +64,13 @@ class Listener : public EventHandler {
 
         // int copySocketFd(const int& fd);//dup not needed, should i get rid of it and use a fd wrapper?
 
-        int handleEvent(uint32_t ev) override;
-        int* getSocketFd(void) override;
+        int handleEvent(uint32_t ev, i32 &efd) override;
+        int* getSocketFd(int flag) override;
         std::vector<EventHandler*> resolveAccept(void) override;
         void resolveClose() override;
         EventHandler* getCgi() override;
         bool conditionMet(std::unordered_map<int*, std::vector<EventHandler*>>& _activeFds, int& epollFd) override;
-        bool ready2Switch() override;
+        int ready2Switch() override;
         struct epoll_event& getCgiEvent(int flag) override;
 
         // void addClient(Client& cur);

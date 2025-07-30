@@ -13,8 +13,8 @@
 #include <vector>
 #include <unistd.h>
 #include <unordered_map>
-#include <iostream> //delete after
-// #include "EventLoop.hpp"
+
+#include "defs.hpp"
 
 enum State {
     WRITING, //client is currently writing
@@ -28,8 +28,8 @@ enum State {
     TOCLOSE, //deleted from epoll, not yet from vector
     TOCGI, //is creating and starting the CGI
     FORCGI, //this is client waiting for cgi
-    CGITOREAD, //is cgi, needs to read
-    CGIREAD //is cgi, has read
+	CGIWRITE,
+	CGIDONE
 }; 
 
 /*if epollin && towrite
@@ -49,13 +49,13 @@ class EventHandler{
         struct epoll_event _event;
     public:
         virtual ~EventHandler(){};
-        virtual int handleEvent(uint32_t ev) = 0;
-        virtual int* getSocketFd(void) = 0; //add for the client too?
+        virtual int handleEvent(uint32_t ev, i32 &efd) = 0;
+        virtual int* getSocketFd(int flag) = 0; //add for the client too?
         virtual std::vector<EventHandler*> resolveAccept() = 0;
         virtual void resolveClose() = 0;
         virtual EventHandler* getCgi() = 0;
         virtual bool conditionMet(std::unordered_map<int*, std::vector<EventHandler*>>& _activeFds, int& epollFd) = 0;
-        virtual bool ready2Switch() = 0;
+        virtual int ready2Switch() = 0;
         virtual struct epoll_event& getCgiEvent(int flag) = 0;
     
         // void setLoop(EventLoop& curLoop){
@@ -78,7 +78,7 @@ class EventHandler{
         };
         void initEvent(){
             _event.events = EPOLLIN;
-            _event.data.fd  = *(getSocketFd());
+            _event.data.fd  = *(getSocketFd(0));
             _event.data.ptr = static_cast<void*>(this);
         };
         struct epoll_event* getEvent(){

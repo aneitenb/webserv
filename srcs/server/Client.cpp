@@ -6,26 +6,12 @@
 //  ╚══╝╚══╝     ╚══════╝    ╚═════╝     ╚══════╝    ╚══════╝    ╚═╝  ╚═╝      ╚═══╝
 //
 // <<Client.cpp>> -- <<Aida, Ilmari, Milica>>
-
-#include <list>
-#include <fcntl.h>
-#include <string.h>
-#include <unistd.h>
-#include <sys/socket.h>
+#include <arpa/inet.h>
 
 #include "utils/message.hpp"
 #include "server/Client.hpp"
-#include "server/CgiHandler.hpp"
 
-/*Orthodox Cannonical Form*/
-Client::Client(): /*_listfd(nullptr), */_clFd(-1), _count(0), /*_curR(EMPTY),*/ _theCgi(&_requesting, &_responding, &_clFd), _timeout(CLIENT_DEFAULT_TIMEOUT){
-	_result = nullptr;
-    setState(TOADD);
-}
-
-Client::Client(std::unordered_map<std::string, ServerBlock*> cur): _allServerNames(cur), /*_listfd(nullptr),*/ \
-    _clFd(-1), _count(0), /*_curR(EMPTY),*/ \
-    _theCgi(CgiHandler(&_requesting, &_responding, &_clFd)), _timeout(CLIENT_DEFAULT_TIMEOUT){
+Client::Client(std::unordered_map<std::string, ServerBlock*> cur, i32 &efd): _allServerNames(cur), _clFd(-1), _count(0), _CGIHandler(this, _clFd, efd), _timeout(CLIENT_DEFAULT_TIMEOUT) {
 	_result = nullptr;
     setState(TOADD);
 }
@@ -35,10 +21,11 @@ Client::~Client(){
         // close (_clFd);   //CHANGED:don't close if sstill in epoll, eventloop will handle proper cleanup
         _clFd = -1;
     }
+	this->_CGIHandler.resolveClose();
 }
 
 Client::Client(Client&& other) noexcept : _clFd(-1), _requesting(std::move(other._requesting)), \
-    _responding(std::move(other._responding)), _theCgi(std::move(other._theCgi)){
+    _responding(std::move(other._responding)), _CGIHandler(std::move(other._CGIHandler)){
     _allServerNames = other._allServerNames;
     _firstKey = other._firstKey;
     // _relevant = other._relevant;
@@ -54,6 +41,7 @@ Client::Client(Client&& other) noexcept : _clFd(-1), _requesting(std::move(other
 	this->_disconnectAt = other._disconnectAt;
 	this->_timeout = other._timeout;
     this->setState(other.getState());
+	this->_CGIHandler.setClient(this);
 }
 
 //this should never be used though
@@ -76,7 +64,8 @@ Client& Client::operator=(Client&& other) noexcept{
         this->setState(other.getState());
         _requesting = std::move(other._requesting);
         _responding = std::move(other._responding);
-        _theCgi = std::move(other._theCgi);
+		this->_CGIHandler = std::move(other._CGIHandler);
+		this->_CGIHandler.setClient(this);
     }
     return (*this);
 }
@@ -99,8 +88,7 @@ bool Client::areServBlocksEq(const Client& other) const{
 bool Client::operator==(const Client& other) const{
     if (areServBlocksEq(other) /*&& _listfd == other._listfd */ \
         && _clFd == other._clFd && _count == other._count \
-        && _result == other._result && this->getState() == other.getState() \
-        && /*_curR == other._curR &&*/ _theCgi == other._theCgi)
+        && _result == other._result && this->getState() == other.getState())
         return (true);
     return (false);
 }
@@ -225,7 +213,8 @@ void Client::setKey(std::string key){
 }
 
 /* Overriden*/
-int* Client::getSocketFd(void) {
+int* Client::getSocketFd(int flag) {
+    (void)flag;
     return(&_clFd);
 }
 
@@ -238,35 +227,31 @@ struct epoll_event& Client::getCgiEvent(int flag) {
     return (*this->getEvent()); //wont be used
 }
 
-bool Client::ready2Switch() { return false; }
+int Client::ready2Switch() { return 1; }
 
 EventHandler* Client::getCgi(){
-    if (_theCgi.run() == 1){
-        return (nullptr);
-    }
-    return (dynamic_cast<EventHandler*>(&_theCgi));
+	return dynamic_cast<EventHandler *>(&this->_CGIHandler);
 }
 
 bool Client::conditionMet(std::unordered_map<int*, std::vector<EventHandler*>>& _activeFds, int& epollFd){
     //check if the method is post and if the POST body is not empty
     (void)_activeFds;
     (void)epollFd;
+    // if (_theCgi.getProgress() == SENDING || _theCgi.getProgress() == RECEIVING)
+    //     return 2;
     if (_requesting.getMethod() == "POST" && _requesting.getBody().size() != 0)
-        return true;
-    return false;
+        return 0;
+    return 1;
 }
 
-int Client::handleEvent(uint32_t ev){
+int Client::handleEvent(uint32_t ev, [[maybe_unused]] i32 &efd){
     if (ev & EPOLLERR || ev & EPOLLHUP){
         this->setState(CLOSE);
         return (-1);
     }
     if (ev & EPOLLIN){
-        if (this->getState() == FORCGI){
-            if (_theCgi.cgiDone() == true)
-                this->setState(TOWRITE);
+        if (this->getState() == FORCGI)
             return (0);
-        }
 
         int recvResult = receiving_stuff();
         
@@ -308,7 +293,20 @@ int Client::handleEvent(uint32_t ev){
             _buffer.clear(); // CRITICAL
             
             // Check for CGI
-            if (_requesting.getURI().find(".py") != std::string::npos) {
+            if (_requesting.getURI().find(".py") != std::string::npos || _requesting.getURI().find(".php") != std::string::npos) {
+				std::string hostHeader;
+
+				try {
+					hostHeader = _requesting.getHeader("Host");
+				} catch (const Request::FieldNotFoundException& e) {
+					hostHeader = _firstKey; // Use the default server
+				}
+				this->_CGIHandler.setServerBlock(getSBforResponse(hostHeader));
+				this->_responding = Response(&this->_requesting, getSBforResponse(hostHeader));
+				if (!this->_CGIHandler.init(this->_requesting)) {
+					this->setState(TOWRITE);
+					return (0);
+				}
                 this->setState(TOCGI);
                 return (0);
             }
@@ -321,14 +319,9 @@ int Client::handleEvent(uint32_t ev){
     }
     if (ev & EPOLLOUT){
         if (sending_stuff() == -1){
-            _count++;
-            if (_count >= 50){
-                _count = 0;
-                _responding.clear();
-                this->setState(CLOSE); //ADDED
-                return (-1);    //close after too many send failures
-            }
-            return (0); // Try again
+			_responding.clear();
+			this->setState(CLOSE);
+			return (-1);
         }
         
         if (_responding.isComplete() == true){
@@ -362,6 +355,11 @@ bool Client::shouldClose() const {
 /*Handle Event Helpers*/
 int Client::sending_stuff(){
     std::string buffer = {0};
+	if (this->_CGIHandler.getState() == CGIWRITE) {
+		_responding.handleCgi(this->_CGIHandler);
+		this->_CGIHandler.setState(CGIDONE);
+	} else
+		_responding.prepareResponse();
     buffer = _responding.getFullResponse();
 	if (buffer.size() == 0)
 		return (-1);
@@ -402,7 +400,6 @@ int Client::receiving_stuff(){
         return (-1); //real error
     } else {  //something was returned
         temp_buff.resize(len);
-
         if (temp_buff.size() <= _buffer.max_size() - _buffer.size())
             _buffer.append(temp_buff);
         else
@@ -443,11 +440,16 @@ void Client::saveResponse(){
 
     Response curR(&_requesting, getSBforResponse(hostHeader));
     _responding = std::move(curR);
-    _responding.prepareResponse();
+    _responding.handleResponse();
+    // _responding.prepareResponse();
 }
 
 void	Client::updateDisconnectTime(void) {
 	this->_disconnectAt = std::chrono::system_clock::now() + std::chrono::milliseconds(this->_timeout);
+}
+
+void	Client::stopCGI(void) {
+	this->_CGIHandler.stop();
 }
 
 const timestamp	&Client::getDisconnectTime(void) const { return this->_disconnectAt; }

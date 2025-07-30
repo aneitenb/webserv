@@ -15,6 +15,7 @@
 #include "utils/Timeout.hpp"
 #include "server/Client.hpp"
 #include "server/EventLoop.hpp"
+#include "server/CGIHandler.hpp"
 #include "server/EventHandler.hpp"
 
 extern sig_atomic_t gSignal;
@@ -33,9 +34,9 @@ EventLoop::~EventLoop(){
 }
 
 //getter for all active fds, key : value; get value based on key
-std::vector<EventHandler*> EventLoop::findValue(int *fd){
-    return (_activeFds.at(fd));
-}
+// std::vector<EventHandler*> EventLoop::findValue(int *fd){
+//     return (_activeFds.at(fd));
+// }
 
 int EventLoop::run(std::vector<EventHandler*> listFds){
 	EventHandler	*curE;
@@ -64,7 +65,8 @@ int EventLoop::run(std::vector<EventHandler*> listFds){
 
 		if (events2Resolve == 0) {
 			curE = &timeouts.front().first;
-			Debug("\nClient at socket #" << *curE->getSocketFd() << " timed out, closing connection");
+			Debug("\nClient at socket #" << *curE->getSocketFd(0) << " timed out, closing connection");
+			static_cast<Client *>(curE)->stopCGI();
 			curE->setState(CLOSE);
 			timeouts.pop();
 			continue ;
@@ -77,18 +79,19 @@ int EventLoop::run(std::vector<EventHandler*> listFds){
 
             if (!curE) {
 				Warn("EventLoop::run(): no event handler found for event #" << i + 1);
-                continue;
+                continue; //skip state processing for closed clients
             }
 
 			if (curE == dynamic_cast<Client *>(curE))
 				timeouts.updateClient(*dynamic_cast<Client *>(curE));
+			else if (curE == dynamic_cast<CGIHandler *>(curE))
+				timeouts.updateClient(*dynamic_cast<CGIHandler *>(curE)->getClient());
 
-            if (curE->handleEvent(_events[i].events) == -1){
+            if (curE->handleEvent(_events[i].events, this->_epollFd) == -1){
                 if (curE->getState() == LISTENER)
                     condemnClients(curE); 
-                else{
+                else
                     curE->setState(CLOSE);
-                }
                 continue; //skip state processing for closed clients
             }
 
@@ -104,14 +107,10 @@ int EventLoop::run(std::vector<EventHandler*> listFds){
                     resolvingModify(curE, EPOLLIN);
                     break;
                 case TOCGI:
-                    addCGI(curE);
+                    addCGI(static_cast<Client *>(curE));
                     break;
-                case CGITOREAD:
-                case CGIREAD:
-                    handleCGI(curE);
-                    break;
-                case CLOSE:
-                    break;
+				case CGIWRITE:
+					resolvingModify(static_cast<CGIHandler *>(curE)->getClient(), EPOLLOUT);
                 default:
                     break;
             }
@@ -121,49 +120,12 @@ int EventLoop::run(std::vector<EventHandler*> listFds){
     return (0);   
 }
 
-void EventLoop::handleCGI(EventHandler* cur){
-    if (cur->getState() == CGITOREAD){
-        if (cur->ready2Switch() == false) //might loop here, timeout
-            return ;
-        cur->setState(CGIREAD);
-        delEpoll(cur->getSocketFd());
-        cur->closeFd(cur->getSocketFd());
-        return ;
-    }
-    delEpoll(cur->getSocketFd());
-    cur->closeFd(cur->getSocketFd());
-}
+void EventLoop::addCGI(Client *client){
+	CGIHandler	*CGI;
 
-void EventLoop::addCGI(EventHandler* cur){
-    EventHandler* theCGI = cur->getCgi();
-    if (!theCGI){
-        //set response to 500 or 404
-
-        cur->setState(WRITING);
-        return ;
-    }
-    struct epoll_event& curGet = theCGI->getCgiEvent(1);
-
-    theCGI->setState(CGIREAD);
-    if (cur->conditionMet(_activeFds, _epollFd) == true){ //pass the activefds so they can close in the child
-        struct epoll_event& curSend = theCGI->getCgiEvent(0);
-        theCGI->setState(CGITOREAD);
-        if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, curSend.data.fd, &curSend) == -1){ //not correct
-            //set response
-            cur->setState(WRITING);
-            return ;
-        }
-    }
-    if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, curGet.data.fd, &curGet) == -1){ //not correct
-        //set response
-        cur->setState(WRITING);
-        return ;
-    }
-    if (theCGI->conditionMet(_activeFds, _epollFd) == false){
-        //set response to 500 or 404
-        cur->setState(WRITING);
-    }
-    cur->setState(FORCGI);
+	CGI = static_cast<CGIHandler *>(client->getCgi());
+	if (!CGI->exec(this->_activeFds))
+		Warn("EventLoop::addCGI(): Unable to execute CGI: " << strerror(errno));
 }
 
 //create an epoll instance
@@ -182,23 +144,23 @@ void EventLoop::addListeners(std::vector<EventHandler*> listFds){
     for (std::size_t i = 0; i < listFds.size(); i++){
         listFds.at(i)->initEvent();
 
-        if (*(listFds.at(i)->getSocketFd()) == -1 || epoll_ctl(_epollFd, EPOLL_CTL_ADD, *listFds.at(i)->getSocketFd(), listFds.at(i)->getEvent()) == -1){
+        if (*(listFds.at(i)->getSocketFd(0)) == -1 || epoll_ctl(_epollFd, EPOLL_CTL_ADD, *listFds.at(i)->getSocketFd(0), listFds.at(i)->getEvent()) == -1){
 			Warn("EventLoop::addListeners(): epoll_ctl(" << _epollFd 
-				 << ", EPOLL_CTL_ADD, " << *listFds.at(i)->getSocketFd()
+				 << ", EPOLL_CTL_ADD, " << *listFds.at(i)->getSocketFd(0)
 				 << ") failed: " << strerror(errno));
             listFds.at(i)->setState(CLOSED);
-            listFds.at(i)->closeFd(listFds.at(i)->getSocketFd());
+            listFds.at(i)->closeFd(listFds.at(i)->getSocketFd(0));
             continue;
         }
 
         listFds.at(i)->setState(LISTENER); //set state to listener
-        _activeFds[listFds.at(i)->getSocketFd()]; //add fd to the unordered map 
+        _activeFds[listFds.at(i)->getSocketFd(0)]; //add fd to the unordered map 
     }
     _listeners = listFds;
 }
 
 void EventLoop::condemnClients(EventHandler* cur){
-   std::vector<EventHandler*> clients = findValue(cur->getSocketFd());
+   std::vector<EventHandler*> clients = cur->resolveAccept();
 
    for (size_t i = 0; i < clients.size(); i++){
         clients.at(i)->setState(CLOSE);
@@ -211,31 +173,31 @@ void EventLoop::resolvingAccept(EventHandler* cur){
     // if (curClients.empty())
 	Debug("Registering accepted client" << ((curClients.size() > 1) ? 's' : '\0'));
     for (size_t i = 0; i < curClients.size(); i++){
-        if (*curClients.at(i)->getSocketFd() != -1 && curClients.at(i)->getState() == TOADD){
-            if (addToEpoll(curClients.at(i)->getSocketFd(), curClients.at(i)) == -1){
+        if (*curClients.at(i)->getSocketFd(0) != -1 && curClients.at(i)->getState() == TOADD){
+            if (addToEpoll(curClients.at(i)->getSocketFd(0), curClients.at(i)) == -1){
                 curClients.at(i)->setState(CLOSED);
-                curClients.at(i)->closeFd(curClients.at(i)->getSocketFd());
+                curClients.at(i)->closeFd(curClients.at(i)->getSocketFd(0));
                 //there shouldn't be anything to clean from Response, Request probably
                 continue;}
             curClients.at(i)->setState(READING);
-            _activeFds.at(cur->getSocketFd()).push_back(curClients.at(i));
-			Debug("Registered new client at socket #" << *_activeFds.at(cur->getSocketFd()).at(i)->getSocketFd());
+            _activeFds.at(cur->getSocketFd(0)).push_back(curClients.at(i));
+			Debug("Registered new client at socket #" << *_activeFds.at(cur->getSocketFd(0)).at(i)->getSocketFd(0));
         }
     }
 }
 
 //calling modify on the client
 void EventLoop::resolvingModify(EventHandler* cur, uint32_t event){
-    if (modifyEpoll(cur->getSocketFd(), event, cur) == -1)
+    if (modifyEpoll(cur->getSocketFd(0), event, cur) == -1)
         cur->setState(CLOSE);
 }
 
 EventHandler* EventLoop::getListener(int *fd){
-	for (auto& it : _listeners)
-		if (fd == it->getSocketFd())
-			return (it);
-	Error("EventLoop::getListener(" << fd << " (" << *fd << ")): Panic: Listener not found in _listeners");
-	return {};
+    for (auto& it : _listeners)
+        if (fd == it->getSocketFd(0))
+            return (it);
+    Error("EventLoop::getListener(" << fd << " (" << *fd << ")): Panic: Listener not found in _listeners");
+    return {};
 }
 
 void EventLoop::resolvingClosing(){
@@ -251,8 +213,8 @@ void EventLoop::resolvingClosing(){
             for (size_t i = 0; i < vect.size(); i++){
                 if (vect.at(i)->getState() == CLOSE){
                     // Remove from epoll BEFORE changing state
-                    if (vect.at(i)->getSocketFd() && *(vect.at(i)->getSocketFd()) >= 0) {
-                        delEpoll(vect.at(i)->getSocketFd());
+                    if (vect.at(i)->getSocketFd(0) && *(vect.at(i)->getSocketFd(0)) >= 0) {
+                        delEpoll(vect.at(i)->getSocketFd(0));
                     }
                     // NOW change the state to TOCLOSE
                     vect.at(i)->setState(TOCLOSE);

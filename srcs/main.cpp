@@ -13,6 +13,7 @@
 #include "server/WebServer.hpp"
 #include "server/EventLoop.hpp"
 #include <csignal>
+#include "log.hpp"
 
 /*a visible side-effect for the purposes of optimization 
 (that is, within a single thread of execution, volatile accesses cannot be optimized out or reordered with 
@@ -73,7 +74,6 @@ int main(int ac, char **av) {
 
 	signal(SIGPIPE, SIG_IGN);
 	std::signal(SIGINT, signalHandler);
-	std::signal(SIGCHLD, signalHandler);
 
 	if (ac != 2 || av[1] == nullptr || av[1][0] == '\0') {
 		error("Fatal: Expected only configuration file as argument");

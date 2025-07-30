@@ -40,13 +40,15 @@ Response::Response(){}
 
 Response::~Response() {}
 
-Response::Response(Response&& other) noexcept
-	: _request(other._request){
+Response::Response(Response&& other) noexcept {
 	_statusCode = other._statusCode;
 	_statusMessage = other._statusMessage;
 	_headers = other._headers;
 	_body = other._body;
+	_fullResponse = other._fullResponse;
 	_bytesSent = other._bytesSent;
+	_request = other._request;
+	other._request = nullptr;
 	_serverBlock = other._serverBlock;
 	other._serverBlock = nullptr;
 	_locationBlock = other._locationBlock;
@@ -56,12 +58,14 @@ Response::Response(Response&& other) noexcept
 
 Response& Response::operator=(Response&& other) noexcept{
 	if (this != &other){
-		_request = other._request;
 		_statusCode = other._statusCode;
 		_statusMessage = other._statusMessage;
 		_headers = other._headers;
 		_body = other._body;
+		_fullResponse = other._fullResponse;
 		_bytesSent = other._bytesSent;
+		_request = other._request;
+		other._request = nullptr;
 		_serverBlock = other._serverBlock;
 		other._serverBlock = nullptr;
 		_locationBlock = other._locationBlock;
@@ -79,6 +83,26 @@ Response::Response(Request* request, ServerBlock* serverBlock)
 	_locationBlock(NULL)
 {
 	initializeMimeTypes();
+}
+
+void	Response::_printResponseInfo(void) {
+	auto msg = statusMessages.find(_statusCode);
+
+	info("\nResponse prepared:", COLOR_RESPONSE);
+	info("\tVersion:        HTTP/1.1", COLOR_RESPONSE);
+	Info("\tStatus code:    " << _statusCode);
+	Info("\tStatus message: " << ((msg != statusMessages.end()) ? msg->second : "Unknown"));
+#ifdef __DEBUG_RES_SHOW_HEADERS
+	info("\n\tHeaders: ", COLOR_RESPONSE);
+	for (const auto &field : _headers)
+		Info("\t\t" << field.first << ": " << field.second);
+#endif /* __DEBUG_RES_SHOW_HEADERS */
+#ifdef __DEBUG_RES_SHOW_BODY
+	if (_body.size() != 0) {
+		info("\n\tBody: ", COLOR_RESPONSE);
+		printBody(_headers["Content-Type"], _body, COLOR_RESPONSE);
+	}
+#endif /* __DEBUG_RES_SHOW_BODY */
 }
 
 void Response::clear() {
@@ -131,22 +155,7 @@ std::string Response::getMimeType(const std::string& path) const {
 
 void  Response::prepareResponse() {
 	handleResponse();
-	auto msg = statusMessages.find(_statusCode);
-	info("\nResponse prepared:", COLOR_RESPONSE);
-	info("  Version:        HTTP/1.1", COLOR_RESPONSE);
-	Info("  Status code:    " << _statusCode);
-	Info("  Status message: " << ((msg != statusMessages.end()) ? msg->second : "Unknown"));
-#ifdef __DEBUG_RES_SHOW_HEADERS
-	info("\n  Headers: ", COLOR_RESPONSE);
-	for (const auto &field : _headers)
-		Info("    " << field.first << ": " << field.second);
-#endif /* __DEBUG_RES_SHOW_HEADERS */
-#ifdef __DEBUG_RES_SHOW_BODY
-	if (_body.size() != 0) {
-		info("\n  Body: ", COLOR_RESPONSE);
-		printBody(_headers["Content-Type"], _body, COLOR_RESPONSE);
-	}
-#endif /* __DEBUG_RES_SHOW_BODY */
+	_printResponseInfo();
 	_fullResponse = getStatusLine() + getHeadersString() + _body;
 	_bytesSent = 0;
 }
@@ -419,11 +428,14 @@ void Response::generateDirectoryListing(const std::string& path) {
 	}
 	
 	std::stringstream listing;
-	listing << "<!DOCTYPE html>\n<html>\n<head>\n";
 	listing << "<title>Index of " << _request->getURI() << "</title>\n";
+	listing << "<style>\n";
+	listing << "table { border-collapse: collapse; width: 100%; }\n";
+	listing << "th, td { text-align: left; padding: 8px 15px; }\n";  // Add padding
+	listing << ".file-date { min-width: 150px; }\n";  // Minimum width for date column
+	listing << ".file-size { min-width: 80px; }\n";   // Minimum width for size column
+	listing << "</style>\n";
 	listing << "</head>\n<body>\n";
-	listing << "<h1>Index of " << _request->getURI() << "</h1>\n";
-	listing << "<hr>\n";
 	
 	//start the table
 	listing << "<table>\n";
@@ -432,15 +444,6 @@ void Response::generateDirectoryListing(const std::string& path) {
 	listing << "    <th>Last Modified</th>\n";
 	listing << "    <th>Size</th>\n";
 	listing << "  </tr>\n";
-	
-	//add parent directory link if not at root
-	if (_request->getURI() != "/") {
-		listing << "  <tr>\n";
-		listing << "    <td><a href=\"..\">Parent Directory</a></td>\n";
-		listing << "    <td></td>\n";
-		listing << "    <td></td>\n";
-		listing << "  </tr>\n";
-	}
 	
 	// vector of entries for sorting. format: <filename, isDir>
 	std::vector<std::pair<std::string, bool>> entries;
@@ -457,26 +460,27 @@ void Response::generateDirectoryListing(const std::string& path) {
 		entries.push_back(std::make_pair(name, isDir));
 	}
 	
+	
 	// using lambda function(anonymous function)that is defined inline
 	// code between {...} contains the logic for comparing two directory entries
 	// sorts entries directories first, then files alphabetically
 	std::sort(entries.begin(), entries.end(), 
-		[](const std::pair<std::string, bool>& entry1, const std::pair<std::string, bool>& entry2) {
-			const std::string& fileName1 = entry1.first;
-			const std::string& fileName2 = entry2.first;
-			bool isDirectory1 = entry1.second;
-			bool isDirectory2 = entry2.second;
-			
-			// If one is a directory and one is a file, directories come first
-			if (isDirectory1 && !isDirectory2) {
-				return true;
-			}
-			if (!isDirectory1 && isDirectory2) {
-				return false; // file after directory
-			}
-			//both are the same type so sort alphabetically by name
-			return fileName1 < fileName2;
-		});
+	[](const std::pair<std::string, bool>& entry1, const std::pair<std::string, bool>& entry2) {
+		const std::string& fileName1 = entry1.first;
+		const std::string& fileName2 = entry2.first;
+		bool isDirectory1 = entry1.second;
+		bool isDirectory2 = entry2.second;
+		
+		// If one is a directory and one is a file, directories come first
+		if (isDirectory1 && !isDirectory2) {
+			return true;
+		}
+		if (!isDirectory1 && isDirectory2) {
+			return false; // file after directory
+		}
+		//both are the same type so sort alphabetically by name
+		return fileName1 < fileName2;
+	});
 	
 	// Add entries to the table
 	for (size_t i = 0; i < entries.size(); i++) {
@@ -492,7 +496,7 @@ void Response::generateDirectoryListing(const std::string& path) {
 		char timeBuffer[80];
 		struct tm* timeinfo = localtime(&fileStats.st_mtime);
 		strftime(timeBuffer, sizeof(timeBuffer), "%Y-%m-%d %H:%M:%S", timeinfo);
-
+		
 		std::string fileSize;
 		if (!isDir) {
 			if (fileStats.st_size < 1024) {
@@ -506,14 +510,23 @@ void Response::generateDirectoryListing(const std::string& path) {
 		
 		listing << "  <tr>\n";
 		listing << "    <td><a href=\"" 
-				<< (_request->getURI() == "/" ? "" : _request->getURI()) 
-				<< "/" << name << (isDir ? "/" : "") << "\">" 
-				<< name << (isDir ? "/" : "") << "</a></td>\n";
+		<< (_request->getURI() == "/" ? "" : _request->getURI()) 
+		<< "/" << name << (isDir ? "/" : "") << "\">" 
+		<< name << (isDir ? "/" : "") << "</a></td>\n";
 		listing << "    <td class=\"file-date\">" << timeBuffer << "</td>\n";
 		listing << "    <td class=\"file-size\">" << fileSize << "</td>\n";
 		listing << "  </tr>\n";
 	}
 	
+	//add parent directory link
+	if (_request->getURI() != "/") {
+		listing << "  <tr>\n";
+		listing << "    <td><a href=\"..\">Back to Home</a></td>\n";
+		listing << "    <td></td>\n";
+		listing << "    <td></td>\n";
+		listing << "  </tr>\n";
+	}
+
 	listing << "</table>\n";
 	listing << "<hr>\n";
 	listing << "</body>\n</html>";
@@ -742,7 +755,17 @@ void Response::postResource(const std::string& path) {
 		setHeader("Location", _request->getURI());
 		_statusCode = 201;
 	}
-	setBody("");
+
+	std::stringstream response;
+	response << "<!DOCTYPE html>\n<html>\n<head>\n";
+	response << "<title>Upload Successful</title>\n";
+	response << "</head>\n<body>\n";
+	response << "<h1>Upload Successful!</h1>\n";
+	response << "<p><a href=\"/uploads/\">View all uploads</a></p>\n";
+	response << "<p><a href=\"/\">Back to Home</a></p>\n";
+	response << "</body>\n</html>";
+
+	setBody(response.str());
 }
 
 /********************************************
@@ -941,16 +964,8 @@ void Response::handleMultipartPost(const std::string& uploadDir) {
 	response << "<title>Upload Successful</title>\n";
 	response << "</head>\n<body>\n";
 	response << "<h1>Upload Successful!</h1>\n";
-	
-	if (!savedFiles.empty()) {
-		response << "<ul>\n";
-		for (const auto& file : savedFiles) {
-			response << "<li>" << file << "</li>\n";
-		}
-		response << "</ul>\n";
-	}
-	
-	response << "<p><a href=\"/uploads/\">Show all uploads</a></p>\n";
+	response << "<p><a href=\"/uploads/\">View all uploads</a></p>\n";
+	response << "<p><a href=\"/\">Back to Home</a></p>\n";
 	response << "</body>\n</html>";
 	
 	setBody(response.str());
@@ -1106,6 +1121,10 @@ bool Response::hasReadPermission(const std::string& path) const {
 	return access(path.c_str(), R_OK) == 0;
 }
 
+bool Response::hasExecPermission(const std::string& path) const {
+	return access(path.c_str(), X_OK) == 0;
+}
+
 bool Response::hasWritePermission(const std::string& path) const {
 	std::string dir = path.substr(0, path.find_last_of('/'));
 	return access(dir.c_str(), W_OK) == 0;
@@ -1126,27 +1145,68 @@ bool Response::isCgiRequest(const std::string& path) const {
 	return (extension == CGI_EXTENSION);
 }
 
-void Response::handleCgi(const std::string& path) {    
-	std::string scriptPath = path;
-	// std::string cgiExecutable = _locationBlock->getCgiPass();
-	
-	if (!fileExists(scriptPath)) {
-		_statusCode = 404;
-		setBody(getErrorPage(404));
-		setHeader("Content-Type", "text/html");
-		return;
-	}
-	
-	if (!hasReadPermission(scriptPath)) {
-		_statusCode = 403;
-		setBody(getErrorPage(403));
-		setHeader("Content-Type", "text/html");
-		return;
-	}
-
-	_statusCode = 501;
-	setBody(getErrorPage(501));
+void Response::handleCgi(const CGIHandler &CGI) {
+	setHeader("Date", getCurrentDate());
 	setHeader("Content-Type", "text/html");
+	if (CGI.isValid()) {
+		const std::string	&rawData = CGI.getResponseData();
+		std::string			bodySection;
+
+		// find header/body separator
+		size_t headerEnd = rawData.find("\r\n\r\n");
+		if (headerEnd != std::string::npos) {
+			headerEnd += 4;
+
+			std::string headerSection = rawData.substr(0, headerEnd - 2);
+			bodySection = rawData.substr(headerEnd);
+
+			// Parse headers
+			std::istringstream headerStream(headerSection);
+			std::string line;
+			_statusCode = 200;
+
+			while (std::getline(headerStream, line)) {
+				if (!line.empty() && line.back() == '\r') {
+					line.pop_back(); // removes \r
+				}
+
+				if (line.empty()) break; //end of headers if empty line
+
+				size_t colonPos = line.find(':');
+				if (colonPos == std::string::npos) continue; // skip malformed lines
+
+				std::string headerName = line.substr(0, colonPos);
+				std::string headerValue = line.substr(colonPos + 1);
+
+				// trim whitespace
+				size_t start = headerValue.find_first_not_of(" \t");
+				if (start != std::string::npos) {
+					size_t end = headerValue.find_last_not_of(" \t");
+					headerValue = headerValue.substr(start, end - start + 1);
+				}
+
+				if (headerName == "Status") {
+					size_t spacePos = headerValue.find(' ');
+					std::string statusStr = (spacePos != std::string::npos) ? headerValue.substr(0, spacePos) : headerValue;
+					try {
+						_statusCode = std::stoi(statusStr);
+					} catch (...) {
+						_statusCode = 200;
+					}
+				} else {
+					setHeader(headerName, headerValue);
+				}
+			}
+		} else
+			bodySection = rawData;
+		setBody(bodySection);
+	} else {
+		_statusCode = CGI.getErrorCode();
+		setBody(getErrorPage(_statusCode));
+	}
+	_printResponseInfo();
+	_fullResponse = getStatusLine() + getHeadersString() + _body;
+	_bytesSent = 0;
 }
 
 std::string Response::getStatusLine() const {

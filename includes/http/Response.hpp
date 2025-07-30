@@ -11,6 +11,7 @@
 
 #include "CommonFunctions.hpp"
 #include "Request.hpp"
+#include "server/CGIHandler.hpp"
 #include "config/ServerBlock.hpp"
 #include "config/LocationBlock.hpp"
 
@@ -42,6 +43,7 @@ private:
 	
 	bool hasReadPermission(const std::string& path) const;
 	bool hasWritePermission(const std::string& path) const;
+	bool hasExecPermission(const std::string& path) const;
 	bool fileExists(const std::string& path) const;
 	bool directoryExists(const std::string& path) const;
 	bool isMethodAllowed() const;
@@ -79,8 +81,9 @@ private:
 	void handleMultipartPost(const std::string& uploadDir);
 	
 	bool isCgiRequest(const std::string& path) const;
+
+	void	_printResponseInfo(void);
 	
-	void handleCgi(const std::string& path);
 	
 	public:
 	Response(Request* request, ServerBlock* serverBlock);
@@ -107,5 +110,8 @@ private:
 	void setContentType(const std::string& path);
 
 	void prepareResponse();
+	void handleCgi(const CGIHandler &CGI);
 	bool isComplete() const;
+
+	// std::string getString();
 };
