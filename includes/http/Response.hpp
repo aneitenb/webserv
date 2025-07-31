@@ -95,6 +95,8 @@ private:
 	void setRequest(Request& request);
 	
 	void handleResponse();
+
+	void	errorResponse(const u16 statusCode);
 	
 	int getStatusCode() const;
 	const std::string& getBody() const;

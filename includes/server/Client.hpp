@@ -34,6 +34,10 @@ class Client : public EventHandler {
 		CGIHandler			_CGIHandler;
 		timestamp			_disconnectAt;
 		u64					_timeout;
+		bool				_timedOut;
+		bool				_active;
+
+		const std::string	&_getHost(void) const;
 
         //size_t? _lastActive;
         int sending_stuff();
@@ -41,6 +45,8 @@ class Client : public EventHandler {
         int saveRequest();
         void saveResponse();
     public:
+		const Request	&request = _requesting;
+
         Client() = delete;
         Client(std::unordered_map<std::string, ServerBlock*> cur, i32 &efd);
         ~Client();
@@ -81,10 +87,12 @@ class Client : public EventHandler {
         std::string getLocalConnectionIP(); //new
         std::string getLocalConnectionPort();  //new
 
+		const bool	&isActive(void) const;
+
 		void	updateDisconnectTime(void);
+		void	setTimeout(const u64 ms);
+		void	timeout(void);
 		void	stopCGI(void);
 
 		const timestamp	&getDisconnectTime(void) const;
-        
-        //timeout??
 };

@@ -6,13 +6,17 @@
 //  ╚══╝╚══╝     ╚══════╝    ╚═════╝     ╚══════╝    ╚══════╝    ╚═╝  ╚═╝      ╚═══╝
 //
 // <<Client.cpp>> -- <<Aida, Ilmari, Milica>>
+
 #include <arpa/inet.h>
 
 #include "utils/message.hpp"
+#include "utils/Timeout.hpp"
 #include "server/Client.hpp"
 
-Client::Client(std::unordered_map<std::string, ServerBlock*> cur, i32 &efd): _allServerNames(cur), _clFd(-1), _count(0), _CGIHandler(this, _clFd, efd), _timeout(CLIENT_DEFAULT_TIMEOUT) {
-	_result = nullptr;
+extern Timeout	timeouts;
+
+Client::Client(std::unordered_map<std::string, ServerBlock*> cur, i32 &efd): _allServerNames(cur), _clFd(-1), _count(0), _CGIHandler(this, _clFd, efd), _timeout(CLIENT_DEFAULT_TIMEOUT), _timedOut(false), _active(false) {
+    _result = nullptr;
     setState(TOADD);
 }
 
@@ -21,7 +25,8 @@ Client::~Client(){
         // close (_clFd);   //CHANGED:don't close if sstill in epoll, eventloop will handle proper cleanup
         _clFd = -1;
     }
-	this->_CGIHandler.resolveClose();
+    this->_CGIHandler.resolveClose();
+	timeouts.removeClient(*this);
 }
 
 Client::Client(Client&& other) noexcept : _clFd(-1), _requesting(std::move(other._requesting)), \
@@ -38,10 +43,12 @@ Client::Client(Client&& other) noexcept : _clFd(-1), _requesting(std::move(other
     _result = other._result;
     other._result = nullptr;
     /*_curR = other._curR;*/
-	this->_disconnectAt = other._disconnectAt;
-	this->_timeout = other._timeout;
+    this->_disconnectAt = other._disconnectAt;
+    this->_timeout = other._timeout;
     this->setState(other.getState());
-	this->_CGIHandler.setClient(this);
+    this->_CGIHandler.setClient(this);
+	this->_timedOut = other._timedOut;
+	this->_active = other._active;
 }
 
 //this should never be used though
@@ -59,13 +66,15 @@ Client& Client::operator=(Client&& other) noexcept{
         _result = other._result;
         other._result = nullptr;
         /*_curR = other._curR;*/
-		this->_disconnectAt = other._disconnectAt;
-		this->_timeout = other._timeout;
+        this->_disconnectAt = other._disconnectAt;
+        this->_timeout = other._timeout;
         this->setState(other.getState());
         _requesting = std::move(other._requesting);
         _responding = std::move(other._responding);
-		this->_CGIHandler = std::move(other._CGIHandler);
-		this->_CGIHandler.setClient(this);
+        this->_CGIHandler = std::move(other._CGIHandler);
+        this->_CGIHandler.setClient(this);
+	this->_timedOut = other._timedOut;
+	this->_active = other._active;
     }
     return (*this);
 }
@@ -137,8 +146,8 @@ std::string Client::getLocalConnectionIP() {
     // (struct sockaddr*)&localAddr is where to store the answer (with casting for compatibility)
     // returns -1 if something goes wrong
     if (getsockname(_clFd, (struct sockaddr*)&localAddr, &addrLen) == -1) {
-		Warn("Client::getLocalConnectionIP(): getsockname(" << _clFd
-			 << "&localAddr, &addrLen) failed: " << strerror(errno));
+        Warn("Client::getLocalConnectionIP(): getsockname(" << _clFd
+             << "&localAddr, &addrLen) failed: " << strerror(errno));
         return "127.0.0.1"; // fallback
     }
     // inet_ntoa() converts binary IP to human-readable string 
@@ -150,8 +159,8 @@ std::string Client::getLocalConnectionPort() {
     socklen_t addrLen = sizeof(localAddr);
     
     if (getsockname(_clFd, (struct sockaddr*)&localAddr, &addrLen) == -1) {
-		Warn("Client::getLocalConnectionPort(): getsockname(" << _clFd
-			 << "&localAddr, &addrLen) failed: " << strerror(errno));
+        Warn("Client::getLocalConnectionPort(): getsockname(" << _clFd
+             << "&localAddr, &addrLen) failed: " << strerror(errno));
         return "8080"; // fallback
     }
     
@@ -230,7 +239,7 @@ struct epoll_event& Client::getCgiEvent(int flag) {
 int Client::ready2Switch() { return 1; }
 
 EventHandler* Client::getCgi(){
-	return dynamic_cast<EventHandler *>(&this->_CGIHandler);
+    return dynamic_cast<EventHandler *>(&this->_CGIHandler);
 }
 
 bool Client::conditionMet(std::unordered_map<int*, std::vector<EventHandler*>>& _activeFds, int& epollFd){
@@ -291,22 +300,14 @@ int Client::handleEvent(uint32_t ev, [[maybe_unused]] i32 &efd){
         } else {
             // Request complete (saveResult == 0)
             _buffer.clear(); // CRITICAL
-            
+			this->_responding = Response(&this->_requesting, getSBforResponse(this->_getHost()));
             // Check for CGI
             if (_requesting.getURI().find(".py") != std::string::npos || _requesting.getURI().find(".php") != std::string::npos) {
-				std::string hostHeader;
-
-				try {
-					hostHeader = _requesting.getHeader("Host");
-				} catch (const Request::FieldNotFoundException& e) {
-					hostHeader = _firstKey; // Use the default server
-				}
-				this->_CGIHandler.setServerBlock(getSBforResponse(hostHeader));
-				this->_responding = Response(&this->_requesting, getSBforResponse(hostHeader));
-				if (!this->_CGIHandler.init(this->_requesting)) {
-					this->setState(TOWRITE);
-					return (0);
-				}
+                this->_CGIHandler.setServerBlock(getSBforResponse(this->_getHost()));
+                if (!this->_CGIHandler.init(this->_requesting)) {
+                    this->setState(TOWRITE);
+                    return (0);
+                }
                 this->setState(TOCGI);
                 return (0);
             }
@@ -319,20 +320,25 @@ int Client::handleEvent(uint32_t ev, [[maybe_unused]] i32 &efd){
     }
     if (ev & EPOLLOUT){
         if (sending_stuff() == -1){
-			_responding.clear();
-			this->setState(CLOSE);
-			return (-1);
+            _responding.clear();
+            this->setState(CLOSE);
+            return (-1);
         }
         
         if (_responding.isComplete() == true){
+			this->_active = false;
+			if (this->_responding.getStatusCode() == HTTP_REQUEST_TIMEOUT) {
+				this->setState(CLOSE);
+				return (-1);
+			}
             // Reset for next request
-           if (!_requesting.getMethod().empty() && _requesting.isParsed()) {
+			if (!_requesting.getMethod().empty() && _requesting.isParsed()) {
                 _requesting.reset();
                 _responding.clear();
                 this->setState(TOREAD);
                 _count = 0;
             } else {
-				warn("Client::handleEvent(): Invalid or empty request, closing connection");
+                warn("Client::handleEvent(): Invalid or empty request, closing connection");
                 this->setState(CLOSE);
                 return (-1);
             }
@@ -355,21 +361,25 @@ bool Client::shouldClose() const {
 /*Handle Event Helpers*/
 int Client::sending_stuff(){
     std::string buffer = {0};
-	if (this->_CGIHandler.getState() == CGIWRITE) {
-		_responding.handleCgi(this->_CGIHandler);
-		this->_CGIHandler.setState(CGIDONE);
-	} else
-		_responding.prepareResponse();
+
+	if (this->_timedOut) {
+		this->_responding = Response(&this->_requesting, getSBforResponse(this->_getHost()));
+		this->_responding.errorResponse(HTTP_REQUEST_TIMEOUT);
+	}
+	else if (this->_CGIHandler.getState() == CGIWRITE) {
+        _responding.handleCgi(this->_CGIHandler);
+        this->_CGIHandler.setState(CGIDONE);
+    } 
     buffer = _responding.getFullResponse();
-	if (buffer.size() == 0)
-		return (-1);
-	Debug("\nSending response to client at socket #" << _clFd);
+    if (buffer.size() == 0)
+        return (-1);
+    Debug("\nSending response to client at socket #" << _clFd);
     if (_responding.isComplete() != true){
         ssize_t len = send(_clFd, buffer.c_str() + _responding.getBytes(), buffer.size() - _responding.getBytes(), 0); //buffer + bytesSentSoFar, sizeof remaining bytes, 0
         if (len < 1){
-			Warn("Client::sending_stuff(): send(" << _clFd << ", buffer.c_str() + "
-				 << _responding.getBytes() << ", " << buffer.size() - _responding.getBytes()
-				 << ", 0) failed: " << strerror(errno));
+            Warn("Client::sending_stuff(): send(" << _clFd << ", buffer.c_str() + "
+                 << _responding.getBytes() << ", " << buffer.size() - _responding.getBytes()
+                 << ", 0) failed: " << strerror(errno));
             return (-1);
         }
         else{ // len > 0
@@ -395,10 +405,11 @@ int Client::receiving_stuff(){
     else if (len < 0) { 
         if (errno == EAGAIN || errno == EWOULDBLOCK)
             return (0); //No more data available
-		Warn("Client::receiving_stuff(): recv(" << _clFd << ", &temp_buff[0], "
-			 << temp_buff.size() << ", 0) failed: " << strerror(errno));
+        Warn("Client::receiving_stuff(): recv(" << _clFd << ", &temp_buff[0], "
+             << temp_buff.size() << ", 0) failed: " << strerror(errno));
         return (-1); //real error
     } else {  //something was returned
+		this->_active = true;
         temp_buff.resize(len);
         if (temp_buff.size() <= _buffer.max_size() - _buffer.size())
             _buffer.append(temp_buff);
@@ -423,33 +434,38 @@ int Client::saveRequest(){
         // }
         
         //the thing is what if it's a partial request so not everything has been received? it needs to be updated without being marked as wrong
-		return (_requesting.isParsed()) ? 0 : 1;
+        return (_requesting.isParsed()) ? 0 : 1;
     } catch(std::exception& e){
         return (-1);
     }
 }
 
 void Client::saveResponse(){
-    std::string hostHeader;
-    
-    try {
-        hostHeader = _requesting.getHeader("Host");
-    } catch (const Request::FieldNotFoundException& e) {
-        hostHeader = _firstKey; // Use the default server
-    }
-
-    Response curR(&_requesting, getSBforResponse(hostHeader));
-    _responding = std::move(curR);
-    _responding.handleResponse();
-    // _responding.prepareResponse();
+    _responding.prepareResponse();
 }
 
+const bool	&Client::isActive(void) const { return this->_active; }
+
 void	Client::updateDisconnectTime(void) {
-	this->_disconnectAt = std::chrono::system_clock::now() + std::chrono::milliseconds(this->_timeout);
+    this->_disconnectAt = std::chrono::system_clock::now() + std::chrono::milliseconds(this->_timeout);
+}
+
+void	Client::setTimeout(const u64 ms) { this->_timeout = ms; }
+
+void	Client::timeout(void) {
+	this->_timedOut = true;
+	this->_active = false;
 }
 
 void	Client::stopCGI(void) {
-	this->_CGIHandler.stop();
+    this->_CGIHandler.stop();
 }
 
 const timestamp	&Client::getDisconnectTime(void) const { return this->_disconnectAt; }
+
+const std::string	&Client::_getHost(void) const {
+	try {
+		return this->_requesting.getHeader("Host");
+	} catch (Request::FieldNotFoundException &) {}
+	return this->_firstKey;
+}

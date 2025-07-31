@@ -160,6 +160,21 @@ void  Response::prepareResponse() {
 	_bytesSent = 0;
 }
 
+void	Response::errorResponse(const u16 statusCode) {
+	this->_statusCode = statusCode;
+	this->setHeader("Content-Type", "text/html");
+	this->setHeader("Date", getCurrentDate());
+	switch (statusCode) {
+		case HTTP_REQUEST_TIMEOUT:
+			this->setHeader("Connection", "close");
+			break ;
+	}
+	this->setBody(this->getErrorPage(statusCode));
+	_printResponseInfo();
+	this->_fullResponse = this->getStatusLine() + this->getHeadersString() + this->_body;
+	_bytesSent = 0;
+}
+
 void Response::handleResponse() {
 	std::string uri = _request->getURI();
 	std::string matchedLocation = findMatchingLocation(uri);
@@ -298,7 +313,7 @@ std::string Response::findMatchingLocation(const std::string& uri) {
 	const std::map<std::string, LocationBlock>& locations = _serverBlock->getLocationBlocks();
 	
 	for (std::map<std::string, LocationBlock>::const_iterator it = locations.begin(); 
-		 it != locations.end(); ++it) {
+		it != locations.end(); ++it) {
 		std::string locationPath = it->first;
 		
 		// make both start with / for comparison
@@ -1064,7 +1079,7 @@ bool Response::isMethodAllowed() const {
 }
 
 std::string Response::getErrorPage(int statusCode) const {
-	std::string errorPage = _serverBlock->getErrorPage(statusCode);
+	std::string errorPage = _serverBlock->getRoot() + _serverBlock->getErrorPage(statusCode);
 	
 	// Try original path first
 	if (!errorPage.empty() && fileExists(errorPage) && hasReadPermission(errorPage)) {
