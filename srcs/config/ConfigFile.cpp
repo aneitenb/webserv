@@ -363,6 +363,8 @@ void ConfigurationFile::_parseLocationDirective(LocationBlock& locBlock, const s
 			throw ErrorInvalidConfig("Redirect URL too long (max " + 
 				std::to_string(MAX_PATH_LENGTH) + " characters)");
 		}
+		if (url.find("http://") != 0 && url.find("http://") != 0)
+        	throw ErrorInvalidConfig("Redirect URL must be a full HTTP URL");
 			
 		locBlock.setRedirect(std::make_pair(status, url));
 	}
