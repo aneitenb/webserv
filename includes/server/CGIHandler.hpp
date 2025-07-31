@@ -14,6 +14,8 @@
 
 class Client;
 
+typedef std::pair<std::string, LocationBlock>	CGILocation;
+
 typedef std::unordered_map<i32 *, std::vector<EventHandler *>>	fdMap;
 
 class CGIHandler: public EventHandler {
@@ -21,11 +23,12 @@ class CGIHandler: public EventHandler {
 		std::vector<const char *>	_envp;
 		std::vector<std::string>	_env;
 
+		const CGILocation	*_location;
 		const ServerBlock	*_serverBlock;
 
-		std::string	_scriptName;
-		std::string	_scriptPath;
-		std::string	_absPath;
+		std::string	_scriptFile;
+		std::string	_scriptDir;
+		std::string	_pathInfo;
 		std::string	_query;
 		std::string	_buf;
 
@@ -84,6 +87,7 @@ class CGIHandler: public EventHandler {
 
 		// public setters
 		void	setServerBlock(const ServerBlock *sb);
+		void	setLocation(const CGILocation *loc);
 		void	setClient(Client *client);
 
 		// public getters

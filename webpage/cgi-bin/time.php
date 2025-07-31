@@ -7,6 +7,14 @@
 </head>
 <body>
 	<?php
+	if ($_SERVER['PATH_INFO'] == "/debug") {
+		echo "<h2>Environment Variables:</h2><ul>";
+		foreach ($_SERVER as $var => $val) {
+			if ($var != 'argv' and $var != 'argc')
+				echo "<li><strong>" . $var . "</strong>: " . $val . "</li>";
+		}
+		echo "</ul><br><br>";
+	}
 	$queries = array();
 	parse_str($_SERVER['QUERY_STRING'], $queries);
 	$timezone = $queries['timezone'] ?? "Europe/Helsinki";

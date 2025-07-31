@@ -303,6 +303,9 @@ static inline bool	_getChunkSize(std::stringstream &bodySection, std::string &re
 	return true;
 }
 
+// public setters
+void	Request::setErrorCode(const i16 errorCode) { this->_errorCode = errorCode; }
+
 // public getters
 const headerlist_t	&Request::getHeaderList(void) const { return this->_headers; }
 
@@ -332,7 +335,7 @@ const bool	&Request::isParsed(void) const { return this->_parsed; }
 
 const bool	&Request::isValid(void) const { return this->_valid; }
 
-const i32	&Request::getErrorCode(void) const { return this->_errorCode; }
+const i16	&Request::getErrorCode(void) const { return this->_errorCode; }
 
 //exceptions
 const char	*Request::InvalidRequestLineException::what(void) const noexcept { return "Invalid request line"; }

@@ -79,8 +79,6 @@ private:
 	std::vector<MultipartFile> parseMultipartData(const std::string& boundary);
 	std::string extractBoundary(const std::string& contentType) const;
 	void handleMultipartPost(const std::string& uploadDir);
-	
-	bool isCgiRequest(const std::string& path) const;
 
 	void	_printResponseInfo(void);
 	

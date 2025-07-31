@@ -45,6 +45,10 @@
 
 #define SGR_RESET	"\x1b[m"
 
+#ifndef SERVER_NAME
+# define SERVER_NAME	"webserv"
+#endif
+
 #ifdef __DEBUG
  #ifndef __DEBUG_NO_REQ
   #ifndef __DEBUG_NO_REQ_HEADERS

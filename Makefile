@@ -23,7 +23,7 @@ CC			=	g++
 LOG_LEVEL	=	4
 endif
 
-cflags.common	=	-Wall -Wextra -Werror -std=c++17 -DLOG_LEVEL=$(LOG_LEVEL)
+cflags.common	=	-Wall -Wextra -Werror -std=c++17 -DLOG_LEVEL=$(LOG_LEVEL) -DSERVER_NAME=\"$(NAME)\"
 cflags.debug	=	-g -D__DEBUG
 cflags.fsan		=	$(cflags.debug) -fsanitize=address,undefined
 cflags.normal	=	-O3
