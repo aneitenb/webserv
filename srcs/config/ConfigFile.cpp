@@ -357,7 +357,7 @@ void ConfigurationFile::_parseLocationDirective(LocationBlock& locBlock, const s
 		int status;
 		std::string url;
 		
-		if (!(ress >> status >> url) || status < 300 || status > 399)
+		if (!(ress >> status >> url) || (status != 301 && status != 302))
 			throw ErrorInvalidConfig("Invalid return format: " + value);
 		if (url.length() > MAX_PATH_LENGTH) {
 			throw ErrorInvalidConfig("Redirect URL too long (max " + 
