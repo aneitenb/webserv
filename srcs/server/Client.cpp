@@ -325,12 +325,6 @@ int Client::handleEvent(uint32_t ev, [[maybe_unused]] i32 &efd){
         }
         
         if (_responding.isComplete() == true){
-            //check if timeout response was just sent
-            if (_responding.getStatusCode() == 408) {
-                Debug("408 timeout response sent, closing connection");
-                setState(CLOSE);
-                return 0;
-            }
             // Reset for next request
            if (!_requesting.getMethod().empty() && _requesting.isParsed()) {
                 _requesting.reset();
@@ -457,32 +451,3 @@ void	Client::stopCGI(void) {
 }
 
 const timestamp	&Client::getDisconnectTime(void) const { return this->_disconnectAt; }
-
-void Client::sendTimeoutResponse() {    
-    _responding.clear();
-    _responding.setStatusCode(408);
-    _responding.setHeader("Content-Type", "text/html");
-    _responding.setHeader("Connection", "close");
-    _responding.setHeader("Date", getCurrentDate());
-    
-    std::string errorBody = 
-        "<!DOCTYPE html>\n"
-        "<html>\n"
-        "<head><title>408 Request Timeout</title></head>\n"
-        "<body>\n"
-        "<h1>408 Request Timeout</h1>\n"
-        "<p>The server timed out waiting for the request.</p>\n"
-        "</body>\n"
-        "</html>";
-    
-    _responding.setBody(errorBody);
-    _responding.prepareResponse();
-}
-
-std::string Client::getCurrentDate() const {
-    char buffer[100];
-    time_t now = time(0);
-    struct tm* timeinfo = gmtime(&now);
-    strftime(buffer, sizeof(buffer), "%a, %d %b %Y %H:%M:%S GMT", timeinfo);
-    return std::string(buffer);
-}
