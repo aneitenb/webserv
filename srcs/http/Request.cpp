@@ -82,7 +82,7 @@ void	Request::append(const std::string &reqData) {
 			try {
 				this->_valid = true;
 				this->_parseRequestLine(this->_remainder.substr(0, end));
-			} catch (Request::InvalidRequestLineException &) { this->_valid = false; this->_errorCode = _ERR_BAD_REQUEST; }
+			} catch (Request::InvalidRequestLineException &) { this->_valid = false; this->_errorCode = HTTP_BAD_REQUEST; }
 			this->_remainder.erase(0, end);
 			this->_headers.clear();
 			this->_parsingStage = HEADERS;
@@ -97,7 +97,7 @@ void	Request::append(const std::string &reqData) {
 			} catch (Request::InvalidHeaderException &) { 
 				if (this->_errorCode == 0) {
 					this->_valid = false; 
-					this->_errorCode = _ERR_BAD_REQUEST; 
+					this->_errorCode = HTTP_BAD_REQUEST; 
 				} else {this->_valid = false;}
 			}
 			this->_remainder.erase(0, end);
@@ -217,7 +217,7 @@ bool	Request::_processBody(const std::string &rawBody) {
 		this->_body += rawBody;
 		if (this->_body.size() > this->_maxBodySize) {
 			this->_valid = false;
-			this->_errorCode = _ERR_ENTITY_TOO_LARGE;
+			this->_errorCode = HTTP_PAYLOAD_TOO_LARGE;
 			return 1;
 		}
 		this->_remainder.clear();
@@ -260,7 +260,7 @@ bool	Request::_processChunkedBody(std::stringstream bodySection) {
 				parsingStage = CHUNKSIZE;
 				if (this->_body.size() > this->_maxBodySize) {
 					this->_valid = false;
-					this->_errorCode = _ERR_ENTITY_TOO_LARGE;
+					this->_errorCode = HTTP_PAYLOAD_TOO_LARGE;
 					return true;
 				}
 				if (!_getChunkSize(bodySection, this->_remainder, this->_chunkSize))
@@ -282,7 +282,7 @@ bool	Request::_processChunkedBody(std::stringstream bodySection) {
 			try {
 				this->_parseHeaders(std::stringstream(this->_remainder));
 				this->_remainder.clear();
-			} catch (Request::InvalidHeaderException &) { this->_valid = false; this->_errorCode = _ERR_BAD_REQUEST; }
+			} catch (Request::InvalidHeaderException &) { this->_valid = false; this->_errorCode = HTTP_BAD_REQUEST; }
 			parsingStage = CHUNKSIZE;
 	}
 	this->_chunked = false;
