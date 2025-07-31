@@ -64,11 +64,18 @@ int EventLoop::run(std::vector<EventHandler*> listFds){
 		}
 
 		if (events2Resolve == 0) {
-			curE = &timeouts.front().first;
-			Debug("\nClient at socket #" << *curE->getSocketFd(0) << " timed out, closing connection");
-			static_cast<Client *>(curE)->stopCGI();
-            curE->setState(CLOSE);
-            timeouts.pop();
+			Client &client = timeouts.front().first;
+			Debug("\nClient at socket #" << *client.getSocketFd(0) << " timed out, closing connection");
+			if (client.isActive() && !client.request.isParsed()) {
+				client.setState(TOWRITE);
+				resolvingModify(&client, EPOLLOUT);
+				client.setTimeout(200);
+				client.timeout();
+			} else {
+				client.stopCGI();
+				client.setState(CLOSE);
+				timeouts.pop();
+			}
             continue ;
 		}
 

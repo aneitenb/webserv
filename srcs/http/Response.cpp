@@ -160,6 +160,21 @@ void  Response::prepareResponse() {
 	_bytesSent = 0;
 }
 
+void	Response::errorResponse(const u16 statusCode) {
+	this->_statusCode = statusCode;
+	this->setHeader("Content-Type", "text/html");
+	this->setHeader("Date", getCurrentDate());
+	switch (statusCode) {
+		case HTTP_REQUEST_TIMEOUT:
+			this->setHeader("Connection", "close");
+			break ;
+	}
+	this->setBody(this->getErrorPage(statusCode));
+	_printResponseInfo();
+	this->_fullResponse = this->getStatusLine() + this->getHeadersString() + this->_body;
+	_bytesSent = 0;
+}
+
 void Response::handleResponse() {
 	std::string uri = _request->getURI();
 	std::string matchedLocation = findMatchingLocation(uri);

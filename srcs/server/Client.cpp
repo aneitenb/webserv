@@ -6,12 +6,16 @@
 //  ╚══╝╚══╝     ╚══════╝    ╚═════╝     ╚══════╝    ╚══════╝    ╚═╝  ╚═╝      ╚═══╝
 //
 // <<Client.cpp>> -- <<Aida, Ilmari, Milica>>
+
 #include <arpa/inet.h>
 
 #include "utils/message.hpp"
+#include "utils/Timeout.hpp"
 #include "server/Client.hpp"
 
-Client::Client(std::unordered_map<std::string, ServerBlock*> cur, i32 &efd): _allServerNames(cur), _clFd(-1), _count(0), _CGIHandler(this, _clFd, efd), _timeout(CLIENT_DEFAULT_TIMEOUT) {
+extern Timeout	timeouts;
+
+Client::Client(std::unordered_map<std::string, ServerBlock*> cur, i32 &efd): _allServerNames(cur), _clFd(-1), _count(0), _CGIHandler(this, _clFd, efd), _timeout(CLIENT_DEFAULT_TIMEOUT), _timedOut(false), _active(false) {
     _result = nullptr;
     setState(TOADD);
 }
@@ -22,6 +26,7 @@ Client::~Client(){
         _clFd = -1;
     }
     this->_CGIHandler.resolveClose();
+	timeouts.removeClient(*this);
 }
 
 Client::Client(Client&& other) noexcept : _clFd(-1), _requesting(std::move(other._requesting)), \
@@ -42,6 +47,8 @@ Client::Client(Client&& other) noexcept : _clFd(-1), _requesting(std::move(other
     this->_timeout = other._timeout;
     this->setState(other.getState());
     this->_CGIHandler.setClient(this);
+	this->_timedOut = other._timedOut;
+	this->_active = other._active;
 }
 
 //this should never be used though
@@ -66,6 +73,8 @@ Client& Client::operator=(Client&& other) noexcept{
         _responding = std::move(other._responding);
         this->_CGIHandler = std::move(other._CGIHandler);
         this->_CGIHandler.setClient(this);
+	this->_timedOut = other._timedOut;
+	this->_active = other._active;
     }
     return (*this);
 }
@@ -291,18 +300,10 @@ int Client::handleEvent(uint32_t ev, [[maybe_unused]] i32 &efd){
         } else {
             // Request complete (saveResult == 0)
             _buffer.clear(); // CRITICAL
-            
+			this->_responding = Response(&this->_requesting, getSBforResponse(this->_getHost()));
             // Check for CGI
             if (_requesting.getURI().find(".py") != std::string::npos || _requesting.getURI().find(".php") != std::string::npos) {
-                std::string hostHeader;
-
-                try {
-                    hostHeader = _requesting.getHeader("Host");
-                } catch (const Request::FieldNotFoundException& e) {
-                    hostHeader = _firstKey; // Use the default server
-                }
-                this->_CGIHandler.setServerBlock(getSBforResponse(hostHeader));
-                this->_responding = Response(&this->_requesting, getSBforResponse(hostHeader));
+                this->_CGIHandler.setServerBlock(getSBforResponse(this->_getHost()));
                 if (!this->_CGIHandler.init(this->_requesting)) {
                     this->setState(TOWRITE);
                     return (0);
@@ -325,8 +326,13 @@ int Client::handleEvent(uint32_t ev, [[maybe_unused]] i32 &efd){
         }
         
         if (_responding.isComplete() == true){
+			this->_active = false;
+			if (this->_responding.getStatusCode() == HTTP_REQUEST_TIMEOUT) {
+				this->setState(CLOSE);
+				return (-1);
+			}
             // Reset for next request
-           if (!_requesting.getMethod().empty() && _requesting.isParsed()) {
+			if (!_requesting.getMethod().empty() && _requesting.isParsed()) {
                 _requesting.reset();
                 _responding.clear();
                 this->setState(TOREAD);
@@ -355,7 +361,12 @@ bool Client::shouldClose() const {
 /*Handle Event Helpers*/
 int Client::sending_stuff(){
     std::string buffer = {0};
-    if (this->_CGIHandler.getState() == CGIWRITE) {
+
+	if (this->_timedOut) {
+		this->_responding = Response(&this->_requesting, getSBforResponse(this->_getHost()));
+		this->_responding.errorResponse(HTTP_REQUEST_TIMEOUT);
+	}
+	else if (this->_CGIHandler.getState() == CGIWRITE) {
         _responding.handleCgi(this->_CGIHandler);
         this->_CGIHandler.setState(CGIDONE);
     } 
@@ -398,6 +409,7 @@ int Client::receiving_stuff(){
              << temp_buff.size() << ", 0) failed: " << strerror(errno));
         return (-1); //real error
     } else {  //something was returned
+		this->_active = true;
         temp_buff.resize(len);
         if (temp_buff.size() <= _buffer.max_size() - _buffer.size())
             _buffer.append(temp_buff);
@@ -429,21 +441,20 @@ int Client::saveRequest(){
 }
 
 void Client::saveResponse(){
-    std::string hostHeader;
-    
-    try {
-        hostHeader = _requesting.getHeader("Host");
-    } catch (const Request::FieldNotFoundException& e) {
-        hostHeader = _firstKey; // Use the default server
-    }
-
-    Response curR(&_requesting, getSBforResponse(hostHeader));
-    _responding = std::move(curR);
     _responding.prepareResponse();
 }
 
+const bool	&Client::isActive(void) const { return this->_active; }
+
 void	Client::updateDisconnectTime(void) {
     this->_disconnectAt = std::chrono::system_clock::now() + std::chrono::milliseconds(this->_timeout);
+}
+
+void	Client::setTimeout(const u64 ms) { this->_timeout = ms; }
+
+void	Client::timeout(void) {
+	this->_timedOut = true;
+	this->_active = false;
 }
 
 void	Client::stopCGI(void) {
@@ -451,3 +462,10 @@ void	Client::stopCGI(void) {
 }
 
 const timestamp	&Client::getDisconnectTime(void) const { return this->_disconnectAt; }
+
+const std::string	&Client::_getHost(void) const {
+	try {
+		return this->_requesting.getHeader("Host");
+	} catch (Request::FieldNotFoundException &) {}
+	return this->_firstKey;
+}
