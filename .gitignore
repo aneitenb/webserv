@@ -10,3 +10,4 @@ webserv
 request_test
 .vscode/
 webpage/uploads/*
+webpage/cgi-bin/print_queries

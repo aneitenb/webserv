@@ -8,6 +8,7 @@
 // <<Client.cpp>> -- <<Aida, Ilmari, Milica>>
 
 #include <arpa/inet.h>
+#include <sys/socket.h>
 
 #include "utils/message.hpp"
 #include "utils/Timeout.hpp"
@@ -15,8 +16,10 @@
 
 extern Timeout	timeouts;
 
+static inline CGILocation	*_findCGILocation(std::map<std::string, LocationBlock> locations, const std::string &URI);
+
 Client::Client(std::unordered_map<std::string, ServerBlock*> cur, i32 &efd): _allServerNames(cur), _clFd(-1), _count(0), _CGIHandler(this, _clFd, efd), _timeout(CLIENT_DEFAULT_TIMEOUT), _timedOut(false), _active(false) {
-    _result = nullptr;
+	_result = nullptr;
     setState(TOADD);
 }
 
@@ -137,7 +140,7 @@ std::unordered_map<std::string, ServerBlock*> Client::getServerBlocks() const{
     return (_allServerNames);
 }
 
-std::string Client::getLocalConnectionIP() {
+std::string Client::getLocalIP() {
     struct sockaddr_in localAddr;   //structure that holds IPv4 address information
     socklen_t addrLen = sizeof(localAddr);
     
@@ -154,7 +157,7 @@ std::string Client::getLocalConnectionIP() {
     return std::string(inet_ntoa(localAddr.sin_addr));
 }
 
-std::string Client::getLocalConnectionPort() {
+std::string Client::getLocalPort() {
     struct sockaddr_in localAddr;
     socklen_t addrLen = sizeof(localAddr);
     
@@ -167,14 +170,38 @@ std::string Client::getLocalConnectionPort() {
     return std::to_string(ntohs(localAddr.sin_port));
 }
 
+std::string	Client::getPeerPort(void) const {
+	struct sockaddr_in	addr;
+	socklen_t			addrLen = sizeof(addr);
+
+	if (getpeername(this->_clFd, (struct sockaddr *)&addr, &addrLen) == -1) {
+		Warn("Client::getPeerPort(): getpeername(" << this->_clFd
+			 << "&addr, &addrlen) failed: " << strerror(errno));
+		return "";
+	}
+	return std::to_string(ntohs(addr.sin_port));
+}
+
+std::string	Client::getPeerIP(void) const {
+	struct sockaddr_in	addr;
+	socklen_t			addrLen = sizeof(addr);
+
+	if (getpeername(this->_clFd, (struct sockaddr *)&addr, &addrLen) == -1) {
+		Warn("Client::getPeerIP(): getpeername(" << this->_clFd
+			 << "&addr, &addrlen) failed: " << strerror(errno));
+		return "";
+	}
+	return std::string(inet_ntoa(addr.sin_addr));
+}
+
 ServerBlock* Client::getSBforResponse(std::string hostHeader){
     // remove port from host header (example.com:8080 -> example.com)
     auto colonPos = hostHeader.find(':');
     std::string serverNameFromHeader = (colonPos != std::string::npos) ? hostHeader.substr(0, colonPos) : hostHeader;
 
     // get the IP and port the client actually connected to
-    std::string connectionIP = getLocalConnectionIP();
-    std::string connectionPort = getLocalConnectionPort();
+    std::string connectionIP = getLocalIP();
+    std::string connectionPort = getLocalPort();
 
     // try exact match with server_name@connection_ip:connection_port
     std::string exactKey = serverNameFromHeader + "@" + connectionIP + ":" + connectionPort;
@@ -254,6 +281,9 @@ bool Client::conditionMet(std::unordered_map<int*, std::vector<EventHandler*>>& 
 }
 
 int Client::handleEvent(uint32_t ev, [[maybe_unused]] i32 &efd){
+	CGILocation	*CGILocation;
+	ServerBlock	*serverConf;
+
     if (ev & EPOLLERR || ev & EPOLLHUP){
         this->setState(CLOSE);
         return (-1);
@@ -298,24 +328,30 @@ int Client::handleEvent(uint32_t ev, [[maybe_unused]] i32 &efd){
             // don't clear buffer - keep accumulating data
             return (0); // Request incomplete, need more data
         } else {
-            // Request complete (saveResult == 0)
-            _buffer.clear(); // CRITICAL
-			this->_responding = Response(&this->_requesting, getSBforResponse(this->_getHost()));
-            // Check for CGI
-            if (_requesting.getURI().find(".py") != std::string::npos || _requesting.getURI().find(".php") != std::string::npos) {
-                this->_CGIHandler.setServerBlock(getSBforResponse(this->_getHost()));
-                if (!this->_CGIHandler.init(this->_requesting)) {
-                    this->setState(TOWRITE);
-                    return (0);
-                }
-                this->setState(TOCGI);
-                return (0);
-            }
-        
-            // Prepare response
-            saveResponse();
-            this->setState(TOWRITE);
-            return (0);
+			_buffer.clear(); // CRITICAL
+			serverConf = this->getSBforResponse(this->_getHost());
+			this->_responding = Response(&this->_requesting, serverConf);
+			try {
+				CGILocation = _findCGILocation(serverConf->getLocationBlocks(), this->_requesting.getURI());
+			} catch (std::bad_alloc &) {
+				this->_requesting.setErrorCode(HTTP_INTERNAL_SERVER_ERROR);
+				this->setState(TOWRITE);
+				return (0);
+			}
+			if (CGILocation) {
+				this->_CGIHandler.setLocation(CGILocation);
+				this->_CGIHandler.setServerBlock(serverConf);
+				this->_responding = Response(&this->_requesting, serverConf);
+				if (!this->_CGIHandler.init(this->_requesting)) {
+					this->setState(TOWRITE);
+					return (0);
+				}
+				this->setState(TOCGI);
+				return (0);
+			}
+			saveResponse();
+			this->setState(TOWRITE);
+			return (0);
         }
     }
     if (ev & EPOLLOUT){
@@ -468,4 +504,17 @@ const std::string	&Client::_getHost(void) const {
 		return this->_requesting.getHeader("Host");
 	} catch (Request::FieldNotFoundException &) {}
 	return this->_firstKey;
+}
+
+static inline CGILocation	*_findCGILocation(std::map<std::string, LocationBlock> locations, const std::string &URI) {
+	std::string	path;
+
+	for (CGILocation location : locations) {
+		if (location.second.hasCgiPass()) {
+			path = location.first;
+			if (URI.find(path, 0) == 0)
+				return new CGILocation(location);
+		}
+	}
+	return nullptr;
 }

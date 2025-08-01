@@ -50,7 +50,7 @@ class Request
 		bool	_parsed;
 		bool	_valid;
 
-		i32		_errorCode;
+		i16		_errorCode;
 
 		// private methods
 		void	_parseRequestLine(std::string line);
@@ -72,6 +72,9 @@ class Request
 		void	append(const std::string &reqData);
 		void	reset(void);
 
+		// public setters
+		void	setErrorCode(const i16 errorCode);
+
 		// public getters
 		const headerlist_t	&getHeaderList(void) const;
 
@@ -88,7 +91,7 @@ class Request
 		const bool	&isParsed(void) const;
 		const bool	&isValid(void) const;
 
-		const i32	&getErrorCode(void) const;
+		const i16	&getErrorCode(void) const;
 
 		class InvalidRequestLineException: public std::exception {
 			public:
