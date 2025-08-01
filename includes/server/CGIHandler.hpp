@@ -61,7 +61,6 @@ class CGIHandler: public EventHandler {
 		// private methods
 		void	_setupPipes(void);
 		bool	_setupEnv(const Request &req);
-		bool	_done(void) const;
 
 		i32	_write(void);
 		i32	_read(void);

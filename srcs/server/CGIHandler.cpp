@@ -163,12 +163,6 @@ bool	CGIHandler::_setupEnv(const Request &req) {
 	return true;
 }
 
-bool	CGIHandler::_done(void) const {
-	i32		status;
-
-	return (waitpid(this->_pid, &status, WNOHANG) == this->_pid) ? true : false;
-}
-
 i32	CGIHandler::_write(void) {
 	ssize_t		bytesWritten;
 	size_t		remaining;
@@ -228,7 +222,7 @@ i32	CGIHandler::_read(void) {
 		this->_buf.append(buf);
 	}
 	Info("CGIHandler: Read " << bytesRead  << " bytes, total response length now " << this->_buf.size() << " bytes");
-	if (bytesRead == 0 || this->_done()) {
+	if (bytesRead == 0) {
 		if (epoll_ctl(this->_epollFd, EPOLL_CTL_DEL, this->_outputPipe.pfd[0], 0) == -1) {
 			Warn("CGIHandler::_read(): epoll_ctl(" << this->_epollFd << ", EPOLL_CTL_DEL, "
 					<< this->_outputPipe.pfd[0] << ", 0) failed: " << strerror(errno));
