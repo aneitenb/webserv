@@ -23,6 +23,9 @@ CC			=	g++
 LOG_LEVEL	=	4
 endif
 
+AS	=	as
+LD	=	ld
+
 cflags.common	=	-Wall -Wextra -Werror -std=c++17 -DLOG_LEVEL=$(LOG_LEVEL) -DSERVER_NAME=\"$(NAME)\"
 cflags.debug	=	-g -D__DEBUG
 cflags.fsan		=	$(cflags.debug) -fsanitize=address,undefined
@@ -30,11 +33,20 @@ cflags.normal	=	-O3
 cflags.extra	=	
 CFLAGS			=	$(cflags.common) $(cflags.$(BUILD)) $(cflags.extra)
 
+asflags.common	=	--fatal-warnings
+asflags.debug	=	-gstabs
+asflags.extra	=	
+ASFLAGS			=	$(asflags.common) $(asflags.$(BUILD)) $(asflags.extra)
+
+LDFLAGS_PQ_PRE	=	-dynamic-linker /lib/ld-linux-x86-64.so.2 /usr/lib/crt1.o /usr/lib/crti.o -lc
+LDFLAGS_PQ_POST	=	/usr/lib/crtn.o
+
 SRCDIR	=	srcs
 TESTDIR	=	tests
 OBJDIR	=	obj
 INCDIR	=	includes
 
+CGIDIR		=	cgi
 HTTPDIR		=	http
 UTILSDIR	=	utils
 CONFIGDIR	=	config
@@ -67,7 +79,12 @@ OBJS	=	$(patsubst $(SRCDIR)/%.cpp, $(OBJDIR)/%.o, $(SRCS))
 
 REQUEST_TEST	=	$(TESTDIR)/request_test
 
-all: $(NAME)
+PRINT_QUERIES	=	webpage/cgi-bin/print_queries
+
+PQ_SRCS	=	$(SRCDIR)/$(CGIDIR)/print_queries.s
+PQ_OBJS	=	$(patsubst $(SRCDIR)/%.s, $(OBJDIR)/%.o, $(PQ_SRCS))
+
+all: $(NAME) $(PRINT_QUERIES)
 
 tests: httptests
 	@printf "\e[1;38;5;42mWEBSERV >\e[m All tests passed!\n"
@@ -85,8 +102,14 @@ $(NAME): $(OBJDIR) $(OBJS)
 	@$(CC) $(CFLAGS) -I$(INCDIR) $(OBJS) -o $@
 	@printf "\e[1;38;5;42mWEBSERV >\e[m \e[1mDone!\e[m\n"
 
+$(PRINT_QUERIES): $(OBJDIR) $(PQ_OBJS)
+	@printf "\e[1;38;5;42mWEBSERV >\e[m Linking %s\n" $@
+	@$(LD) $(LDFLAGS_PQ_PRE) $(PQ_OBJS) $(LDFLAGS_PQ_POST) -o $@
+	@printf "\e[1;38;5;42mWEBSERV >\e[m \e[1mDone!\e[m\n"
+
 $(OBJDIR):
 	@printf "\e[1;38;5;42mWEBSERV >\e[m Creating objdir\n"
+	@mkdir -p $(OBJDIR)/$(CGIDIR)
 	@mkdir -p $(OBJDIR)/$(HTTPDIR)
 	@mkdir -p $(OBJDIR)/$(UTILSDIR)
 	@mkdir -p $(OBJDIR)/$(CONFIGDIR)
@@ -96,6 +119,10 @@ $(OBJDIR)/%.o: $(SRCDIR)/%.cpp
 	@printf "\e[1;38;5;42mWEBSERV >\e[m Compiling %s\n" $@
 	@$(CC) $(CFLAGS) -I$(INCDIR) -c $< -o $@
 
+$(OBJDIR)/%.o: $(SRCDIR)/%.s
+	@printf "\e[1;38;5;42mWEBSERV >\e[m Assembling %s\n" $@
+	@$(AS) $(ASFLAGS) $< -o $@
+
 clean:
 	@rm -f $(OBJS)
 
@@ -104,6 +131,7 @@ tclean:
 
 fclean: clean tclean
 	@rm -rf $(OBJDIR)
+	@rm -f $(PRINT_QUERIES)
 	@rm -f $(NAME)
 
 re: fclean all
