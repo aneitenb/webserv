@@ -27,42 +27,48 @@
 
 static inline bool	_pipe(i32 (*pfd)[2]);
 
-CGIHandler::CGIHandler(Client *client, i32 &sfd, i32 &efd): _client(client), _socketFd(sfd), _epollFd(efd) {
+CGIHandler::CGIHandler(Client *client, i32 &sfd, i32 &efd): _client(client), _method(CGIHandler::GET), _socketFd(sfd), _epollFd(efd) {
 	this->_outputPipe.event.events = EPOLLIN;
 	this->_inputPipe.event.events = EPOLLOUT;
 	this->_outputPipe.pfd[0] = -1;
 	this->_outputPipe.pfd[1] = -1;
 	this->_inputPipe.pfd[0] = -1;
 	this->_inputPipe.pfd[1] = -1;
+	this->_location = nullptr;
 	this->setState(FORCGI);
 }
 
 CGIHandler::~CGIHandler(void) {}
 
-CGIHandler::CGIHandler(CGIHandler &&other) noexcept: _socketFd(other._socketFd), _epollFd(other._epollFd) {
+CGIHandler::CGIHandler(CGIHandler &&other) noexcept: _location(other._location), _socketFd(other._socketFd), _epollFd(other._epollFd) {
 	*this = std::move(other);
 }
 
 CGIHandler	&CGIHandler::operator=(const CGIHandler &&other) noexcept {
 	if (this != &other) {
+		this->resolveClose();
 		this->_envp = other._envp;
 		this->_env = other._env;
+		this->_location = other._location;
 		this->_serverBlock = other._serverBlock;
-		this->_scriptName = other._scriptName;
-		this->_scriptPath = other._scriptPath;
-		this->_absPath = other._absPath;
+		this->_scriptFile = other._scriptFile;
+		this->_scriptDir = other._scriptDir;
+		this->_pathInfo = other._pathInfo;
 		this->_query = other._query;
 		this->_buf = other._buf;
 		this->_client = other._client;
 		this->_pid = other._pid;
+		this->_valid = other._valid;
 		this->_outputPipe.event.events = other._outputPipe.event.events;
 		this->_inputPipe.event.events = other._inputPipe.event.events;
 		this->_outputPipe.pfd[0] = other._outputPipe.pfd[0];
 		this->_outputPipe.pfd[1] = other._outputPipe.pfd[1];
 		this->_inputPipe.pfd[0] = other._inputPipe.pfd[0];
 		this->_inputPipe.pfd[1] = other._inputPipe.pfd[1];
+		this->_method = other._method;
 		this->_socketFd = other._socketFd;
 		this->_epollFd = other._epollFd;
+		this->_errorCode = other._errorCode;
 		this->setState(other.getState());
 	}
 	return *this;
@@ -102,65 +108,59 @@ void	CGIHandler::_setupPipes(void) {
 }
 
 bool	CGIHandler::_setupEnv(const Request &req) {
+	std::string	serverName;
+	std::string	serverPort;
+	std::string	absPath;
 	std::string	root;
-	std::string	uri;
 	size_t		i;
 
 	this->_env.clear();
 	this->_envp.clear();
 	root = _serverBlock->getRoot();
-	uri = req.getURI();
-	if (root.back() != '/')
-		root += '/';
-	if (uri.front() == '/')
-		uri = uri.substr(1);
-	i = uri.find_first_of('?');
-	if (i != std::string::npos) {
-		this->_query = uri.substr(i + 1);
-		uri.erase(i);
-	}
-	i = uri.find_last_of('/');
-	if (i == std::string::npos) {
-		Warn("CGIHandler::_setupEnv(): Invalid URI: '" << uri << '\'');
-		this->_errorCode = HTTP_BAD_REQUEST;
-		this->_valid = false;
-		return false;
-	}
-	this->_absPath = root + uri.substr(0, i);
-	this->_scriptPath = root + uri;
-	if (access(this->_scriptPath.c_str(), F_OK) == -1) {
-		Warn("CGIHandler::_setupEnv(): access(" << this->_scriptPath << ", F_OK) failed: " << strerror(errno));
+	absPath = root + this->_location->first;
+	if (access(absPath.c_str(), F_OK) == -1) {
+		Warn("CGIHandler::_setupEnv(): access(" << absPath << ", F_OK) failed: " << strerror(errno));
 		this->_errorCode = HTTP_NOT_FOUND;
 		this->_valid = false;
 		return false;
 	}
-	if (access(this->_scriptPath.c_str(), X_OK) == -1) {
-		Warn("CGIHandler::_setupEnv(): access(" << this->_scriptPath << ", X_OK) failed: " << strerror(errno));
+	if (access(absPath.c_str(), X_OK) == -1) {
+		Warn("CGIHandler::_setupEnv(): access(" << absPath << ", X_OK) failed: " << strerror(errno));
 		this->_errorCode = HTTP_FORBIDDEN;
 		this->_valid = false;
 		return false;
 	}
-	i = _scriptPath.find_last_of('/');
-	this->_scriptName = "./" + this->_scriptPath.substr((i != std::string::npos) ? i + 1 : 0);
-	this->_env.push_back(makeVar("SCRIPT_FILENAME", this->_scriptName));
-	this->_env.push_back(makeVar("REQUEST_METHOD", req.getMethod()));
-	this->_env.push_back(makeVar("PATH_INFO", this->_absPath));
-	if (!this->_query.empty())
-		this->_env.push_back(makeVar("QUERY_STRING", this->_query));
+	this->_scriptFile = std::string(this->_location->first).erase(0, this->_location->first.find_last_of('/') + 1);
+	this->_scriptDir = absPath.erase(absPath.find_last_of('/'));
+	this->_pathInfo = req.getURI();
+	this->_pathInfo.erase(0, this->_location->first.length());
+	i = this->_pathInfo.find_first_of('?');
+	if (i != std::string::npos) {
+		this->_query = this->_pathInfo.substr(i + 1);
+		this->_pathInfo.erase(i);
+	}
+	if (absPath.front() != '/')
+		absPath = std::filesystem::current_path().string() + '/' + absPath;
 	if (this->_method == CGIHandler::POST) {
 		this->_env.push_back(makeVar("CONTENT_LENGTH", std::to_string(req.getContentLength())));
 		this->_env.push_back(makeVar("CONTENT_TYPE", req.getContentType()));
 	}
+	this->_env.push_back(makeVar("GATEWAY_INTERFACE", "CGI/1.1"));
+	this->_env.push_back(makeVar("PATH_INFO", this->_pathInfo));
+	this->_env.push_back(makeVar("PATH_TRANSLATED", absPath + '/' + this->_scriptFile + ((!this->_pathInfo.empty()) ? this->_pathInfo : "")));
+	this->_env.push_back(makeVar("QUERY_STRING", ((!this->_query.empty()) ? this->_query : "")));
+	this->_env.push_back(makeVar("REMOTE_ADDR", this->getClient()->getPeerIP()));
+	this->_env.push_back(makeVar("REMOTE_PORT", this->getClient()->getPeerPort()));
+	this->_env.push_back(makeVar("REQUEST_METHOD", req.getMethod()));
+	this->_env.push_back(makeVar("SCRIPT_NAME", this->_location->first));
+	this->_env.push_back(makeVar("SERVER_NAME", this->getClient()->getLocalIP()));
+	this->_env.push_back(makeVar("SERVER_PORT", this->getClient()->getLocalPort()));
+	this->_env.push_back(makeVar("SERVER_PROTOCOL", "HTTP/1.1"));
+	this->_env.push_back(makeVar("SERVER_SOFTWARE", SERVER_NAME));
 	for (std::string &var : this->_env)
 		this->_envp.push_back(var.c_str());
 	this->_envp.push_back(nullptr);
 	return true;
-}
-
-bool	CGIHandler::_done(void) const {
-	i32		status;
-
-	return (waitpid(this->_pid, &status, WNOHANG) == this->_pid) ? true : false;
 }
 
 i32	CGIHandler::_write(void) {
@@ -222,7 +222,7 @@ i32	CGIHandler::_read(void) {
 		this->_buf.append(buf);
 	}
 	Info("CGIHandler: Read " << bytesRead  << " bytes, total response length now " << this->_buf.size() << " bytes");
-	if (bytesRead == 0 || this->_done()) {
+	if (bytesRead == 0) {
 		if (epoll_ctl(this->_epollFd, EPOLL_CTL_DEL, this->_outputPipe.pfd[0], 0) == -1) {
 			Warn("CGIHandler::_read(): epoll_ctl(" << this->_epollFd << ", EPOLL_CTL_DEL, "
 					<< this->_outputPipe.pfd[0] << ", 0) failed: " << strerror(errno));
@@ -253,9 +253,9 @@ static inline bool	_pipe(i32 (*pfd)[2]) {
 // public methods
 bool	CGIHandler::init(const Request &req) {
 	Info("\nCGIHandler: Init started for client #" << *this->_client->getSocketFd(0));
-	this->_scriptName.clear();
-	this->_scriptPath.clear();
-	this->_absPath.clear();
+	this->_scriptFile.clear();
+	this->_scriptDir.clear();
+	this->_pathInfo.clear();
 	this->_query.clear();
 	this->_buf.clear();
 	this->_valid = true;
@@ -279,7 +279,8 @@ bool	CGIHandler::init(const Request &req) {
 }
 
 bool	CGIHandler::exec(fdMap &activeFds) {
-	const char	*av[2];
+	std::string	CGIPass;
+	const char	*av[3];
 	size_t		i;
 
 	this->_pid = fork();
@@ -304,13 +305,15 @@ bool	CGIHandler::exec(fdMap &activeFds) {
 				Warn("CGIHandler::_exec: dup2(" << this->_outputPipe.pfd[1] << ", 1) failed: " << strerror(errno));
 				_exit(1);
 			}
-			this->resolveClose();
-			if (chdir(this->_absPath.c_str()) != 0) {
-				Warn("CGIHandler::_exec: chdir(" << this->_absPath.c_str() << ") failed: " << strerror(errno));
+			if (chdir(this->_scriptDir.c_str()) != 0) {
+				Warn("CGIHandler::_exec: chdir(" << this->_scriptDir.c_str() << ") failed: " << strerror(errno));
 				_exit(1);
 			}
-			av[0] = this->_scriptName.c_str();
-			av[1] = nullptr;
+			CGIPass = this->_location->second.getCgiPass();
+			av[0] = CGIPass.c_str();
+			av[1] = this->_scriptFile.c_str();
+			av[2] = nullptr;
+			this->resolveClose();
 			execve(av[0], const_cast<char * const *>(av), const_cast<char * const *>(this->_envp.data()));
 			Warn("CGIHandler::_exec: execve(" << av[0] << av << this->_env.data() << ") failed: " << strerror(errno));
 			_exit(1);
@@ -326,6 +329,10 @@ void	CGIHandler::resolveClose(void) {
 	closeFd(&this->_outputPipe.pfd[1]);
 	closeFd(&this->_inputPipe.pfd[0]);
 	closeFd(&this->_inputPipe.pfd[1]);
+	if (this->_location) {
+		delete this->_location;
+		this->_location = nullptr;
+	}
 }
 
 void	CGIHandler::stop(void) {
@@ -340,13 +347,15 @@ i32	CGIHandler::handleEvent(const u32 ev, [[maybe_unused]] i32 &efd) {
 }
 
 // public setters
-void	CGIHandler::setServerBlock(const ServerBlock *sb) {
-	this->_serverBlock = sb;
+void	CGIHandler::setServerBlock(const ServerBlock *sb) { this->_serverBlock = sb; }
+
+void	CGIHandler::setLocation(const CGILocation *loc) {
+	if (this->_location)
+		delete this->_location;
+	this->_location = loc;
 }
 
-void	CGIHandler::setClient(Client *client) {
-	this->_client = client;
-}
+void	CGIHandler::setClient(Client *client) { this->_client = client; }
 
 // public getters
 const std::string	&CGIHandler::getResponseData(void) const { return this->_buf; }

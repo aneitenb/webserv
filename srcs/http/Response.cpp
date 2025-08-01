@@ -1145,21 +1145,6 @@ bool Response::hasWritePermission(const std::string& path) const {
 	return access(dir.c_str(), W_OK) == 0;
 }
 
-bool Response::isCgiRequest(const std::string& path) const {
-	if (!_locationBlock || !_locationBlock->hasCgiPass()) {
-		return false;
-	}
-
-	// checking that file extension is (.py)
-	size_t dotPos = path.find_last_of('.');
-	if (dotPos == std::string::npos) {
-		return false;
-	}
-	
-	std::string extension = path.substr(dotPos);
-	return (extension == CGI_EXTENSION);
-}
-
 void Response::handleCgi(const CGIHandler &CGI) {
 	setHeader("Date", getCurrentDate());
 	setHeader("Content-Type", "text/html");

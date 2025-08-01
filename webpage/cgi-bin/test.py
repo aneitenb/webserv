@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
 import os
 import sys
+import time
 
 # Print the CGI header
 print("Content-Type: text/html\r\n\r")
+
+if os.environ.get("PATH_INFO") == "/timeout":
+    while True:
+        time.sleep(1)
 
 # Generate a simple HTML page
 print("<html><head><title>CGI Test</title></head><body>")
