@@ -1145,13 +1145,6 @@ bool Response::hasWritePermission(const std::string& path) const {
 	return access(dir.c_str(), W_OK) == 0;
 }
 
-bool Response::isCgiRequest(const std::string& path) const {
-	if (!_locationBlock || !_locationBlock->hasCgiPass()) {
-		return false;
-	}
-	return true;
-}
-
 void Response::handleCgi(const CGIHandler &CGI) {
 	setHeader("Date", getCurrentDate());
 	setHeader("Content-Type", "text/html");

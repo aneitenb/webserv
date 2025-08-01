@@ -160,7 +160,6 @@ void ServerBlock::addLocationBlock(const std::string& path, const LocationBlock&
 }
 
 void ServerBlock::addErrorPage(int status, const std::string& path) {
-	std::cout << "INSIDE ADD CUSTOM ERROR PAGE" << std::endl;
 	if (path.length() > MAX_PATH_LENGTH) {
 		throw ErrorInvalidConfig("Error page path too long (max " + std::to_string(MAX_PATH_LENGTH) + " characters)");
 	}
@@ -172,7 +171,6 @@ void ServerBlock::addErrorPage(int status, const std::string& path) {
 	}
 	_errorPages.push_back(std::make_pair(status, path));
 	_hasCustomErrorPages = true;
-	std::cout << "HAS CUSTOM ERROR PAGE SET TO TRUE" << std::endl;
 }
 
 bool ServerBlock::hasErrorPage(int status) const {
