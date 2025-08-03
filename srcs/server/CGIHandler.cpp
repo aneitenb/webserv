@@ -310,12 +310,12 @@ bool	CGIHandler::exec(fdMap &activeFds) {
 				_exit(1);
 			}
 			CGIPass = this->_location->second.getCgiPass();
-			av[0] = CGIPass.c_str();
+			av[0] = (CGIPass != "!") ? CGIPass.c_str() : this->_scriptFile.c_str();
 			av[1] = this->_scriptFile.c_str();
 			av[2] = nullptr;
 			this->resolveClose();
 			execve(av[0], const_cast<char * const *>(av), const_cast<char * const *>(this->_envp.data()));
-			Warn("CGIHandler::_exec: execve(" << av[0] << av << this->_env.data() << ") failed: " << strerror(errno));
+			Warn("CGIHandler::_exec: execve(" << av[0] << ", " << av << ", " << this->_env.data() << ") failed: " << strerror(errno));
 			_exit(1);
 		default:
 			closeFd(&this->_outputPipe.pfd[1]);
