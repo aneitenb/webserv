@@ -26,7 +26,7 @@ void	printBody(const std::string &contentType, const std::string &body, const u8
 		else
 			std::cerr << std::hex << "\\" << (static_cast<i32>(c) & 0xFF) << std::dec;
 	}
-	debug("\n}", color);
+	info("\n}", color);
 }
 
 void ftMemset(void *dest, std::size_t count){
