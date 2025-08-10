@@ -48,7 +48,7 @@ class Client : public EventHandler {
 		const Request	&request = _requesting;
 
         Client() = delete;
-        Client(std::unordered_map<std::string, ServerBlock*> cur, i32 &efd);
+        Client(const std::unordered_map<std::string, ServerBlock*>& cur, i32 &efd);
         ~Client();
 
 		Client(const Client& other) = delete;

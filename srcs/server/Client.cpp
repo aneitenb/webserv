@@ -18,7 +18,7 @@ extern Timeout	timeouts;
 
 static inline CGILocation	*_findCGILocation(std::map<std::string, LocationBlock> locations, const std::string &URI);
 
-Client::Client(std::unordered_map<std::string, ServerBlock*> cur, i32 &efd): _allServerNames(cur), _clFd(-1), _count(0), _CGIHandler(this, _clFd, efd), _timeout(CLIENT_DEFAULT_TIMEOUT), _timedOut(false), _active(false) {
+Client::Client(const std::unordered_map<std::string, ServerBlock*>& cur, i32 &efd): _allServerNames(cur), _clFd(-1), _count(0), _CGIHandler(this, _clFd, efd), _timeout(CLIENT_DEFAULT_TIMEOUT), _timedOut(false), _active(false) {
 	_result = nullptr;
     setState(TOADD);
 }
