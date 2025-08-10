@@ -9,24 +9,25 @@
 
 #pragma once
 
-#include "defs.hpp"
-#include "config/ServerBlock.hpp"
-
 #include <map>
-#include <regex>
 #include <string>
 #include <cstring>
 #include <sstream>
 #include <exception>
 
-#define REQUEST_MAX_HEADER_SIZE	16384
+#include "defs.hpp"
 
-typedef std::map<std::string, std::string>	headerlist_t;
+class Client;
+
+#define REQUEST_MAX_REQUESTLINE_SIZE	4096
+#define REQUEST_MAX_HEADER_SIZE			16384
+
+typedef std::map<std::string, std::string>	headerList;
 
 class Request
 {
 	private:
-		headerlist_t	_headers;
+		headerList	_headers;
 
 		std::string	_contentType;
 		std::string	_remainder;
@@ -55,28 +56,27 @@ class Request
 		// private methods
 		void	_parseRequestLine(std::string line);
 		void	_parseHeaders(std::stringstream rawHeaders);
-		void	_decodeURI(void);
+		void	_sanitizeURI(void);
 
 		bool	_processBody(const std::string &rawBody);
 		bool	_processChunkedBody(std::stringstream bodySection);
 
 	public:
 		Request(void);
-		Request(const ServerBlock &cfg);
 		~Request(void);
 		Request(const Request &other);
 		Request& operator=(const Request &other);
 		bool operator==(const Request& other) const;
 
 		// public methods
-		void	append(const std::string &reqData);
+		void	append(const Client &client, const std::string &reqData);
 		void	reset(void);
 
 		// public setters
 		void	setErrorCode(const i16 errorCode);
 
 		// public getters
-		const headerlist_t	&getHeaderList(void) const;
+		const headerList	&getHeaderList(void) const;
 
 		const std::string	&getHeader(const std::string &key) const;
 		const std::string	&getContentType(void) const;

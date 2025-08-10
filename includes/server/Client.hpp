@@ -37,8 +37,6 @@ class Client : public EventHandler {
 		bool				_timedOut;
 		bool				_active;
 
-		const std::string	&_getHost(void) const;
-
         //size_t? _lastActive;
         int sending_stuff();
         int receiving_stuff();
@@ -68,7 +66,7 @@ class Client : public EventHandler {
         // void setState(State newState);
         // int* getClFd(void);
         std::unordered_map<std::string, ServerBlock*> getServerBlocks() const;
-        ServerBlock* getSBforResponse(std::string name);
+        ServerBlock* getSBforResponse(std::string name) const;
         bool areServBlocksEq(const Client& other) const;
         // Request& getRequest();
         // Response& getResponse();
@@ -85,17 +83,19 @@ class Client : public EventHandler {
         int ready2Switch() override;
         struct epoll_event& getCgiEvent(int flag) override;
 
-		std::string	getLocalIP();
-		std::string	getLocalPort();
+		std::string	getLocalIP() const;
+		std::string	getLocalPort() const;
 		std::string	getPeerPort(void) const;
 		std::string	getPeerIP(void) const;
 
 		const bool	&isActive(void) const;
 
+		const std::string	&getHost(void) const;
+
+		const timestamp	&getDisconnectTime(void) const;
+
 		void	updateDisconnectTime(void);
 		void	setTimeout(const u64 ms);
 		void	timeout(void);
 		void	stopCGI(void);
-
-		const timestamp	&getDisconnectTime(void) const;
 };

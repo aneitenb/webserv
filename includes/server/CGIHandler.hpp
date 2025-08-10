@@ -10,6 +10,7 @@
 #pragma once
 
 #include "http/Request.hpp"
+#include "config/ServerBlock.hpp"
 #include "server/EventHandler.hpp"
 
 class Client;
