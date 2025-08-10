@@ -89,17 +89,17 @@ void	Response::_printResponseInfo(void) {
 	auto msg = statusMessages.find(_statusCode);
 
 	info("\nResponse prepared:", COLOR_RESPONSE);
-	info("\tVersion:        HTTP/1.1", COLOR_RESPONSE);
-	Info("\tStatus code:    " << _statusCode);
-	Info("\tStatus message: " << ((msg != statusMessages.end()) ? msg->second : "Unknown"));
+	info("  Version:        HTTP/1.1", COLOR_RESPONSE);
+	Info("  Status code:    " << _statusCode);
+	Info("  Status message: " << ((msg != statusMessages.end()) ? msg->second : "Unknown"));
 #ifdef __DEBUG_RES_SHOW_HEADERS
-	info("\n\tHeaders: ", COLOR_RESPONSE);
+	info("\n  Headers: ", COLOR_RESPONSE);
 	for (const auto &field : _headers)
-		Info("\t\t" << field.first << ": " << field.second);
+		Info("    " << field.first << ": " << field.second);
 #endif /* __DEBUG_RES_SHOW_HEADERS */
 #ifdef __DEBUG_RES_SHOW_BODY
 	if (_body.size() != 0) {
-		info("\n\tBody: ", COLOR_RESPONSE);
+		info("\n  Body: ", COLOR_RESPONSE);
 		printBody(_headers["Content-Type"], _body, COLOR_RESPONSE);
 	}
 #endif /* __DEBUG_RES_SHOW_BODY */
@@ -1143,21 +1143,6 @@ bool Response::hasExecPermission(const std::string& path) const {
 bool Response::hasWritePermission(const std::string& path) const {
 	std::string dir = path.substr(0, path.find_last_of('/'));
 	return access(dir.c_str(), W_OK) == 0;
-}
-
-bool Response::isCgiRequest(const std::string& path) const {
-	if (!_locationBlock || !_locationBlock->hasCgiPass()) {
-		return false;
-	}
-
-	// checking that file extension is (.py)
-	size_t dotPos = path.find_last_of('.');
-	if (dotPos == std::string::npos) {
-		return false;
-	}
-	
-	std::string extension = path.substr(dotPos);
-	return (extension == CGI_EXTENSION);
 }
 
 void Response::handleCgi(const CGIHandler &CGI) {

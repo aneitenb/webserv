@@ -172,7 +172,7 @@ int ConfigurationFile::_parseConfigFile(void) {
 				value = _trimWhitespace(value.substr(0, value.length() - 1));
 
 				if (inLocationBlock) {
-					_parseLocationDirective(currentLocationBlock, key, value);
+					_parseLocationDirective(currentLocationBlock, key, value, currentLocation);
 				} else {
 					_parseServerDirective(currentServer, key, value);
 				}
@@ -345,7 +345,7 @@ void ConfigurationFile::_parseServerDirective(ServerBlock& server, const std::st
 	}
 }
 
-void ConfigurationFile::_parseLocationDirective(LocationBlock& locBlock, const std::string& key, const std::string& value) {
+void ConfigurationFile::_parseLocationDirective(LocationBlock& locBlock, const std::string& key, const std::string& value, const std::string& locationPath) {
 	if (!_isValidLocationDirective(key))
 		throw ErrorInvalidConfig("Unknown directive: " + key);
 	
@@ -363,6 +363,8 @@ void ConfigurationFile::_parseLocationDirective(LocationBlock& locBlock, const s
 			throw ErrorInvalidConfig("Redirect URL too long (max " + 
 				std::to_string(MAX_PATH_LENGTH) + " characters)");
 		}
+		if (url.find("http://") != 0 && url.find("http://") != 0)
+        	throw ErrorInvalidConfig("Redirect URL must be a full HTTP URL");
 			
 		locBlock.setRedirect(std::make_pair(status, url));
 	}
@@ -375,13 +377,26 @@ void ConfigurationFile::_parseLocationDirective(LocationBlock& locBlock, const s
 		locBlock.setAutoindex(value == "on");
 	}
 	else if (key == "cgi_pass") {
-		if (locBlock.hasCgiPass())
-			throw ErrorInvalidConfig("Duplicate 'cgi_pass' directive in location block");
-		if (value != CGI_INTERPRETER)
-        	throw ErrorInvalidConfig("Invalid CGI interpreter path. Only " + std::string(CGI_INTERPRETER) + " is supported");
-		if (access(value.c_str(), X_OK) != 0)
-			throw ErrorInvalidConfig("CGI interpreter path is not executable");
-		locBlock.setCgiPass(value);
+		// Check that CGI location doesn't end with '/'
+    	if (!locationPath.empty() && locationPath[locationPath.length() - 1] == '/') {
+    	    throw ErrorInvalidConfig("CGI location paths cannot end with '/': " + locationPath);
+    	}
+	
+    	if (value == "!") {
+    	    locBlock.setCgiPass(value);
+    	} 
+    	else {
+    	    if (!_isValidPathFormat(value))
+    	        throw ErrorInvalidConfig("Invalid CGI executable path: " + value);
+    	    if (value.length() > MAX_ROOT_PATH_LENGTH)
+    	        throw ErrorInvalidConfig("CGI path too long (max " + std::to_string(MAX_ROOT_PATH_LENGTH) + " characters)");
+    	    if (access(value.c_str(), F_OK) != 0)
+    	        throw ErrorInvalidConfig("CGI interpreter path does not exist: " + value);
+    	    if (access(value.c_str(), X_OK) != 0)
+    	        throw ErrorInvalidConfig("CGI interpreter path is not executable: " + value);
+	
+    	    locBlock.setCgiPass(value);
+    	}
 	}
 	else if (key == "allowed_methods") {
 		if (locBlock.hasAllowedMethods())
