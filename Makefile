@@ -38,8 +38,10 @@ asflags.debug	=	-gstabs
 asflags.extra	=	
 ASFLAGS			=	$(asflags.common) $(asflags.$(BUILD)) $(asflags.extra)
 
-LDFLAGS_PQ_PRE	=	-dynamic-linker /lib/ld-linux-x86-64.so.2 /usr/lib/x86_64-linux-gnu/crt1.o /usr/lib/x86_64-linux-gnu/crti.o -lc
-LDFLAGS_PQ_POST	=	/usr/lib/x86_64-linux-gnu/crtn.o
+LDDIR	=	/usr/lib/x86_64-linux-gnu
+
+LDFLAGS_PQ_PRE	=	-dynamic-linker $(LDDIR)/ld-linux-x86-64.so.2 $(LDDIR)/crt1.o /usr/lib/x86_64-linux-gnu/crti.o -lc
+LDFLAGS_PQ_POST	=	$(LDDIR)/crtn.o
 
 SRCDIR	=	srcs
 TESTDIR	=	tests
