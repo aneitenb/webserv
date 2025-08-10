@@ -329,7 +329,7 @@ int Client::handleEvent(uint32_t ev, [[maybe_unused]] i32 &efd){
             return (0); // Request incomplete, need more data
         } else {
 			_buffer.clear(); // CRITICAL
-			serverConf = this->getSBforResponse(this->_getHost());
+			serverConf = this->getSBforResponse(this->getHost());
 			this->_responding = Response(&this->_requesting, serverConf);
 			try {
 				CGILocation = _findCGILocation(serverConf->getLocationBlocks(), this->_requesting.getURI());
