@@ -137,7 +137,7 @@ std::unordered_map<std::string, ServerBlock*> Client::getServerBlocks() const{
     return (_allServerNames);
 }
 
-std::string Client::getLocalConnectionIP() {
+std::string Client::getLocalConnectionIP() const {
     struct sockaddr_in localAddr;   //structure that holds IPv4 address information
     socklen_t addrLen = sizeof(localAddr);
     
@@ -154,7 +154,7 @@ std::string Client::getLocalConnectionIP() {
     return std::string(inet_ntoa(localAddr.sin_addr));
 }
 
-std::string Client::getLocalConnectionPort() {
+std::string Client::getLocalConnectionPort() const {
     struct sockaddr_in localAddr;
     socklen_t addrLen = sizeof(localAddr);
     
@@ -167,7 +167,7 @@ std::string Client::getLocalConnectionPort() {
     return std::to_string(ntohs(localAddr.sin_port));
 }
 
-ServerBlock* Client::getSBforResponse(std::string hostHeader){
+ServerBlock* Client::getSBforResponse(std::string hostHeader) const {
     // remove port from host header (example.com:8080 -> example.com)
     auto colonPos = hostHeader.find(':');
     std::string serverNameFromHeader = (colonPos != std::string::npos) ? hostHeader.substr(0, colonPos) : hostHeader;
@@ -300,10 +300,10 @@ int Client::handleEvent(uint32_t ev, [[maybe_unused]] i32 &efd){
         } else {
             // Request complete (saveResult == 0)
             _buffer.clear(); // CRITICAL
-			this->_responding = Response(&this->_requesting, getSBforResponse(this->_getHost()));
+			this->_responding = Response(&this->_requesting, getSBforResponse(this->getHost()));
             // Check for CGI
             if (_requesting.getURI().find(".py") != std::string::npos || _requesting.getURI().find(".php") != std::string::npos) {
-                this->_CGIHandler.setServerBlock(getSBforResponse(this->_getHost()));
+                this->_CGIHandler.setServerBlock(getSBforResponse(this->getHost()));
                 if (!this->_CGIHandler.init(this->_requesting)) {
                     this->setState(TOWRITE);
                     return (0);
@@ -363,7 +363,7 @@ int Client::sending_stuff(){
     std::string buffer = {0};
 
 	if (this->_timedOut) {
-		this->_responding = Response(&this->_requesting, getSBforResponse(this->_getHost()));
+		this->_responding = Response(&this->_requesting, getSBforResponse(this->getHost()));
 		this->_responding.errorResponse(HTTP_REQUEST_TIMEOUT);
 	}
 	else if (this->_CGIHandler.getState() == CGIWRITE) {
@@ -426,7 +426,7 @@ int Client::saveRequest(){
             return (0); //Buffer is empty, nothing to process
         }
         
-        _requesting.append(_buffer);
+        _requesting.append(*this, _buffer);
         _buffer.clear();  // Clear immediately after processing
         
         // if (!_requesting.isValid()) {        //even on invlaid request, need to generate error response
@@ -461,11 +461,11 @@ void	Client::stopCGI(void) {
     this->_CGIHandler.stop();
 }
 
-const timestamp	&Client::getDisconnectTime(void) const { return this->_disconnectAt; }
-
-const std::string	&Client::_getHost(void) const {
+const std::string	&Client::getHost(void) const {
 	try {
 		return this->_requesting.getHeader("Host");
 	} catch (Request::FieldNotFoundException &) {}
 	return this->_firstKey;
 }
+
+const timestamp	&Client::getDisconnectTime(void) const { return this->_disconnectAt; }
