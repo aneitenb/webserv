@@ -439,8 +439,6 @@ int Client::receiving_stuff(){
     if (len == 0) //Client closed connection
         return (-1);
     else if (len < 0) { 
-        if (errno == EAGAIN || errno == EWOULDBLOCK)
-            return (0); //No more data available
         Warn("Client::receiving_stuff(): recv(" << _clFd << ", &temp_buff[0], "
              << temp_buff.size() << ", 0) failed: " << strerror(errno));
         return (-1); //real error
