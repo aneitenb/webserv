@@ -177,12 +177,17 @@ void	Response::errorResponse(const u16 statusCode) {
 
 void Response::handleResponse() {
 	std::string uri = _request->getURI();
+	std::cout << "DEBUG: Request URI: '" << uri << "'" << std::endl;
 	std::string matchedLocation = findMatchingLocation(uri);
+	std::cout << "DEBUG: Matched location: '" << matchedLocation << "'" << std::endl;
 	
-	if (matchedLocation.empty())
-		_locationBlock = NULL;
-	else
+	if (matchedLocation.empty()){
+	std::cout << "DEBUG: No location block matched!" << std::endl;
+		_locationBlock = NULL;}
+	else{
 		_locationBlock = &_serverBlock->getLocationBlockRef(matchedLocation);
+		std::cout << "DEBUG: Location block set successfully" << std::endl;
+	}
 
 	setHeader("Date", getCurrentDate());
 	if (!_request->isValid()){
@@ -260,10 +265,13 @@ bool Response::isComplete() const {
 
 void Response::handleGet() {
 	std::string path = resolvePath(_request->getURI());
+	std::cout << "DEBUG: handleGet - resolved path: '" << path << "'" << std::endl;
 	
 	if (!resourceExists(path)) {
+		std::cout << "DEBUG: handleGet - resource does not exist!" << std::endl;
 		return;
 	}
+	 std::cout << "DEBUG: handleGet - resource exists, proceeding..." << std::endl;
 	if (!isMethodAllowed()) {
 		setMethodNotAllowedResponse();
 		return;
@@ -281,12 +289,28 @@ std::string Response::resolvePath(const std::string& uri) {
 			std::string alias = _locationBlock->getAlias();
 			std::string relativePath = uri.substr(locationPath.length());
 			
-			// make sure there's a slash between alias and relative path
-			if (!alias.empty() && alias[alias.length()-1] != '/' && 
-				!relativePath.empty() && relativePath[0] != '/') {
-					return alias + "/" + relativePath;
+			// handle relative or absolute paths
+			std::string resolvedAlias;
+			if (!alias.empty() && alias[0] == '/'){
+				resolvedAlias = alias;	//use absolute alias
+			} else {
+				std::string serverRoot = _serverBlock->getRoot();
+				if (!serverRoot.empty() && serverRoot[serverRoot.length() - 1] != '/' &&
+					!alias.empty() && alias[0] != '/'){
+						resolvedAlias = serverRoot + "/" + alias;
+					} else {
+						resolvedAlias = serverRoot + alias;
+					}
+				std::cout << "DEBUG: using resolvedAlias: " << resolvedAlias << std::endl;
 			}
-			return alias + relativePath;
+			//combine resolved alias with relative path
+			if (!resolvedAlias.empty() && resolvedAlias[resolvedAlias.length() -1] != '/' &&
+				!relativePath.empty() && relativePath[0] != '/') {
+					return resolvedAlias + "/" + relativePath;
+				}
+			std::string finalPath = resolvedAlias + relativePath;
+			std::cout << "DEBUG: final path: " << finalPath << std::endl;
+			return finalPath;
 		}
 	}
 	
@@ -390,6 +414,7 @@ void Response::getResource(const std::string& path) {
 
 void Response::getDirectory(const std::string& dirPath) {
 	std::string indexPath = findIndexFile(dirPath);
+	std::cout << "DEBUG: getDirectory indexPath: '" << indexPath << "'" << std::endl;
 	if (!indexPath.empty()) {
 		readFile(indexPath);
 		return;
@@ -415,43 +440,23 @@ void Response::getDirectory(const std::string& dirPath) {
 }
 
 std::string Response::findIndexFile(const std::string& dirPath) {
-	std::string indexFile;
-	if (_locationBlock && _locationBlock->hasIndex()) {
-		indexFile = _locationBlock->getIndex();
-		 std::cout << "DEBUG: Using location index: '" << indexFile << "'" << std::endl;
-	} else {
-		indexFile = _serverBlock->getIndex();
-		std::cout << "DEBUG: Using server index: '" << indexFile << "'" << std::endl;
-	}
-	
-	//make path end with slash
 	std::string pathWithSlash = dirPath;
 	if (!pathWithSlash.empty() && pathWithSlash[pathWithSlash.length()-1] != '/') {
 		pathWithSlash += '/';
 	}
-	std::cout << "DEBUG: pathWithSlash: '" << pathWithSlash << "'" << std::endl;
+
+	std::string indexPath;
 	
-	std::string indexPath = pathWithSlash + indexFile;
-	std::cout << "DEBUG: Final index path: '" << indexPath << "'" << std::endl;
-	if (fileExists(indexPath) && hasReadPermission(indexPath)) {
-		std::cout << "DEBUG: File exists and has read permission!!" << std::endl;
+	if (_locationBlock && _locationBlock->hasIndex()) {
+		indexPath = pathWithSlash + _locationBlock->getIndex();
+	} else {
+		indexPath = pathWithSlash + _serverBlock->getIndex();
+	}
+
+
+	if (fileExists(indexPath) && hasReadPermission(indexPath)){
 		return indexPath;
 	}
-	// Also check what's actually in the directory
-    std::cout << "DEBUG: Directory contents:" << std::endl;
-    DIR* dir = opendir(dirPath.c_str());
-    if (dir) {
-        struct dirent* entry;
-        while ((entry = readdir(dir)) != NULL) {
-            std::cout << "DEBUG:   - " << entry->d_name << std::endl;
-        }
-        closedir(dir);
-    } else {
-        std::cout << "DEBUG: Could not open directory: " << dirPath << std::endl;
-    }
-    
-    std::cout << "DEBUG: No valid index file found" << std::endl;
-    std::cout << "DEBUG: === findIndexFile END ===" << std::endl;
 	return "";
 }
 
