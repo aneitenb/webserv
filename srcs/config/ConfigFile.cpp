@@ -615,6 +615,7 @@ const ServerBlock& ConfigurationFile::getServerBlock(size_t index) const {
 	return (_servers[index]);
 }
 
+//NEVER USED??
 //returns first server matching IP and port
 const ServerBlock& ConfigurationFile::getServerBlockByIPPort(
 		const std::string& ipAddress, const std::string& port) const {
@@ -656,6 +657,7 @@ std::vector<const ServerBlock*> ConfigurationFile::getAllServerBlocksByIPPort(
 	return matchingServers;
 }
 
+//NEVER USED??
 // returns server matching IP, port, and server name
 const ServerBlock& ConfigurationFile::getServerBlockByHostPortName(
 		const std::string& ipAddress, const std::string& port, 

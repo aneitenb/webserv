@@ -194,14 +194,24 @@ std::string	Client::getPeerIP(void) const {
 	return std::string(inet_ntoa(addr.sin_addr));
 }
 
+std::string	Client::getFirstKey(void) const{
+    return (_firstKey);
+}
+
 ServerBlock* Client::getSBforResponse(std::string hostHeader) const {
     // remove port from host header (example.com:8080 -> example.com)
     auto colonPos = hostHeader.find(':');
     std::string serverNameFromHeader = (colonPos != std::string::npos) ? hostHeader.substr(0, colonPos) : hostHeader;
 
+	std::cout << "serverNameFromHeader= --> " << serverNameFromHeader << "\n\n";
+
     // get the IP and port the client actually connected to
     std::string connectionIP = getLocalIP();
     std::string connectionPort = getLocalPort();
+
+
+	std::cout << "localIP= --> " << connectionIP << "\n\n";
+	std::cout << "localPort= --> " << connectionPort << "\n\n";
 
     // try exact match with server_name@connection_ip:connection_port
     std::string exactKey = serverNameFromHeader + "@" + connectionIP + ":" + connectionPort;
@@ -221,12 +231,12 @@ ServerBlock* Client::getSBforResponse(std::string hostHeader) const {
         return _allServerNames.at(ipPortKey);
     }
     
-    // try wildcard IP with port (for empty server names)
-    std::string wildcardIpPortKey = "0.0.0.0:" + connectionPort;
-    if (_allServerNames.count(wildcardIpPortKey) > 0) {
-        return _allServerNames.at(wildcardIpPortKey);
+    //try localhost assuming serverNameFromHeader is just an IP
+    std::string localHostKey = "localhost@" + serverNameFromHeader + ":" + connectionPort;
+    if (_allServerNames.count(localHostKey) > 0) {
+        return _allServerNames.at(localHostKey);
     }
-    
+
     // try to match based on the server_name part only (fallback)
     for (const auto& pair : _allServerNames) {
         std::string key = pair.first;
@@ -240,8 +250,10 @@ ServerBlock* Client::getSBforResponse(std::string hostHeader) const {
         }
     }
     
-    // fall back to default (first server for this listener)
-    return _allServerNames.at(_firstKey);
+    // no server block exists for this request
+	std::cout << "NO SERVER BLOCK FOUND!\n\n";
+
+    return nullptr;
 }
 
 void Client::setKey(std::string key){
@@ -295,8 +307,8 @@ int Client::handleEvent(uint32_t ev, [[maybe_unused]] i32 &efd){
         int recvResult = receiving_stuff();
         
         if (recvResult == -1) {
-            if (errno == EAGAIN || errno == EWOULDBLOCK)
-                return (0); //No more data available right now
+            // if (errno == EAGAIN || errno == EWOULDBLOCK)
+            //     return (0); //No more data available right now
             this->setState(CLOSE);  //ADDED
             return (-1); // binary data or real errors close the connection
         } else if (recvResult == 0)
@@ -311,7 +323,14 @@ int Client::handleEvent(uint32_t ev, [[maybe_unused]] i32 &efd){
         
         if (saveResult == -1) {
             if (!_requesting.isValid()) {
-                Response errorResponse(&_requesting, getSBforResponse(_requesting.getHeader("Host")));
+                //no IP/servername:port combination exists
+                ServerBlock* temp = getSBforResponse(_requesting.getHeader("Host"));
+                if (!temp){
+                    _buffer.clear();
+                    this->setState(CLOSE);
+                    return (0);
+                }
+                Response errorResponse(&_requesting, temp);
                 errorResponse.setStatusCode(_requesting.getErrorCode()); // 400 for invalid request line
                 errorResponse.setBody(errorResponse.getErrorPage(_requesting.getErrorCode()));
                 errorResponse.setHeader("Content-Type", "text/html");
@@ -330,6 +349,11 @@ int Client::handleEvent(uint32_t ev, [[maybe_unused]] i32 &efd){
         } else {
 			_buffer.clear(); // CRITICAL
 			serverConf = this->getSBforResponse(this->getHost());
+            if (!serverConf){
+                std::cout << "this is where we at\n\n";
+                this->setState(CLOSE);
+                return (0);                
+            }
 			this->_responding = Response(&this->_requesting, serverConf);
 			try {
 				CGILocation = _findCGILocation(serverConf->getLocationBlocks(), this->_requesting.getURI());
@@ -399,7 +423,11 @@ int Client::sending_stuff(){
     std::string buffer = {0};
 
 	if (this->_timedOut) {
-		this->_responding = Response(&this->_requesting, getSBforResponse(this->getHost()));
+        //should not happen but just in case
+        ServerBlock* temp = getSBforResponse(this->getHost());
+        if (!temp)
+            temp = getSBforResponse(this->getFirstKey());
+		this->_responding = Response(&this->_requesting, temp);
 		this->_responding.errorResponse(HTTP_REQUEST_TIMEOUT);
 	}
 	else if (this->_CGIHandler.getState() == CGIWRITE) {
