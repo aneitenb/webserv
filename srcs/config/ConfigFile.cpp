@@ -172,7 +172,7 @@ int ConfigurationFile::_parseConfigFile(void) {
 				value = _trimWhitespace(value.substr(0, value.length() - 1));
 
 				if (inLocationBlock) {
-					_parseLocationDirective(currentLocationBlock, key, value, currentLocation);
+					_parseLocationDirective(currentLocationBlock, key, value);
 				} else {
 					_parseServerDirective(currentServer, key, value);
 				}
@@ -345,7 +345,7 @@ void ConfigurationFile::_parseServerDirective(ServerBlock& server, const std::st
 	}
 }
 
-void ConfigurationFile::_parseLocationDirective(LocationBlock& locBlock, const std::string& key, const std::string& value, const std::string& locationPath) {
+void ConfigurationFile::_parseLocationDirective(LocationBlock& locBlock, const std::string& key, const std::string& value) {
 	if (!_isValidLocationDirective(key))
 		throw ErrorInvalidConfig("Unknown directive: " + key);
 	
@@ -378,9 +378,9 @@ void ConfigurationFile::_parseLocationDirective(LocationBlock& locBlock, const s
 	}
 	else if (key == "cgi_pass") {
 		// Check that CGI location doesn't end with '/'
-    	if (!locationPath.empty() && locationPath[locationPath.length() - 1] == '/') {
-    	    throw ErrorInvalidConfig("CGI location paths cannot end with '/': " + locationPath);
-    	}
+    	// if (!locationPath.empty() && locationPath[locationPath.length() - 1] == '/') {
+    	//     throw ErrorInvalidConfig("CGI location paths cannot end with '/': " + locationPath);
+    	// }
 	
     	if (value == "!") {
     	    locBlock.setCgiPass(value);
@@ -550,6 +550,9 @@ bool ConfigurationFile::_isValidLocationPath(const std::string& path) const {
 		if (path [i] == '/' && path[i - 1] =='/')
 			return false;
 	}
+	if (path.length() > 1 && path[path.length() - 1] == '/') {
+        return false;
+    }
     std::regex pathRegex("^[a-zA-Z0-9._\\-\\/]+$");
     return std::regex_match(path, pathRegex);
 }

@@ -276,7 +276,7 @@ std::string Response::resolvePath(const std::string& uri) {
 	if (_locationBlock && _locationBlock->hasAlias()) {
 		// replace the location path with the alias path
 		std::string locationPath = findMatchingLocation(uri);
-		
+	
 		if (!locationPath.empty() && uri.find(locationPath) == 0) {
 			std::string alias = _locationBlock->getAlias();
 			std::string relativePath = uri.substr(locationPath.length());
@@ -284,7 +284,7 @@ std::string Response::resolvePath(const std::string& uri) {
 			// make sure there's a slash between alias and relative path
 			if (!alias.empty() && alias[alias.length()-1] != '/' && 
 				!relativePath.empty() && relativePath[0] != '/') {
-				return alias + "/" + relativePath;
+					return alias + "/" + relativePath;
 			}
 			return alias + relativePath;
 		}
@@ -395,11 +395,17 @@ void Response::getDirectory(const std::string& dirPath) {
 		return;
 	}
 	
+	bool autoindexEnabled = false;
+
 	if (_locationBlock && _locationBlock->hasAutoindex()) {
-		if (_locationBlock->getAutoindex()) {
-			generateDirectoryListing(dirPath);
-			return;
-		}
+		autoindexEnabled = _locationBlock->getAutoindex();
+	} else {
+		autoindexEnabled = true;	//allow directory listing when not specified
+	}
+
+	if (autoindexEnabled) {
+		generateDirectoryListing(dirPath);
+		return;
 	}
 	
 	// No index and no directory listing
@@ -412,8 +418,10 @@ std::string Response::findIndexFile(const std::string& dirPath) {
 	std::string indexFile;
 	if (_locationBlock && _locationBlock->hasIndex()) {
 		indexFile = _locationBlock->getIndex();
+		 std::cout << "DEBUG: Using location index: '" << indexFile << "'" << std::endl;
 	} else {
 		indexFile = _serverBlock->getIndex();
+		std::cout << "DEBUG: Using server index: '" << indexFile << "'" << std::endl;
 	}
 	
 	//make path end with slash
@@ -421,12 +429,29 @@ std::string Response::findIndexFile(const std::string& dirPath) {
 	if (!pathWithSlash.empty() && pathWithSlash[pathWithSlash.length()-1] != '/') {
 		pathWithSlash += '/';
 	}
+	std::cout << "DEBUG: pathWithSlash: '" << pathWithSlash << "'" << std::endl;
 	
 	std::string indexPath = pathWithSlash + indexFile;
+	std::cout << "DEBUG: Final index path: '" << indexPath << "'" << std::endl;
 	if (fileExists(indexPath) && hasReadPermission(indexPath)) {
+		std::cout << "DEBUG: File exists and has read permission!!" << std::endl;
 		return indexPath;
 	}
-	
+	// Also check what's actually in the directory
+    std::cout << "DEBUG: Directory contents:" << std::endl;
+    DIR* dir = opendir(dirPath.c_str());
+    if (dir) {
+        struct dirent* entry;
+        while ((entry = readdir(dir)) != NULL) {
+            std::cout << "DEBUG:   - " << entry->d_name << std::endl;
+        }
+        closedir(dir);
+    } else {
+        std::cout << "DEBUG: Could not open directory: " << dirPath << std::endl;
+    }
+    
+    std::cout << "DEBUG: No valid index file found" << std::endl;
+    std::cout << "DEBUG: === findIndexFile END ===" << std::endl;
 	return "";
 }
 
