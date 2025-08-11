@@ -40,7 +40,7 @@ ASFLAGS			=	$(asflags.common) $(asflags.$(BUILD)) $(asflags.extra)
 
 LDDIR	=	/usr/lib/x86_64-linux-gnu
 
-LDFLAGS_PQ_PRE	=	-dynamic-linker $(LDDIR)/ld-linux-x86-64.so.2 $(LDDIR)/crt1.o /usr/lib/x86_64-linux-gnu/crti.o -lc
+LDFLAGS_PQ_PRE	=	-dynamic-linker $(LDDIR)/ld-linux-x86-64.so.2 $(LDDIR)/crt1.o $(LDDIR)/crti.o -lc
 LDFLAGS_PQ_POST	=	$(LDDIR)/crtn.o
 
 SRCDIR	=	srcs
