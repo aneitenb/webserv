@@ -179,10 +179,11 @@ void Response::handleResponse() {
 	std::string uri = _request->getURI();
 	std::string matchedLocation = findMatchingLocation(uri);
 	
-	if (matchedLocation.empty())
-		_locationBlock = NULL;
-	else
+	if (matchedLocation.empty()){
+		_locationBlock = NULL;}
+	else{
 		_locationBlock = &_serverBlock->getLocationBlockRef(matchedLocation);
+	}
 
 	setHeader("Date", getCurrentDate());
 	if (!_request->isValid()){
@@ -276,28 +277,49 @@ std::string Response::resolvePath(const std::string& uri) {
 	if (_locationBlock && _locationBlock->hasAlias()) {
 		// replace the location path with the alias path
 		std::string locationPath = findMatchingLocation(uri);
-		
 		if (!locationPath.empty() && uri.find(locationPath) == 0) {
 			std::string alias = _locationBlock->getAlias();
 			std::string relativePath = uri.substr(locationPath.length());
 			
-			// make sure there's a slash between alias and relative path
-			if (!alias.empty() && alias[alias.length()-1] != '/' && 
-				!relativePath.empty() && relativePath[0] != '/') {
-				return alias + "/" + relativePath;
+			// handle relative or absolute paths
+			std::string resolvedAlias;
+			if (!alias.empty() && alias[0] == '/'){
+				resolvedAlias = alias;	//use absolute alias
+			} else {
+				std::string serverRoot = _serverBlock->getRoot();
+                resolvedAlias = serverRoot.empty() ? alias : serverRoot + "/" + alias;
 			}
-			return alias + relativePath;
+			//combine resolved alias with relative path
+			if (!resolvedAlias.empty() && resolvedAlias[resolvedAlias.length() -1] != '/' &&
+				!relativePath.empty() && relativePath[0] != '/') {
+					return resolvedAlias + "/" + relativePath;
+				}
+			std::string finalPath = resolvedAlias + relativePath;
+			return finalPath;
 		}
 	}
 	
 	// If location block has a root directive, use it
 	std::string root;
 	if (_locationBlock && _locationBlock->hasRoot()) {
-		root = _locationBlock->getRoot();
-	} else {
+		std::string locRoot = _locationBlock->getRoot();
+		
+		//if its absolute, use as is
+		if (!locRoot.empty() && locRoot[0] == '/'){
+			root = locRoot;
+		}
+		else {
+			std::string serverRoot = _serverBlock->getRoot();
+			if (serverRoot.empty()) {
+				root = locRoot;
+			} else {
+				root = serverRoot + "/" + locRoot; //relative path
+			}
+		} 
+	}
+	else {
 		root = _serverBlock->getRoot();
 	}
-	
 	// put slash between root and URI
 	if (!root.empty() && root[root.length()-1] != '/' && 
 		!uri.empty() && uri[0] != '/') {
@@ -395,11 +417,17 @@ void Response::getDirectory(const std::string& dirPath) {
 		return;
 	}
 	
+	bool autoindexEnabled = false;
+
 	if (_locationBlock && _locationBlock->hasAutoindex()) {
-		if (_locationBlock->getAutoindex()) {
-			generateDirectoryListing(dirPath);
-			return;
-		}
+		autoindexEnabled = _locationBlock->getAutoindex();
+	} else if (_serverBlock->hasAutoindex()){
+		autoindexEnabled = _serverBlock->getAutoindex();
+	}
+
+	if (autoindexEnabled) {
+		generateDirectoryListing(dirPath);
+		return;
 	}
 	
 	// No index and no directory listing
@@ -409,24 +437,27 @@ void Response::getDirectory(const std::string& dirPath) {
 }
 
 std::string Response::findIndexFile(const std::string& dirPath) {
-	std::string indexFile;
-	if (_locationBlock && _locationBlock->hasIndex()) {
-		indexFile = _locationBlock->getIndex();
-	} else {
-		indexFile = _serverBlock->getIndex();
-	}
-	
-	//make path end with slash
 	std::string pathWithSlash = dirPath;
 	if (!pathWithSlash.empty() && pathWithSlash[pathWithSlash.length()-1] != '/') {
 		pathWithSlash += '/';
 	}
+
+	std::string indexFilename;
 	
-	std::string indexPath = pathWithSlash + indexFile;
-	if (fileExists(indexPath) && hasReadPermission(indexPath)) {
+	if (_locationBlock && _locationBlock->hasIndex()) {
+		indexFilename = _locationBlock->getIndex();
+	} else {
+		indexFilename = _serverBlock->getIndex();
+	}
+	if (indexFilename.empty()) {
+		return "";
+	}
+
+	std::string indexPath = pathWithSlash + indexFilename;
+
+	if (fileExists(indexPath) && hasReadPermission(indexPath)){
 		return indexPath;
 	}
-	
 	return "";
 }
 
@@ -596,7 +627,7 @@ void Response::readFile(const std::string& path) {
 *********************************************/
 
 void Response::handlePost() {
-	if (!_request->isParsed()) {			//NEEDED? isn't this already in epoll loop?
+	if (!_request->isParsed()) {
 		_statusCode = 400;
 		setBody(getErrorPage(400));
 		setHeader("Content-Type", "text/html");
@@ -609,7 +640,7 @@ void Response::handlePost() {
 	
 	// only reject directory paths for non-multipart requests 
 	// (files can't be posted to a directory without an explicit name)
-	if (!isMultipart && (uri.empty() || uri.back() == '/')) {
+	if (!isMultipart && (uri.empty() || uri.back() == '/' || directoryExists(resolvePath(uri)))) {
 		_statusCode = 400;
 		setBody(getErrorPage(400));
 		setHeader("Content-Type", "text/html");

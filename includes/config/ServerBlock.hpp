@@ -28,6 +28,8 @@ private:
 	std::string _serverName;
 	std::string _root;
 	size_t _clientMaxBodySize;
+	bool _autoindex;
+	bool _autoindexSet;
 	std::vector<std::pair<int, std::string>> _errorPages;
 	std::vector<std::pair<int, std::string>> _defaultErrorPages;
 	std::string _index;
@@ -92,6 +94,10 @@ public:
 	bool hasIndex() const;
 	std::string getIndex() const;
 	void setIndex(const std::string& index);
+
+	bool hasAutoindex() const;
+	bool getAutoindex() const;
+	void setAutoindex(bool value);
 	
 	std::map<std::string, LocationBlock> getLocationBlocks() const;
 };

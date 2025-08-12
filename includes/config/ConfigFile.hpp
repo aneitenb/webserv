@@ -39,7 +39,7 @@ private:
 	bool _isValidHostname(const std::string& hostname) const;
 	
 	void _parseServerDirective(ServerBlock& server, const std::string& key, const std::string& value);
-	void _parseLocationDirective(LocationBlock& locBlock, const std::string& key, const std::string& , const std::string& locationPath);
+	void _parseLocationDirective(LocationBlock& locBlock, const std::string& key, const std::string&);
 
 	bool _validateServerBlock(ServerBlock& server) const;
 	bool _validateLocationBlock(const std::string& path, const LocationBlock& block) const;
