@@ -28,7 +28,6 @@ Listener::Listener(std::string port, std::string host) : _sockFd(-1), _port(port
 Listener::Listener(Listener&& obj) noexcept{
     _sockFd = obj._sockFd;
     obj._sockFd = -1;
-    // this->copySocketFd(obj._sockFd);
     _port = obj._port;
     _host = obj._host;
     _activeClients = std::move(obj._activeClients);
@@ -36,14 +35,12 @@ Listener::Listener(Listener&& obj) noexcept{
     _firstKey = obj._firstKey;
     _result = obj._result;
     obj._result = nullptr;
-    // _relevant = obj._relevant;
 }
-//remember to close the previous fd
+
 Listener& Listener::operator=(Listener&& obj) noexcept{
     if (this != &obj){
         _sockFd = obj._sockFd;
         obj._sockFd = -1;
-        // this->copySocketFd(obj._sockFd);
         _port = obj._port;
         _host = obj._host;
         _activeClients = std::move(obj._activeClients);
@@ -59,38 +56,20 @@ Listener::~Listener(){
     if (_sockFd != -1){
         close(_sockFd);
         _sockFd = -1;
-        // getLogFile() << "closed fd\n";
     }
-    freeAddress(); //check if double free but it shouldn't be
+    freeAddress();
 }
 
 /*Getters and Setters*/
-
-// std::vector<VirtualHost> Listener::getHosts(void) const{
-//     return (_knownVHs);
-// }
-
-// void Listener::addHost(VirtualHost& cur){
-//     _knownVHs.push_back(cur);
-// }
 
 void Listener::setFd(int fd){
     _sockFd = fd;
 }
 
-const std::string& Listener::getFirstKey() const{
-    return (_firstKey);
-}
-
-// void Listener::setFirst(std::string key){
-//     _firstKey = key;
-// }
-
 void Listener::addServBlock(ServerBlock& cur, std::string name){
     if (_allServerNames.empty() == true)
         _firstKey = name;
     _allServerNames[name] = &cur;
-    // _relevant = cur;
 }
 
 std::unordered_map<std::string, ServerBlock*> Listener::getServBlock(){
@@ -101,31 +80,9 @@ const std::string& Listener::getPort(void) const{
     return (_port);
 }
 
-
-void Listener::setPort(const std::string& port){
-    _port = port;
-}
-
-        
-const std::string& Listener::getHost(void) const{
-    return (_host);
-}
-
-void Listener::setHost(const std::string& host){
-    _host = host;
-}
-
-// struct addrinfo* Listener::getRes() const{
-//     return(_result);
-// }
-
 struct sockaddr* Listener::getAddress() const{
     return(_result->ai_addr);
 }
-
-// socklen_t Listener::getAddressLength() const{
-//     return(_result->ai_addrlen);
-// }
 
 void Listener::freeAddress(void){
     if (_result){
@@ -133,10 +90,6 @@ void Listener::freeAddress(void){
         _result = nullptr;
     }
 }
-        
-// void Listener::cleanResult(void){
-//     _result = nullptr;
-// }
 
 /*Helper functions*/
 int Listener::addressInfo(void){
@@ -170,16 +123,6 @@ int Listener::makeNonBlock(int* fd){
 }
 
 int Listener::setuping(int *fd){
-    // int sock_err = 0;
-    //setsockopt: manipulate options for the socket 
-    //CONSIDER: SO_RCVBUF / SO_SNDBUF, SO_LINGER, SO_KEEPALIVE, TCP_NODELAY
-    //get socket error
-    // if ((setsockopt(*fd, SOL_SOCKET, SO_ERROR, &sock_err, sizeof(sock_err))) == -1){
-    //     std::cerr << "Error: setsockopt() failed: SO_ERROR: " << sock_err << "\n";
-    //     std::cerr << strerror(errno) << "\n";
-    //     return (-1);
-    // }
-    /*TEST TO SEE IF THE NONBLOCKING HAS BEEN SET UP FOR THE LISTENER, DELETE AFTER*/
     if (makeNonBlock(fd) == -1)
 		return (-1);
 #ifdef __DEBUG
@@ -195,33 +138,6 @@ int Listener::setuping(int *fd){
 		Warn("Listener::setuping(" << *fd << "): listern(" << *fd << ", 20) failed: " << strerror(errno));
         return (-1);   
     }
-    // // After socket(), before bind()/listen():
-    // int flags = fcntl(*fd, F_GETFL, 0);
-    // if (flags < 0) {
-    //     perror("fcntl F_GETFL");
-    //     exit(1);
-    // }
-
-    // // Turn on non-blocking if it wasn’t already:
-    // if (!(flags & O_NONBLOCK)) {
-    //     if (fcntl(*fd, F_SETFL, flags | O_NONBLOCK) < 0) {
-    //         perror("fcntl F_SETFL O_NONBLOCK");
-    //         exit(1);
-    //     }
-    //     printf("enabled O_NONBLOCK on fd %d\n", *fd);
-    // }
-
-    // // Verify:
-    // int flags = fcntl(*fd, F_GETFL, 0);
-    // printf("listen_fd access mode: ");
-    // switch (flags & O_ACCMODE) {
-    // case O_RDONLY:  printf("read-only");  break;
-    // case O_WRONLY:  printf("write-only"); break;
-    // case O_RDWR:    printf("read/write"); break;
-    // default:        printf("unknown");    break;
-    // }
-    // printf("\nstatus flags: %sO_NONBLOCK\n",
-    //     (flags & O_NONBLOCK) ? "" : "(!) ");
     return (0);
 }
 
@@ -243,46 +159,6 @@ int Listener::setSocketFd(void){
 		Warn("Listener::setSocketFd(): fcntl(" << _sockFd << ", F_GETFD) failed: " << strerror(errno));
     return (0);
 }
-
-// int Listener::copySocketFd(const int& fd){
-//         if (_sockFd != -1){
-//             close(_sockFd);
-//             _sockFd = -1;}
-//         if (fd == -1)
-//             return (_sockFd);
-//         _sockFd = dup(fd);
-//         if (_sockFd == -1)
-//             std::cout << "Error: dup() failed\n";
-//         // close(fd);
-//         return (_sockFd);
-// }
-
-// void Listener::addClient(Client& cur){
-//     _activeClients.push_back(std::move(cur));
-// }
-
-// void Listener::addServName(std::string name){
-//     if (_allServerNames.empty() != true){
-//         if (_allServerNames.count(name) > 0)
-//             return;
-//     }
-//     _allServerNames[name];
-// }
-
-
-const std::list<Client>& Listener::getClients(void) const{
-    return (_activeClients);
-}
-
-// void Listener::delClient(Client* cur){
-//     if (!cur)
-//         return ;
-//     for (std::size_t i = 0; i < _activeClients.size(); i++){
-//         if (_activeClients.at(i) == *cur){
-//             _activeClients.erase(_activeClients.begin() + i);
-//             return ;}
-//     }
-// }
 
 /*Overriden*/
 int* Listener::getSocketFd(int flag){

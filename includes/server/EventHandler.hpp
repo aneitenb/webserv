@@ -32,65 +32,49 @@ enum State {
 	CGIDONE
 }; 
 
-/*if epollin && towrite
-        switch to epollout
-        set state to writing
-    if epollout && toread
-        switch to epollin
-        set state to reading
-    if close
-        close
-*/
-
 class EventHandler{
     private:
-        // EventLoop* _loop;
         State      _cur;
         struct epoll_event _event;
+
     public:
         virtual ~EventHandler(){};
+        virtual int ready2Switch() = 0;
         virtual int handleEvent(uint32_t ev, i32 &efd) = 0;
         virtual int* getSocketFd(int flag) = 0; //add for the client too?
         virtual std::vector<EventHandler*> resolveAccept() = 0;
         virtual void resolveClose() = 0;
         virtual EventHandler* getCgi() = 0;
-        virtual bool conditionMet(std::unordered_map<int*, std::vector<EventHandler*>>& _activeFds, int& epollFd) = 0;
-        virtual int ready2Switch() = 0;
         virtual struct epoll_event& getCgiEvent(int flag) = 0;
+        virtual bool conditionMet(std::unordered_map<int*, std::vector<EventHandler*>>& _activeFds, int& epollFd) = 0;
     
-        // void setLoop(EventLoop& curLoop){
-        //     _loop = &curLoop;
-        // };
-        // EventLoop& getLoop(void){
-        //     return (*_loop);
-        // };
+
         State getState() const{
             return (_cur);
         };
+
         void setState(State newState){
             _cur = newState;
         };
+
         void closeFd(int *fd){
             if (*fd != -1){
                 close (*fd);
                 *fd = -1;
             }
         };
+
         void initEvent(){
             _event.events = EPOLLIN;
             _event.data.fd  = *(getSocketFd(0));
             _event.data.ptr = static_cast<void*>(this);
         };
+
         struct epoll_event* getEvent(){
             return (&_event);
         };
+
         void changeEvent(uint32_t curE){
             _event.events = curE;
         };
-        // void setEvent(struct epoll_event* cur, int *fd, uint32_t curE){
-        //     cur->events = curE;
-        //     cur->data.fd  = *fd;
-        //     cur->data.ptr = static_cast<void*>(this);
-        // };
-        //might make sense to freeadrinfo after deleting
 };
