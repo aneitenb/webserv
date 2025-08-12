@@ -112,7 +112,7 @@ int ConfigurationFile::_parseConfigFile(void) {
 				
 			currentLocation = _trimWhitespace(line.substr(pathStart, pathEnd - pathStart));
 			if (!_isValidLocationPath(currentLocation))
-    			throw ErrorInvalidConfig("Invalid location path format: " + currentLocation);
+				throw ErrorInvalidConfig("Invalid location path format: " + currentLocation);
 			if (currentLocation.empty())
 				throw ErrorInvalidConfig("Empty location path: " + line);
 			if (currentLocation.length() > MAX_ROOT_PATH_LENGTH)
@@ -260,7 +260,11 @@ void ConfigurationFile::_parseServerDirective(ServerBlock& server, const std::st
 			throw ErrorInvalidConfig("Invalid root path format: " + rootPath);
 		if (rootPath.length() > MAX_ROOT_PATH_LENGTH)
 			throw ErrorInvalidConfig("Root path too long (max " + std::to_string(MAX_ROOT_PATH_LENGTH) + " characters)");
-		server.setRoot(rootPath);
+		std::string normalizedRoot = rootPath;
+		if (!normalizedRoot.empty() && normalizedRoot[normalizedRoot.length() - 1] == '/' ){
+			normalizedRoot = normalizedRoot.substr(0, normalizedRoot.length() -1);
+		}
+		server.setRoot(normalizedRoot);
 	}
 	else if (key == "server_name") {
 		if (server.hasServerName())
@@ -371,7 +375,7 @@ void ConfigurationFile::_parseLocationDirective(LocationBlock& locBlock, const s
 				std::to_string(MAX_PATH_LENGTH) + " characters)");
 		}
 		if (url.find("http://") != 0 && url.find("http://") != 0)
-        	throw ErrorInvalidConfig("Redirect URL must be a full HTTP URL");
+			throw ErrorInvalidConfig("Redirect URL must be a full HTTP URL");
 			
 		locBlock.setRedirect(std::make_pair(status, url));
 	}
@@ -385,25 +389,25 @@ void ConfigurationFile::_parseLocationDirective(LocationBlock& locBlock, const s
 	}
 	else if (key == "cgi_pass") {
 		// Check that CGI location doesn't end with '/'
-    	// if (!locationPath.empty() && locationPath[locationPath.length() - 1] == '/') {
-    	//     throw ErrorInvalidConfig("CGI location paths cannot end with '/': " + locationPath);
-    	// }
+		// if (!locationPath.empty() && locationPath[locationPath.length() - 1] == '/') {
+		//     throw ErrorInvalidConfig("CGI location paths cannot end with '/': " + locationPath);
+		// }
 	
-    	if (value == "!") {
-    	    locBlock.setCgiPass(value);
-    	} 
-    	else {
-    	    if (!_isValidPathFormat(value))
-    	        throw ErrorInvalidConfig("Invalid CGI executable path: " + value);
-    	    if (value.length() > MAX_ROOT_PATH_LENGTH)
-    	        throw ErrorInvalidConfig("CGI path too long (max " + std::to_string(MAX_ROOT_PATH_LENGTH) + " characters)");
-    	    if (access(value.c_str(), F_OK) != 0)
-    	        throw ErrorInvalidConfig("CGI interpreter path does not exist: " + value);
-    	    if (access(value.c_str(), X_OK) != 0)
-    	        throw ErrorInvalidConfig("CGI interpreter path is not executable: " + value);
+		if (value == "!") {
+			locBlock.setCgiPass(value);
+		} 
+		else {
+			if (!_isValidPathFormat(value))
+				throw ErrorInvalidConfig("Invalid CGI executable path: " + value);
+			if (value.length() > MAX_ROOT_PATH_LENGTH)
+				throw ErrorInvalidConfig("CGI path too long (max " + std::to_string(MAX_ROOT_PATH_LENGTH) + " characters)");
+			if (access(value.c_str(), F_OK) != 0)
+				throw ErrorInvalidConfig("CGI interpreter path does not exist: " + value);
+			if (access(value.c_str(), X_OK) != 0)
+				throw ErrorInvalidConfig("CGI interpreter path is not executable: " + value);
 	
-    	    locBlock.setCgiPass(value);
-    	}
+			locBlock.setCgiPass(value);
+		}
 	}
 	else if (key == "allowed_methods") {
 		if (locBlock.hasAllowedMethods())
@@ -550,28 +554,28 @@ bool ConfigurationFile::_isValidPort(const std::string& port) const {
 }
 
 bool ConfigurationFile::_isValidLocationPath(const std::string& path) const {
-    if (path.empty() || path[0] == '~' || path[0] == '=') {
-        return false;
-    }
+	if (path.empty() || path[0] == '~' || path[0] == '=') {
+		return false;
+	}
 	for (size_t i = 1; i < path.length(); ++i) {
 		if (path [i] == '/' && path[i - 1] =='/')
 			return false;
 	}
 	if (path.length() > 1 && path[path.length() - 1] == '/') {
-        return false;
-    }
-    std::regex pathRegex("^[a-zA-Z0-9._\\-\\/]+$");
-    return std::regex_match(path, pathRegex);
+		return false;
+	}
+	std::regex pathRegex("^[a-zA-Z0-9._\\-\\/]+$");
+	return std::regex_match(path, pathRegex);
 }
 
 bool ConfigurationFile::_isValidPathFormat(const std::string& path) const {
 	if (path.empty())
 		return false;
 	for (size_t i = 1; i < path.length(); ++i) {
-        if (path[i] == '/' && path[i-1] == '/') {
-            return false;
-        }
-    }
+		if (path[i] == '/' && path[i-1] == '/') {
+			return false;
+		}
+	}
 	if (path[0] == '/') {
 		std::regex absolutePathRegex("^\\/[a-zA-Z0-9._\\-\\/]+$");
 		return std::regex_match(path, absolutePathRegex);

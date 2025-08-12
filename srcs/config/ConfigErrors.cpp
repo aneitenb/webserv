@@ -56,8 +56,8 @@ std::string ErrorInvalidIP::getErrorType() const {
 
 // ===== ErrorNoMatchingServer =====
 ErrorNoMatchingServer::ErrorNoMatchingServer(const std::string& message) 
-    : ConfigError(message) {}
+	: ConfigError(message) {}
 
 std::string ErrorNoMatchingServer::getErrorType() const {
-    return "Server matching error";
+	return "Server matching error";
 }

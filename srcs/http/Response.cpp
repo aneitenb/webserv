@@ -277,7 +277,7 @@ std::string Response::resolvePath(const std::string& uri) {
 	if (_locationBlock && _locationBlock->hasAlias()) {
 		// replace the location path with the alias path
 		std::string locationPath = findMatchingLocation(uri);
-	
+	std::cout << "DEBUG: matching location: '" << locationPath << "'" << std::endl;
 		if (!locationPath.empty() && uri.find(locationPath) == 0) {
 			std::string alias = _locationBlock->getAlias();
 			std::string relativePath = uri.substr(locationPath.length());
@@ -288,12 +288,7 @@ std::string Response::resolvePath(const std::string& uri) {
 				resolvedAlias = alias;	//use absolute alias
 			} else {
 				std::string serverRoot = _serverBlock->getRoot();
-				if (!serverRoot.empty() && serverRoot[serverRoot.length() - 1] != '/' &&
-					!alias.empty() && alias[0] != '/'){
-						resolvedAlias = serverRoot + "/" + alias;
-					} else {
-						resolvedAlias = serverRoot + alias;
-					}
+                resolvedAlias = serverRoot.empty() ? alias : serverRoot + "/" + alias;
 			}
 			//combine resolved alias with relative path
 			if (!resolvedAlias.empty() && resolvedAlias[resolvedAlias.length() -1] != '/' &&
@@ -301,6 +296,7 @@ std::string Response::resolvePath(const std::string& uri) {
 					return resolvedAlias + "/" + relativePath;
 				}
 			std::string finalPath = resolvedAlias + relativePath;
+			std::cout << "DEBUG: Final resolved path: '" << finalPath << "'" << std::endl;
 			return finalPath;
 		}
 	}
@@ -308,16 +304,31 @@ std::string Response::resolvePath(const std::string& uri) {
 	// If location block has a root directive, use it
 	std::string root;
 	if (_locationBlock && _locationBlock->hasRoot()) {
-		root = _locationBlock->getRoot();
-	} else {
+		std::string locRoot = _locationBlock->getRoot();
+		
+		//if its absolute, use as is
+		if (!locRoot.empty() && locRoot[0] == '/'){
+			root = locRoot;
+		}
+		else {
+			std::string serverRoot = _serverBlock->getRoot();
+			if (serverRoot.empty()) {
+				root = locRoot;
+			} else {
+				root = serverRoot + "/" + locRoot; //relative path
+			}
+		} 
+	}
+	else {
 		root = _serverBlock->getRoot();
 	}
-	
+	std::cout << "DEBUG: root: '" << root << "'" << std::endl;
 	// put slash between root and URI
 	if (!root.empty() && root[root.length()-1] != '/' && 
 		!uri.empty() && uri[0] != '/') {
 		return root + "/" + uri;
 	}
+	std::cout << "DEBUG: root + uri: '" << root << "+" << uri << "'" << std::endl;
 	return root + uri;
 }
 
