@@ -13,9 +13,11 @@ ServerBlock::ServerBlock() :
 	_listen(),
 	_host(""),
 	_serverName(""),
+	_root(""),
 	_clientMaxBodySize(1024 * 1024),	//1 megabyte as default value
 	_autoindex(false),
 	_autoindexSet(false),
+	_index(""),
 	_hasCustomErrorPages(false),
 	_maxBodySizeSet(false),
 	_defaultErrorDir("/default_errors"),
@@ -47,13 +49,14 @@ ServerBlock::ServerBlock(const ServerBlock& other){
 	_serverName = other._serverName;
 	_root = other._root;
 	_clientMaxBodySize = other._clientMaxBodySize;
+	_autoindex = other._autoindex;
+	_autoindexSet = other._autoindexSet;
 	_errorPages = other._errorPages;
 	_defaultErrorPages = other._defaultErrorPages;
 	_index = other._index;
-	_autoindex = other._autoindex;
-	_autoindexSet = other._autoindexSet;
 	_locationBlocks = other._locationBlocks;
 	_hasCustomErrorPages = other._hasCustomErrorPages;
+	_maxBodySizeSet = other._maxBodySizeSet;
 	_defaultErrorDir = other._defaultErrorDir;
 	_allowedMethods = other._allowedMethods;
 	_timeout = other._timeout;
@@ -66,13 +69,14 @@ ServerBlock& ServerBlock::operator=(const ServerBlock& other){
 	_serverName = other._serverName;
 	_root = other._root;
 	_clientMaxBodySize = other._clientMaxBodySize;
+	_autoindex = other._autoindex;
+	_autoindexSet = other._autoindexSet;
 	_errorPages = other._errorPages;
 	_defaultErrorPages = other._defaultErrorPages;
 	_index = other._index;
-	_autoindex = other._autoindex;
-	_autoindexSet = other._autoindexSet;
 	_locationBlocks = other._locationBlocks;
 	_hasCustomErrorPages = other._hasCustomErrorPages;
+	_maxBodySizeSet = other._maxBodySizeSet;
 	_defaultErrorDir = other._defaultErrorDir;
 	_allowedMethods = other._allowedMethods;
 	_timeout = other._timeout;}
@@ -85,11 +89,14 @@ bool ServerBlock::operator==(const ServerBlock& other) const{
 	&& this->_serverName == other._serverName \
 	&& this->_root == other._root \
 	&& this->_clientMaxBodySize == other._clientMaxBodySize \
+	&& this->_autoindex == other._autoindex \
+	&& this->_autoindexSet == other._autoindexSet \
 	&& this->_errorPages == other._errorPages \
 	&& this->_defaultErrorPages == other._defaultErrorPages \
 	&& this->_index == other._index \
 	&& this->_locationBlocks == other._locationBlocks \
 	&& this->_hasCustomErrorPages == other._hasCustomErrorPages \
+	&& this->_maxBodySizeSet == other._maxBodySizeSet \
 	&& this->_defaultErrorDir == other._defaultErrorDir \
 	&& this->_allowedMethods == other._allowedMethods \
 	&& this->_timeout == other._timeout)
@@ -261,7 +268,13 @@ const std::vector<std::string>& ServerBlock::getListen() const {
 }
 
 void ServerBlock::addListen(const std::string& port){
+	std::cout << "DEBUG: Adding port '" << port << "' (length: " << port.length() << ")" << std::endl;
+	if (port.length() > 10) {
+        std::cout << "ERROR: Port string suspiciously long: " << port << std::endl;
+        throw std::runtime_error("Invalid port length");
+	}
 	_listen.push_back(port);
+    std::cout << "DEBUG: Vector now has " << _listen.size() << " ports" << std::endl;
 }
 
 bool ServerBlock::hasPort(const std::string& port)const {

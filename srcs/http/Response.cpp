@@ -277,7 +277,6 @@ std::string Response::resolvePath(const std::string& uri) {
 	if (_locationBlock && _locationBlock->hasAlias()) {
 		// replace the location path with the alias path
 		std::string locationPath = findMatchingLocation(uri);
-	std::cout << "DEBUG: matching location: '" << locationPath << "'" << std::endl;
 		if (!locationPath.empty() && uri.find(locationPath) == 0) {
 			std::string alias = _locationBlock->getAlias();
 			std::string relativePath = uri.substr(locationPath.length());
@@ -296,7 +295,6 @@ std::string Response::resolvePath(const std::string& uri) {
 					return resolvedAlias + "/" + relativePath;
 				}
 			std::string finalPath = resolvedAlias + relativePath;
-			std::cout << "DEBUG: Final resolved path: '" << finalPath << "'" << std::endl;
 			return finalPath;
 		}
 	}
@@ -322,13 +320,11 @@ std::string Response::resolvePath(const std::string& uri) {
 	else {
 		root = _serverBlock->getRoot();
 	}
-	std::cout << "DEBUG: root: '" << root << "'" << std::endl;
 	// put slash between root and URI
 	if (!root.empty() && root[root.length()-1] != '/' && 
 		!uri.empty() && uri[0] != '/') {
 		return root + "/" + uri;
 	}
-	std::cout << "DEBUG: root + uri: '" << root << "+" << uri << "'" << std::endl;
 	return root + uri;
 }
 
@@ -631,7 +627,7 @@ void Response::readFile(const std::string& path) {
 *********************************************/
 
 void Response::handlePost() {
-	if (!_request->isParsed()) {			//NEEDED? isn't this already in epoll loop?
+	if (!_request->isParsed()) {
 		_statusCode = 400;
 		setBody(getErrorPage(400));
 		setHeader("Content-Type", "text/html");
@@ -644,7 +640,7 @@ void Response::handlePost() {
 	
 	// only reject directory paths for non-multipart requests 
 	// (files can't be posted to a directory without an explicit name)
-	if (!isMultipart && (uri.empty() || uri.back() == '/')) {
+	if (!isMultipart && (uri.empty() || uri.back() == '/' || directoryExists(resolvePath(uri)))) {
 		_statusCode = 400;
 		setBody(getErrorPage(400));
 		setHeader("Content-Type", "text/html");
