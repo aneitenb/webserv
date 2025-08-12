@@ -202,7 +202,6 @@ ServerBlock* Client::getSBforResponse(std::string hostHeader) const {
     // remove port from host header (example.com:8080 -> example.com)
     auto colonPos = hostHeader.find(':');
     std::string serverNameFromHeader = (colonPos != std::string::npos) ? hostHeader.substr(0, colonPos) : hostHeader;
-
 	std::cout << "serverNameFromHeader= --> " << serverNameFromHeader << "\n\n";
 
     // get the IP and port the client actually connected to
@@ -215,28 +214,32 @@ ServerBlock* Client::getSBforResponse(std::string hostHeader) const {
 
     // try exact match with server_name@connection_ip:connection_port
     std::string exactKey = serverNameFromHeader + "@" + connectionIP + ":" + connectionPort;
+	std::cout << "exactkey= --> " << exactKey << "\n\n";        
     if (_allServerNames.count(exactKey) > 0) {
         return _allServerNames.at(exactKey);
     }
     
     // try match with server_name@wildcard:connection_port
     std::string wildcardKey = serverNameFromHeader + "@0.0.0.0:" + connectionPort;
+    std::cout << "wildcardkey= --> " << wildcardKey << "\n\n";
     if (_allServerNames.count(wildcardKey) > 0) {
         return _allServerNames.at(wildcardKey);
     }
     
     // try connection_ip:connection_port (for empty server names)
     std::string ipPortKey = connectionIP + ":" + connectionPort;
+    std::cout << "ipportkey= --> " << ipPortKey << "\n\n";
     if (_allServerNames.count(ipPortKey) > 0) {
         return _allServerNames.at(ipPortKey);
     }
     
-    //try localhost assuming serverNameFromHeader is just an IP
-    std::string localHostKey = "localhost@" + serverNameFromHeader + ":" + connectionPort;
-    if (_allServerNames.count(localHostKey) > 0) {
-        return _allServerNames.at(localHostKey);
-    }
-
+    // try wildcard IP with port (for empty server names)
+    std::string wildcardIpPortKey = "0.0.0.0:" + connectionPort;
+    std::cout << "wildcardipportkey= --> " << wildcardIpPortKey << "\n\n";
+    if (_allServerNames.count(wildcardIpPortKey) > 0) {
+        return _allServerNames.at(wildcardIpPortKey);
+        }
+    
     // try to match based on the server_name part only (fallback)
     for (const auto& pair : _allServerNames) {
         std::string key = pair.first;
@@ -244,12 +247,21 @@ ServerBlock* Client::getSBforResponse(std::string hostHeader) const {
         
         if (atPos != std::string::npos) {
             std::string keyServerName = key.substr(0, atPos);
-            if (keyServerName == serverNameFromHeader) {
+            std::string fullAddressKey = keyServerName + "@" + serverNameFromHeader + ":" + connectionPort;
+            std::cout << "key1= --> " << keyServerName << "\n";
+            std::cout << "key2= --> " << fullAddressKey << "\n\n";
+            if (keyServerName == serverNameFromHeader || _allServerNames.count(fullAddressKey) > 0) {
                 return pair.second;
             }
         }
     }
-    
+
+    std::cout << "ALL NAMES:\n";
+
+    for (const auto& pair : _allServerNames) {
+        std::string firstkey = pair.first;
+        std::cout << firstkey << "\n";
+    }
     // no server block exists for this request
 	std::cout << "NO SERVER BLOCK FOUND!\n\n";
 
