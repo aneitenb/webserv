@@ -14,6 +14,8 @@ ServerBlock::ServerBlock() :
 	_host(""),
 	_serverName(""),
 	_clientMaxBodySize(1024 * 1024),	//1 megabyte as default value
+	_autoindex(false),
+	_autoindexSet(false),
 	_hasCustomErrorPages(false),
 	_maxBodySizeSet(false),
 	_defaultErrorDir("/default_errors"),
@@ -48,6 +50,8 @@ ServerBlock::ServerBlock(const ServerBlock& other){
 	_errorPages = other._errorPages;
 	_defaultErrorPages = other._defaultErrorPages;
 	_index = other._index;
+	_autoindex = other._autoindex;
+	_autoindexSet = other._autoindexSet;
 	_locationBlocks = other._locationBlocks;
 	_hasCustomErrorPages = other._hasCustomErrorPages;
 	_defaultErrorDir = other._defaultErrorDir;
@@ -65,6 +69,8 @@ ServerBlock& ServerBlock::operator=(const ServerBlock& other){
 	_errorPages = other._errorPages;
 	_defaultErrorPages = other._defaultErrorPages;
 	_index = other._index;
+	_autoindex = other._autoindex;
+	_autoindexSet = other._autoindexSet;
 	_locationBlocks = other._locationBlocks;
 	_hasCustomErrorPages = other._hasCustomErrorPages;
 	_defaultErrorDir = other._defaultErrorDir;
@@ -321,6 +327,19 @@ std::string ServerBlock::getIndex() const {
 
 void ServerBlock::setIndex(const std::string& index) {
 	this->_index = index;
+}
+
+bool ServerBlock::hasAutoindex() const{
+	return _autoindexSet;
+}
+
+bool ServerBlock::getAutoindex() const {
+	return _autoindex;
+}
+
+void ServerBlock::setAutoindex(bool value) {
+	_autoindex = value;
+	_autoindexSet = true;
 }
 
 std::map<std::string, LocationBlock> ServerBlock::getLocationBlocks() const {

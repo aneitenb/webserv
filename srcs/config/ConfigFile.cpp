@@ -21,7 +21,6 @@ const std::set<std::string> ConfigurationFile::_serverOnlyDirectives = {
 
 const std::set<std::string> ConfigurationFile::_locationOnlyDirectives = {
 	"return",
-	"autoindex",
 	"cgi_pass",
 	"upload_store",
 	"alias"
@@ -30,7 +29,8 @@ const std::set<std::string> ConfigurationFile::_locationOnlyDirectives = {
 const std::set<std::string> ConfigurationFile::_commonDirectives = {
 	"root",
 	"index",
-	"allowed_methods"
+	"allowed_methods",
+	"autoindex"
 };
 
 ConfigurationFile::ConfigurationFile(void) {
@@ -310,6 +310,13 @@ void ConfigurationFile::_parseServerDirective(ServerBlock& server, const std::st
 			throw ErrorInvalidConfig("client_max_body_size exceeds maximum allowed value");
 		
 		server.setClientMaxBodySize(size);
+	}
+	else if (key == "autoindex") {
+		if (server.hasAutoindex())
+			throw ("Duplicate 'autoindex' directive in server block");
+		if (value != "on" && value != "off")
+			throw ErrorInvalidConfig("autoindex must be 'on' or 'off': " + value);
+		server.setAutoindex(value == "on");
 	}
 	else if (key == "error_page") {
 		// Format: error_page 404 /404.html;
