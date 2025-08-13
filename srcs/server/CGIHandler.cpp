@@ -260,18 +260,16 @@ bool	CGIHandler::init(const Request &req) {
 	this->_buf.clear();
 	this->_valid = true;
 	this->setState(FORCGI);
-	if (req.getMethod() == "DELETE") {
+	if (req.getMethod() == "POST") {
+		this->_method = CGIHandler::POST;
+		this->_buf = req.getBody();
+	} else
+		this->_method = (req.getMethod() == "GET") ? CGIHandler::GET : CGIHandler::DELETE;
+	if (!(this->_location->second.getAllowedMethods() & this->_method)) {
 		this->_errorCode = HTTP_METHOD_NOT_ALLOWED;
 		this->_valid = false;
-	} else {
-		if (req.getMethod() == "POST") {
-			this->_method = CGIHandler::POST;
-			this->_buf = req.getBody();
-		} else
-			this->_method = CGIHandler::GET;
-		if (this->_setupEnv(req))
-			this->_setupPipes();
-	}
+	} else if (this->_setupEnv(req))
+		this->_setupPipes();
 	if (this->_valid)
 		return true;
 	this->setState(CGIWRITE);
