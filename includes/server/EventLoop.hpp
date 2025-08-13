@@ -27,6 +27,7 @@ class   EventLoop{
         const EventLoop& operator=(const EventLoop& other) = delete;
 
         std::unordered_map<int*, std::vector<EventHandler*>> _activeFds;
+
     public:
         EventLoop();
         ~EventLoop();

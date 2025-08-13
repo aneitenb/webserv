@@ -208,7 +208,7 @@ void EventLoop::resolvingClosing(){
             if (vect.empty() == true)
                 continue;
                 
-            // CRITICAL FIX: Actually mark clients as TOCLOSE
+            // Actually mark clients as TOCLOSE
             bool foundClientsToClose = false;
             for (size_t i = 0; i < vect.size(); i++){
                 if (vect.at(i)->getState() == CLOSE){

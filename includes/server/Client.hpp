@@ -24,10 +24,8 @@ typedef std::chrono::time_point<std::chrono::system_clock>	timestamp;
 class Client : public EventHandler {
     private:
         std::unordered_map<std::string, ServerBlock*> _allServerNames;
-        std::string _firstKey;
+        std::string         _firstKey;
         int                 _clFd;
-        int                 _count;
-        struct sockaddr*    _result; //do i need this if when i accept i just take the fd?
         std::string         _buffer;
         Request             _requesting;
         Response            _responding;
@@ -37,11 +35,11 @@ class Client : public EventHandler {
 		bool				_timedOut;
 		bool				_active;
 
-        //size_t? _lastActive;
         int sending_stuff();
         int receiving_stuff();
         int saveRequest();
         void saveResponse();
+
     public:
 		const Request	&request = _requesting;
 
@@ -58,23 +56,13 @@ class Client : public EventHandler {
 
         bool operator==(const Client& other) const;
         int setFd(int *fd);
-        // void setSockFd(int* fd);
         void setKey(std::string key);
-        // void    setFlag(int newState);
-        // int     settingUp(int* fd);
-        // State getState() const;
-        // void setState(State newState);
-        // int* getClFd(void);
+
         std::unordered_map<std::string, ServerBlock*> getServerBlocks() const;
         ServerBlock* getSBforResponse(std::string name) const;
         bool areServBlocksEq(const Client& other) const;
-        // Request& getRequest();
-        // Response& getResponse();
-        // void setCgi();
-
 
         int handleEvent(uint32_t ev, i32 &efd) override;
-        bool shouldClose() const;
         int* getSocketFd(int flag) override;
         std::vector<EventHandler*> resolveAccept(void) override;
         void resolveClose() override;
