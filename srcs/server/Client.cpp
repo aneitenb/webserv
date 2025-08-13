@@ -18,14 +18,12 @@ extern Timeout	timeouts;
 
 static inline CGILocation	*_findCGILocation(std::map<std::string, LocationBlock> locations, const std::string &URI);
 
-Client::Client(const std::unordered_map<std::string, ServerBlock*>& cur, i32 &efd): _allServerNames(cur), _clFd(-1), _count(0), _CGIHandler(this, _clFd, efd), _timeout(CLIENT_DEFAULT_TIMEOUT), _timedOut(false), _active(false) {
-	_result = nullptr;
+Client::Client(const std::unordered_map<std::string, ServerBlock*>& cur, i32 &efd): _allServerNames(cur), _clFd(-1), _CGIHandler(this, _clFd, efd), _timeout(CLIENT_DEFAULT_TIMEOUT), _timedOut(false), _active(false) {
     setState(TOADD);
 }
 
 Client::~Client(){
     if (_clFd >= 0){
-        // close (_clFd);   //CHANGED:don't close if sstill in epoll, eventloop will handle proper cleanup
         _clFd = -1;
     }
     this->_CGIHandler.resolveClose();
@@ -36,16 +34,8 @@ Client::Client(Client&& other) noexcept : _clFd(-1), _requesting(std::move(other
     _responding(std::move(other._responding)), _CGIHandler(std::move(other._CGIHandler)){
     _allServerNames = other._allServerNames;
     _firstKey = other._firstKey;
-    // _relevant = other._relevant;
-    // other._relevant = nullptr;
-   /* _listfd = other._listfd;
-    other._listfd = nullptr;*/
     this->_clFd = other._clFd;
     other._clFd = -1;
-    _count = other._count;
-    _result = other._result;
-    other._result = nullptr;
-    /*_curR = other._curR;*/
     this->_disconnectAt = other._disconnectAt;
     this->_timeout = other._timeout;
     this->setState(other.getState());
@@ -54,21 +44,12 @@ Client::Client(Client&& other) noexcept : _clFd(-1), _requesting(std::move(other
 	this->_active = other._active;
 }
 
-//this should never be used though
 Client& Client::operator=(Client&& other) noexcept{
     if (this != &other){
         _allServerNames = other._allServerNames;
         _firstKey = other._firstKey;
-        // _relevant = other._relevant;
-        // other._relevant = nullptr;
-    /* _listfd = other._listfd;
-        other._listfd = nullptr;*/
         this->_clFd = other._clFd;
         other._clFd = -1;
-        _count = other._count;
-        _result = other._result;
-        other._result = nullptr;
-        /*_curR = other._curR;*/
         this->_disconnectAt = other._disconnectAt;
         this->_timeout = other._timeout;
         this->setState(other.getState());
@@ -96,11 +77,9 @@ bool Client::areServBlocksEq(const Client& other) const{
     return false;
 }
 
-// add variables; response and request == operators
 bool Client::operator==(const Client& other) const{
-    if (areServBlocksEq(other) /*&& _listfd == other._listfd */ \
-        && _clFd == other._clFd && _count == other._count \
-        && _result == other._result && this->getState() == other.getState())
+    if (areServBlocksEq(other)  \
+        && _clFd == other._clFd  && this->getState() == other.getState())
         return (true);
     return (false);
 }
@@ -117,24 +96,6 @@ int Client::setFd(int *fd){
     return (0);
 }
 
-// int Client::copySocketFd(int* fd){
-//     if (this->_clFd != -1){
-//         close(_clFd);
-//         _clFd = -1;}
-//     if (*fd == -1)
-//         return (-1);
-//     this->_clFd = dup(*fd);
-//     if (this->_clFd == -1){
-//         std::cout << "Error: dup() failed\n"; //exit?
-//         return (-1);
-//     }
-//     close(*fd);
-//     *fd = -1;
-//     return (0);
-// }
-
-/*Getters and Setters*/
-// Request& Client::getRequest(){ return (_requesting);}
 
 std::unordered_map<std::string, ServerBlock*> Client::getServerBlocks() const{
     return (_allServerNames);
@@ -144,10 +105,6 @@ std::string Client::getLocalIP() const {
     struct sockaddr_in localAddr;   //structure that holds IPv4 address information
     socklen_t addrLen = sizeof(localAddr);
     
-    // getsockname() is a system call that gets the socket's local address
-    // _clFd is the client socket file descriptor
-    // (struct sockaddr*)&localAddr is where to store the answer (with casting for compatibility)
-    // returns -1 if something goes wrong
     if (getsockname(_clFd, (struct sockaddr*)&localAddr, &addrLen) == -1) {
         Warn("Client::getLocalConnectionIP(): getsockname(" << _clFd
              << "&localAddr, &addrLen) failed: " << strerror(errno));
@@ -202,40 +159,32 @@ ServerBlock* Client::getSBforResponse(std::string hostHeader) const {
     // remove port from host header (example.com:8080 -> example.com)
     auto colonPos = hostHeader.find(':');
     std::string serverNameFromHeader = (colonPos != std::string::npos) ? hostHeader.substr(0, colonPos) : hostHeader;
-	std::cout << "serverNameFromHeader= --> " << serverNameFromHeader << "\n\n";
 
     // get the IP and port the client actually connected to
     std::string connectionIP = getLocalIP();
     std::string connectionPort = getLocalPort();
 
 
-	std::cout << "localIP= --> " << connectionIP << "\n\n";
-	std::cout << "localPort= --> " << connectionPort << "\n\n";
-
     // try exact match with server_name@connection_ip:connection_port
     std::string exactKey = serverNameFromHeader + "@" + connectionIP + ":" + connectionPort;
-	std::cout << "exactkey= --> " << exactKey << "\n\n";        
     if (_allServerNames.count(exactKey) > 0) {
         return _allServerNames.at(exactKey);
     }
     
     // try match with server_name@wildcard:connection_port
     std::string wildcardKey = serverNameFromHeader + "@0.0.0.0:" + connectionPort;
-    std::cout << "wildcardkey= --> " << wildcardKey << "\n\n";
     if (_allServerNames.count(wildcardKey) > 0) {
         return _allServerNames.at(wildcardKey);
     }
     
     // try connection_ip:connection_port (for empty server names)
     std::string ipPortKey = connectionIP + ":" + connectionPort;
-    std::cout << "ipportkey= --> " << ipPortKey << "\n\n";
     if (_allServerNames.count(ipPortKey) > 0) {
         return _allServerNames.at(ipPortKey);
     }
     
     // try wildcard IP with port (for empty server names)
     std::string wildcardIpPortKey = "0.0.0.0:" + connectionPort;
-    std::cout << "wildcardipportkey= --> " << wildcardIpPortKey << "\n\n";
     if (_allServerNames.count(wildcardIpPortKey) > 0) {
         return _allServerNames.at(wildcardIpPortKey);
         }
@@ -248,22 +197,12 @@ ServerBlock* Client::getSBforResponse(std::string hostHeader) const {
         if (atPos != std::string::npos) {
             std::string keyServerName = key.substr(0, atPos);
             std::string fullAddressKey = keyServerName + "@" + serverNameFromHeader + ":" + connectionPort;
-            std::cout << "key1= --> " << keyServerName << "\n";
-            std::cout << "key2= --> " << fullAddressKey << "\n\n";
+
             if (keyServerName == serverNameFromHeader || _allServerNames.count(fullAddressKey) > 0) {
                 return pair.second;
             }
         }
     }
-
-    std::cout << "ALL NAMES:\n";
-
-    for (const auto& pair : _allServerNames) {
-        std::string firstkey = pair.first;
-        std::cout << firstkey << "\n";
-    }
-    // no server block exists for this request
-	std::cout << "NO SERVER BLOCK FOUND!\n\n";
 
     return nullptr;
 }
@@ -362,7 +301,6 @@ int Client::handleEvent(uint32_t ev, [[maybe_unused]] i32 &efd){
 			_buffer.clear(); // CRITICAL
 			serverConf = this->getSBforResponse(this->getHost());
             if (!serverConf){
-                std::cout << "this is where we at\n\n";
                 this->setState(CLOSE);
                 return (0);                
             }
@@ -408,26 +346,15 @@ int Client::handleEvent(uint32_t ev, [[maybe_unused]] i32 &efd){
                 _requesting.reset();
                 _responding.clear();
                 this->setState(TOREAD);
-                _count = 0;
             } else {
                 warn("Client::handleEvent(): Invalid or empty request, closing connection");
                 this->setState(CLOSE);
                 return (-1);
             }
-            // BELOW would replace above if/else if we don't want to implement keep-alive
-            // std::cout << "Response sent, closing connection (no keep-alive)\n";
-            // this->setState(CLOSE);
-            // return (-1);  // Always close after response
         }
         return (0);
     }
     return (0);
-}
-
-// Add a method to properly handle connection timeouts:
-bool Client::shouldClose() const {
-    // Close if we've had too many consecutive errors
-    return _count >= 50;
 }
 
 /*Handle Event Helpers*/
@@ -460,7 +387,6 @@ int Client::sending_stuff(){
         }
         else{ // len > 0
             _responding.addToBytesSent(len);
-            //clear rawData?
         }
     }
     return (0);
@@ -469,12 +395,10 @@ int Client::sending_stuff(){
 int Client::receiving_stuff(){
     if (_clFd < 0)
         return -1;
-    // ssize_t len = 0;
     std::string temp_buff;
     temp_buff.resize(4096);
 
     ssize_t len = recv(_clFd, &temp_buff[0], temp_buff.size(), 0);
-    // len = recv(_clFd, &temp_buff[0], temp_buff.size(), 0);
     
     if (len == 0) //Client closed connection
         return (-1);
@@ -502,12 +426,6 @@ int Client::saveRequest(){
         
         _requesting.append(*this, _buffer);
         _buffer.clear();  // Clear immediately after processing
-        
-        // if (!_requesting.isValid()) {        //even on invlaid request, need to generate error response
-        //     return (-1);
-        // }
-        
-        //the thing is what if it's a partial request so not everything has been received? it needs to be updated without being marked as wrong
         return (_requesting.isParsed()) ? 0 : 1;
     } catch(std::exception& e){
         return (-1);
