@@ -27,7 +27,7 @@
 
 static inline bool	_pipe(i32 (*pfd)[2]);
 
-CGIHandler::CGIHandler(Client *client, i32 &sfd, i32 &efd): _client(client), _pid(0), _method(CGIHandler::GET), _socketFd(sfd), _epollFd(efd) {
+CGIHandler::CGIHandler(Client *client, i32 &sfd, i32 &efd): _client(client), _pid(0), _valid(false), _method(CGIHandler::GET), _socketFd(sfd), _epollFd(efd) {
 	this->_outputPipe.event.events = EPOLLIN;
 	this->_inputPipe.event.events = EPOLLOUT;
 	this->_outputPipe.pfd[0] = -1;
@@ -260,18 +260,16 @@ bool	CGIHandler::init(const Request &req) {
 	this->_buf.clear();
 	this->_valid = true;
 	this->setState(FORCGI);
-	if (req.getMethod() == "DELETE") {
+	if (req.getMethod() == "POST") {
+		this->_method = CGIHandler::POST;
+		this->_buf = req.getBody();
+	} else
+		this->_method = (req.getMethod() == "GET") ? CGIHandler::GET : CGIHandler::DELETE;
+	if (!(this->_location->second.getAllowedMethods() & this->_method)) {
 		this->_errorCode = HTTP_METHOD_NOT_ALLOWED;
 		this->_valid = false;
-	} else {
-		if (req.getMethod() == "POST") {
-			this->_method = CGIHandler::POST;
-			this->_buf = req.getBody();
-		} else
-			this->_method = CGIHandler::GET;
-		if (this->_setupEnv(req))
-			this->_setupPipes();
-	}
+	} else if (this->_setupEnv(req))
+		this->_setupPipes();
 	if (this->_valid)
 		return true;
 	this->setState(CGIWRITE);
