@@ -12,7 +12,6 @@
 // #include "EventLoop.hpp"
 #include "CommonFunctions.hpp"
 #include "server/Listener.hpp"
-#include "VirtualHost.hpp"
 #include "config/ServerBlock.hpp"
 
 // #define TRUE 1

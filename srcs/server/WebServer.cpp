@@ -18,51 +18,7 @@
 WebServer::WebServer(){}
 WebServer::~WebServer(){}
 
-
-
-/*use bind and listen for listening sockets*/
-// int WebServer::bind_listen(Listener* cur, int* fd){
-//     //for the listening socket bind and listen
-//     getLogFile() << "fd is: " << *fd << " and the host is " << cur->getAddress()->sa_family << std::endl;
-//     int status = fcntl(*fd, F_GETFD); //delete
-//     if (status == -1) {
-//         perror("File descriptor is not valid");
-//     }
-//     if ((bind(*fd, cur->getAddress(), sizeof(struct sockaddr)) == -1)){
-//         std::cerr << "Error: bind() failed\n";
-//         std::cerr << strerror(errno) << "\n";
-//         return (-1);        
-//     }
-//     if ((listen(*fd, 20) == -1)){
-//         std::cerr << "Error: listen() failed\n";
-//         std::cerr << strerror(errno) << "\n";
-//         return (-1);   
-//     }
-//     cur->setup_fd(fd);
-//     getLogFile() << "testing fd set up: " << cur->getFD() << std::endl;
-//     return (0);
-// }
-
-// bool WebServer::doesExist(std::string port, std::string host){ //check
-//     getLogFile() << "entered doesExist\n";
-//     if (_theSList.count(port) == 0){
-//         getLogFile() << "this shouldve happened\n";
-//         _theSList[port].push_back(host);
-//         return false;
-//     }
-//     if (_theSList.at(port).empty() == true){
-//         for (size_t i = 0; i < _theSList.at(port).size(); i++)
-//             if (_theSList.at(port).at(i) == port)
-//                 return true;
-//     }
-//     _theSList.at(port).push_back(host);
-//     return true;
-// }
-
-
-// CHANGED: Now checks only for port (not port+host combo)
 bool WebServer::doesListenerExist(std::string port){
-    // check if we already have a listener for this port
     for (std::size_t i = 0; i < _theLList.size(); i++){
         if (_theLList.at(i).getPort() == port) {
             return true;
@@ -90,7 +46,7 @@ std::string WebServer::createUniqueKey(const std::string& host, const std::strin
     }
 }
 
-// CHANGED: Create one listener per port, add all server blocks to it
+// Create one listener per port, add all server blocks to it
 int WebServer::resolveListener(std::string port, std::string host, ServerBlock& serBlock){
     // Check if we already have a listener for this port
     if (doesListenerExist(port)) {
@@ -104,7 +60,7 @@ int WebServer::resolveListener(std::string port, std::string host, ServerBlock& 
 			Debug("Added server block with key " << key << " to listener for port " << port);
         }
     } else {
-        // create new listener that binds to wildcard (0.0.0.0)
+        // Create new listener that binds to wildcard (0.0.0.0)
         Listener curL(port, "0.0.0.0");
         
         std::string key = createUniqueKey(host, port, serBlock.getServerName());
@@ -121,7 +77,6 @@ int WebServer::resolveListener(std::string port, std::string host, ServerBlock& 
     return (0);
 }
 
-// CHANGED: Updated to work with new logic
 int WebServer::initialize(std::vector<ServerBlock>& serBlocks){
     std::vector<std::string> curPorts;
     std::size_t maxPorts;
@@ -149,7 +104,3 @@ void WebServer::freeStuff(void){
 std::vector<Listener>& WebServer::getListeners(void){
     return (_theLList);
 }
-
-// std::vector<VirtualHost> WebServer::getVHosts(void) const{
-//     return (_virtualHosts);
-// }

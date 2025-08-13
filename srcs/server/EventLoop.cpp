@@ -33,11 +33,6 @@ EventLoop::~EventLoop(){
     }
 }
 
-//getter for all active fds, key : value; get value based on key
-// std::vector<EventHandler*> EventLoop::findValue(int *fd){
-//     return (_activeFds.at(fd));
-// }
-
 int EventLoop::run(std::vector<EventHandler*> listFds){
 	EventHandler	*curE;
 
@@ -177,14 +172,12 @@ void EventLoop::condemnClients(EventHandler* cur){
 //adding the newly accepted clients to the epoll
 void EventLoop::resolvingAccept(EventHandler* cur){
     std::vector<EventHandler*> curClients = cur->resolveAccept();
-    // if (curClients.empty())
 	Debug("Registering accepted client" << ((curClients.size() > 1) ? 's' : '\0'));
     for (size_t i = 0; i < curClients.size(); i++){
         if (*curClients.at(i)->getSocketFd(0) != -1 && curClients.at(i)->getState() == TOADD){
             if (addToEpoll(curClients.at(i)->getSocketFd(0), curClients.at(i)) == -1){
                 curClients.at(i)->setState(CLOSED);
                 curClients.at(i)->closeFd(curClients.at(i)->getSocketFd(0));
-                //there shouldn't be anything to clean from Response, Request probably
                 continue;}
             curClients.at(i)->setState(READING);
             _activeFds.at(cur->getSocketFd(0)).push_back(curClients.at(i));
@@ -242,10 +235,6 @@ void EventLoop::resolvingClosing(){
 
 //adding a fd to epoll
 int EventLoop::addToEpoll(int* fd, EventHandler* object){
-    // struct epoll_event curE;
-    // curE.events = event;
-    // curE.data.fd = *fd;
-    // curE.data.ptr = static_cast<void*>(object);
     object->initEvent();
     if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, *fd, object->getEvent()) == -1){
 		Warn("EventLoop::addToEpoll(" << *fd << ", object): epoll_ctl(" << _epollFd <<
@@ -253,16 +242,11 @@ int EventLoop::addToEpoll(int* fd, EventHandler* object){
 			 << strerror(errno));
         return (-1);
     }
-    // object->setLoop(*this);
     return (0);
 }
 
 //modifying what epoll monitors for a fd
 int EventLoop::modifyEpoll(int* fd, uint32_t event, EventHandler* object){
-    // struct epoll_event curE;
-    // curE.events = event;
-    // curE.data.fd = *fd;
-    // curE.data.ptr = static_cast<void*>(object);
     object->changeEvent(event);
 
     if (epoll_ctl(_epollFd, EPOLL_CTL_MOD, *fd, object->getEvent()) == -1){

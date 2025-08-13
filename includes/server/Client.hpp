@@ -87,6 +87,7 @@ class Client : public EventHandler {
 		std::string	getLocalPort() const;
 		std::string	getPeerPort(void) const;
 		std::string	getPeerIP(void) const;
+		std::string	getFirstKey(void) const;
 
 		const bool	&isActive(void) const;
 
