@@ -223,7 +223,7 @@ void Client::resolveClose(){}
 
 struct epoll_event& Client::getCgiEvent(int flag) { 
     (void)flag;
-    return (*this->getEvent()); //wont be used
+    return (*this->getEvent());
 }
 
 int Client::ready2Switch() { return 1; }
@@ -236,8 +236,6 @@ bool Client::conditionMet(std::unordered_map<int*, std::vector<EventHandler*>>& 
     //check if the method is post and if the POST body is not empty
     (void)_activeFds;
     (void)epollFd;
-    // if (_theCgi.getProgress() == SENDING || _theCgi.getProgress() == RECEIVING)
-    //     return 2;
     if (_requesting.getMethod() == "POST" && _requesting.getBody().size() != 0)
         return 0;
     return 1;
@@ -258,9 +256,7 @@ int Client::handleEvent(uint32_t ev, [[maybe_unused]] i32 &efd){
         int recvResult = receiving_stuff();
         
         if (recvResult == -1) {
-            // if (errno == EAGAIN || errno == EWOULDBLOCK)
-            //     return (0); //No more data available right now
-            this->setState(CLOSE);  //ADDED
+            this->setState(CLOSE);
             return (-1); // binary data or real errors close the connection
         } else if (recvResult == 0)
             return (0); //No data available, waiting...

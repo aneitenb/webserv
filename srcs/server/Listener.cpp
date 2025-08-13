@@ -99,7 +99,7 @@ int Listener::addressInfo(void){
     ftMemset(&hints, sizeof(hints));
     hints.ai_family = AF_INET; //IPv4
     hints.ai_socktype = SOCK_STREAM; //TCP
-    hints.ai_flags = AI_PASSIVE; //for binding (listening) maybe not needed if we always provide an IP or hostname
+    hints.ai_flags = AI_PASSIVE; //for binding (listening) not needed if we always provide an IP or hostname
     if ((status = getaddrinfo(_host.c_str(), _port.c_str(), &hints, &_result)) != 0){
 		Warn("Listener::addressInfo(): getaddrinfo(" << _host << ", " << _port << ", "
 			 << "{AF_PASSIVE, AF_INET, SOCK_STREAM, 0, 0, NULL, NULL, NULL}, &_result) failed: "
@@ -169,7 +169,7 @@ int* Listener::getSocketFd(int flag){
 int Listener::handleEvent(uint32_t ev, i32 &efd){
     if (ev & EPOLLIN){ //accept incoming clients while there are clients to be accepted
 		debug("\nNew client connection received");
-        int curFd = accept(_sockFd, nullptr, nullptr); //think about taking in the client info for security reasons maybe
+        int curFd = accept(_sockFd, nullptr, nullptr); 
         if (curFd == -1){
             if (errno == EAGAIN || errno == EWOULDBLOCK)
                 return (0); //means there are no more clients that wait to be accepted
@@ -190,11 +190,8 @@ int Listener::handleEvent(uint32_t ev, i32 &efd){
         if (status == -1)
 			Warn("Listener::handleEvent(): fcntl(" << *_activeClients.back().getSocketFd(0)
 				 << ", F_GETFD) failed: " << strerror(errno));
-        // curFd = -1; //i think this won't keep the fds open haha
-        // curEL->addClient(&(_activeClients.at(_activeClients.size() - 1)));
 		timeouts.updateClient(_activeClients.back());
     } else {
-        //rare but it could happen
         //in the case of err, socket is unusable
         //in the case of hup, socket is hanging
 		Error("\nFatal: Listener::handleEvent(): Socket " << ((ev & EPOLLERR) ? "unusable" : "hanging"));
@@ -244,7 +241,7 @@ bool Listener::conditionMet([[maybe_unused]] std::unordered_map<int*, std::vecto
 
 struct epoll_event& Listener::getCgiEvent(int flag) { 
     (void)flag;
-    return (*this->getEvent()); //wont be used
+    return (*this->getEvent());
 }
 
 int Listener::ready2Switch() { return 1; }
