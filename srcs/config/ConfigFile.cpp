@@ -22,7 +22,6 @@ const std::set<std::string> ConfigurationFile::_serverOnlyDirectives = {
 const std::set<std::string> ConfigurationFile::_locationOnlyDirectives = {
 	"return",
 	"cgi_pass",
-	"upload_store",
 	"alias"
 };
 
@@ -30,6 +29,7 @@ const std::set<std::string> ConfigurationFile::_commonDirectives = {
 	"root",
 	"index",
 	"allowed_methods",
+	"upload_store",
 	"autoindex"
 };
 
@@ -275,6 +275,15 @@ void ConfigurationFile::_parseServerDirective(ServerBlock& server, const std::st
 			throw ErrorInvalidConfig("Invalid server name format: " + value);
 		server.setServerName(value);
 	}
+	else if (key == "upload_store") {
+		if (server.hasUploadStore())
+			throw ErrorInvalidConfig("Duplicate 'upload_store' directive in server block");
+		if (!_isValidPathFormat(value))
+			throw ErrorInvalidConfig("Invalid upload store path format: " + value);
+		if (value.length() > MAX_ROOT_PATH_LENGTH)
+			throw ErrorInvalidConfig("Upload store path too long (max " + std::to_string(MAX_ROOT_PATH_LENGTH) + " characters)");
+		server.setUploadStore(value);
+	}
 	else if (key == "client_max_body_size") {
 		if (server.hasClientMaxBodySize())
 			throw ErrorInvalidConfig("Duplicate 'client_max_body_size' directive in server block");
@@ -456,6 +465,10 @@ void ConfigurationFile::_parseLocationDirective(LocationBlock& locBlock, const s
 			throw ErrorInvalidConfig("Invalid root path format: " + rootPath);
 		if (rootPath.length() > MAX_ROOT_PATH_LENGTH)
 			throw ErrorInvalidConfig("Root path too long (max " + std::to_string(MAX_ROOT_PATH_LENGTH) + " characters)");
+		std::string normalizedRoot = rootPath;
+		if (!normalizedRoot.empty() && normalizedRoot[normalizedRoot.length() - 1] == '/' ){
+			normalizedRoot = normalizedRoot.substr(0, normalizedRoot.length() -1);
+		}
 		locBlock.setRoot(rootPath);
 	}
 	else if (key == "index") {

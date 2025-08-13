@@ -38,6 +38,7 @@ private:
 	bool _maxBodySizeSet;
 	std::string _defaultErrorDir;
 	uint8_t _allowedMethods;
+	std::string _upload_store;
 	u64		_timeout;
 
 public:
@@ -65,6 +66,10 @@ public:
 	bool hasCustomErrorPages() const;
 	
 	// Getter and setter methods
+	bool hasUploadStore() const;
+	std::string getUploadStore() const;
+	void setUploadStore(const std::string& uploadStore);
+
 	const std::vector<std::string>& getListen() const;
 	void addListen(const std::string& port);
 	bool hasPort(const std::string& port) const;

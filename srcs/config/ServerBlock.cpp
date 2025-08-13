@@ -22,6 +22,7 @@ ServerBlock::ServerBlock() :
 	_maxBodySizeSet(false),
 	_defaultErrorDir("/default_errors"),
 	_allowedMethods(0),
+	_upload_store(""),
 	_timeout(CLIENT_DEFAULT_TIMEOUT)
 {
 	_defaultErrorPages.emplace_back(400, _defaultErrorDir + "/400.html");
@@ -59,6 +60,7 @@ ServerBlock::ServerBlock(const ServerBlock& other){
 	_maxBodySizeSet = other._maxBodySizeSet;
 	_defaultErrorDir = other._defaultErrorDir;
 	_allowedMethods = other._allowedMethods;
+	_upload_store = other._upload_store;
 	_timeout = other._timeout;
 }
 
@@ -79,6 +81,7 @@ ServerBlock& ServerBlock::operator=(const ServerBlock& other){
 	_maxBodySizeSet = other._maxBodySizeSet;
 	_defaultErrorDir = other._defaultErrorDir;
 	_allowedMethods = other._allowedMethods;
+	_upload_store = other._upload_store;
 	_timeout = other._timeout;}
 	return (*this);
 }
@@ -99,6 +102,7 @@ bool ServerBlock::operator==(const ServerBlock& other) const{
 	&& this->_maxBodySizeSet == other._maxBodySizeSet \
 	&& this->_defaultErrorDir == other._defaultErrorDir \
 	&& this->_allowedMethods == other._allowedMethods \
+	&& this->_upload_store == other._upload_store \
 	&& this->_timeout == other._timeout)
 		return (true);
 	return (false);
@@ -117,6 +121,7 @@ void ServerBlock::clear() {
 	_hasCustomErrorPages = false;
 	_defaultErrorDir = "/default_errors";
 	_allowedMethods = 0;
+	_upload_store = "";
 	_timeout = CLIENT_DEFAULT_TIMEOUT;
 
 	_defaultErrorPages.clear();
@@ -134,6 +139,18 @@ void ServerBlock::clear() {
 	_defaultErrorPages.emplace_back(501, _defaultErrorDir + "/501.html");
 	_defaultErrorPages.emplace_back(503, _defaultErrorDir + "/503.html");
 	_defaultErrorPages.emplace_back(505, _defaultErrorDir + "/505.html");
+}
+
+bool ServerBlock::hasUploadStore() const {
+	return !_upload_store.empty();
+}
+
+std::string ServerBlock::getUploadStore() const {
+	return _upload_store;
+}
+
+void ServerBlock::setUploadStore(const std::string& uploadStore) {
+	this->_upload_store = uploadStore;
 }
 
 bool ServerBlock::hasLocationBlock(const std::string& path) const {

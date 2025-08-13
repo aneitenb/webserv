@@ -670,28 +670,34 @@ void Response::handlePost() {
 }
 
 std::string Response::resolveUploadPath() {
+	std::string uploadDir;
+	
 	if (_locationBlock && _locationBlock->hasUploadStore()) {
-		std::string filename = _request->getURI();
-		size_t lastSlash = filename.find_last_of('/');
-		if (lastSlash != std::string::npos) {
-			filename = filename.substr(lastSlash + 1);	// extract filename from URI
-		}
-		
-		std::string uploadDir = _locationBlock->getUploadStore();
-		
-		//if upload_store is a relative path, add server root
-		if (!uploadDir.empty() && uploadDir[0] != '/') {
-			uploadDir = _serverBlock->getRoot() + "/" + uploadDir;
-		}
-		//make upload dir end with slash
-		if (!uploadDir.empty() && uploadDir[uploadDir.length()-1] != '/') {
-			uploadDir += '/';
-		}
-		return uploadDir + filename;
-	} 
-	else {
+		uploadDir = _locationBlock->getUploadStore();
+	} else if (_serverBlock->hasUploadStore()) {
+		uploadDir = _serverBlock->getUploadStore();
+	} else {
 		return resolvePath(_request->getURI());
 	}
+	
+	// get filename from URI
+	std::string filename = _request->getURI();
+	size_t lastSlash = filename.find_last_of('/');
+	if (lastSlash != std::string::npos) {
+		filename = filename.substr(lastSlash + 1);
+	}
+	
+	// If upload_store is a relative path, add server root
+	if (!uploadDir.empty() && uploadDir[0] != '/') {
+		uploadDir = _serverBlock->getRoot() + "/" + uploadDir;
+	}
+	
+	// make upload dir end with slash
+	if (!uploadDir.empty() && uploadDir[uploadDir.length()-1] != '/') {
+		uploadDir += '/';
+	}
+	
+	return uploadDir + filename;
 }
 
 bool Response::checkDir(const std::string& path) {
