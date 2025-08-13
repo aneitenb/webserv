@@ -27,7 +27,7 @@
 
 static inline bool	_pipe(i32 (*pfd)[2]);
 
-CGIHandler::CGIHandler(Client *client, i32 &sfd, i32 &efd): _client(client), _pid(0), _method(CGIHandler::GET), _socketFd(sfd), _epollFd(efd) {
+CGIHandler::CGIHandler(Client *client, i32 &sfd, i32 &efd): _client(client), _pid(0), _valid(false), _method(CGIHandler::GET), _socketFd(sfd), _epollFd(efd) {
 	this->_outputPipe.event.events = EPOLLIN;
 	this->_inputPipe.event.events = EPOLLOUT;
 	this->_outputPipe.pfd[0] = -1;
