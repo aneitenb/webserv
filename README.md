@@ -1,2 +1,2 @@
-# WebServer
+# webserv
 Creating our own HTTP server
