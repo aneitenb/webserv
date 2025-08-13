@@ -24,16 +24,12 @@ static const std::map<int, std::string> statusMessages = {
 	{404, "Not Found"},
 	{405, "Method Not Allowed"},
 	{408, "Request Timeout"},
-	{409, "Conflict"},
-	{410, "Gone"},
 	{411, "Length Required"},
 	{413, "Payload Too Large"},
 	{414, "URI Too Long"},
 	{431, "Request Header Fields Too Large"},
 	{500, "Internal Server Error"},
 	{501, "Not Implemented"},
-	{503, "Service Unavailable"},
-	{505, "HTTP Version Not Supported"}
 };
 
 Response::Response(){}
