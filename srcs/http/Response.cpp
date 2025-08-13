@@ -804,7 +804,7 @@ void Response::postResource(const std::string& path) {
 *********************************************/
 
 bool Response::isMultipartRequest() const {
-	std::string contentType = _request->getHeader("Content-Type");
+	std::string contentType = _request->getContentType();
 	return (contentType.find("multipart/form-data") != std::string::npos);
 }
 

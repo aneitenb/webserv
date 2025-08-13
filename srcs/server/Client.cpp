@@ -159,11 +159,11 @@ ServerBlock* Client::getSBforResponse(std::string hostHeader) const {
     // remove port from host header (example.com:8080 -> example.com)
     auto colonPos = hostHeader.find(':');
     std::string serverNameFromHeader = (colonPos != std::string::npos) ? hostHeader.substr(0, colonPos) : hostHeader;
+    std::string portFromHeader = (colonPos != std::string::npos) ? hostHeader.substr(colonPos, hostHeader.size()) : hostHeader;
 
     // get the IP and port the client actually connected to
     std::string connectionIP = getLocalIP();
     std::string connectionPort = getLocalPort();
-
 
     // try exact match with server_name@connection_ip:connection_port
     std::string exactKey = serverNameFromHeader + "@" + connectionIP + ":" + connectionPort;
@@ -362,10 +362,11 @@ int Client::sending_stuff(){
     std::string buffer = {0};
 
 	if (this->_timedOut) {
-        //should not happen but just in case
         ServerBlock* temp = getSBforResponse(this->getHost());
-        if (!temp)
-            temp = getSBforResponse(this->getFirstKey());
+        if (!temp){
+            this->setState(CLOSE);
+            return (-1);
+        }
 		this->_responding = Response(&this->_requesting, temp);
 		this->_responding.errorResponse(HTTP_REQUEST_TIMEOUT);
 	}
