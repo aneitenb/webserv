@@ -193,23 +193,7 @@ void Response::handleResponse() {
 		return;
 	}
 
-	// bool delayedRedirect = false;
 	std::pair<int, std::string> redirect;
-	
-	// if (_locationBlock && _locationBlock->hasRedirect()) {
-	// 	redirect = _locationBlock->getRedirect();
-		
-	// 	if (_request->getMethod() == "POST") {
-	// 		delayedRedirect = true;
-	// 	} else {
-	// 		// for non-POST requests, handle redirect immediately
-	// 		_statusCode = redirect.first;
-	// 		setHeader("Location", redirect.second);
-	// 		setBody("");
-	// 		setHeader("Content-Type", "text/html");
-	// 		return;
-	// 	}
-	// }
 
 	if (_locationBlock && _locationBlock->hasRedirect()) {
 		redirect = _locationBlock->getRedirect();
@@ -237,11 +221,6 @@ void Response::handleResponse() {
 		handleGet();
 	} else if (method == "POST") {
 		handlePost();
-		// if (delayedRedirect && (_statusCode == 200 || _statusCode == 201)) {
-		// 	_statusCode = redirect.first;
-		// 	setHeader("Location", redirect.second);
-		// 	setBody("");
-		// }
 	} else if (method == "DELETE") {
 		handleDelete();
 	} else {
