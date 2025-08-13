@@ -131,12 +131,6 @@ void displayServerInfo(const ConfigurationFile& config) {
 			for (const auto& page : errorPages)
 				Info("    "<< page.first << ": " << page.second);
 		}
-
-		//Default error pages
-		std::vector<std::pair<int, std::string>> defaultErrorPages = server.getDefaultErrorPages();
-		debug("\n  Default Error Pages:");
-		for (const auto& page : defaultErrorPages)
-			Debug("    "<< page.first << ": " << page.second);
 		
 		// Display location blocks
 		std::map<std::string, LocationBlock> locations = server.getLocationBlocks();

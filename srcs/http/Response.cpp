@@ -16,9 +16,9 @@
 static const std::map<int, std::string> statusMessages = {
 	{200, "OK"},
 	{201, "Created"},
-	{204, "No Content"},//needed?
+	{204, "No Content"},
 	{301, "Moved Permanently"},
-	{302, "Found"},	//needed?
+	{302, "Found"},
 	{400, "Bad Request"},
 	{403, "Forbidden"},
 	{404, "Not Found"},
@@ -266,7 +266,7 @@ std::string Response::resolvePath(const std::string& uri) {
 				resolvedAlias = alias;	//use absolute alias
 			} else {
 				std::string serverRoot = _serverBlock->getRoot();
-                resolvedAlias = serverRoot.empty() ? alias : serverRoot + "/" + alias;
+				resolvedAlias = serverRoot.empty() ? alias : serverRoot + "/" + alias;
 			}
 			//combine resolved alias with relative path
 			if (!resolvedAlias.empty() && resolvedAlias[resolvedAlias.length() -1] != '/' &&
@@ -625,6 +625,12 @@ void Response::handlePost() {
 		setHeader("Content-Type", "text/html");
 		return;
 	}
+	if (!isMultipartRequest() && _request->getBody().empty()) {
+		_statusCode = 400;
+		setBody(getErrorPage(400));
+   	 	setHeader("Content-Type", "text/html");
+		return;
+	}
 	std::string path = resolveUploadPath();
 	
 	if (!checkDir(path)) {
@@ -645,6 +651,7 @@ void Response::handlePost() {
 		handleMultipartPost(uploadDir);
 		return;
 	}
+	std::cout << "about to send to post" << std::endl;
 	postResource(path);
 }
 
@@ -804,9 +811,14 @@ void Response::postResource(const std::string& path) {
 *********************************************/
 
 bool Response::isMultipartRequest() const {
-	std::string contentType = _request->getHeader("Content-Type");
-	return (contentType.find("multipart/form-data") != std::string::npos);
-}
+	try {
+		std::string contentType = _request->getHeader("Content-Type");
+		return (contentType.find("multipart/form-data") != std::string::npos);
+	}
+	catch (const Request::FieldNotFoundException&) {
+		return false;
+	}
+	}
 
 std::string Response::extractBoundary(const std::string& contentType) const {
 	size_t pos = contentType.find("boundary=");
@@ -900,7 +912,7 @@ std::vector<Response::MultipartFile> Response::parseMultipartData(const std::str
 	return files;
 }
 
-void Response::handleMultipartPost(const std::string& uploadDir) {	
+void Response::handleMultipartPost(const std::string& uploadDir) {
 	std::string contentType = _request->getHeader("Content-Type");
 	std::string boundary = extractBoundary(contentType);
 	
@@ -1095,25 +1107,17 @@ bool Response::isMethodAllowed() const {
 }
 
 std::string Response::getErrorPage(int statusCode) const {
-	std::string errorPage = _serverBlock->getRoot() + _serverBlock->getErrorPage(statusCode);
+	std::string errorPage = _serverBlock->getErrorPage(statusCode);
 	
 	// Try original path first
-	if (!errorPage.empty() && fileExists(errorPage) && hasReadPermission(errorPage)) {
+	if (!errorPage.empty()) {
 		// Read the file content
-		std::ifstream file(errorPage.c_str());
-		if (file.is_open()) {
-			std::stringstream buffer;
-			buffer << file.rdbuf();
-			file.close();
-			return buffer.str();
-		}
-	}
-	
-	// if og path fails and it's absolute, try relative path
-	if (!errorPage.empty() && errorPage[0] == '/') {
-		std::string relativePath = errorPage.substr(1); // Remove leading /
-		if (fileExists(relativePath) && hasReadPermission(relativePath)) {
-			std::ifstream file(relativePath.c_str());
+		std::string fullPath = errorPage;
+		if (errorPage[0] != '/')
+			fullPath = _serverBlock->getRoot() + "/" + errorPage;
+		
+		if (fileExists(fullPath) && hasReadPermission(fullPath)) {
+			std::ifstream file(fullPath.c_str());
 			if (file.is_open()) {
 				std::stringstream buffer;
 				buffer << file.rdbuf();
@@ -1123,7 +1127,7 @@ std::string Response::getErrorPage(int statusCode) const {
 		}
 	}
 	
-	// default HTML if both paths fail
+	// default HTML if paths fail
 	std::stringstream ss;
 	ss << "<!DOCTYPE html>\n<html>\n<head>\n<title>Error " << statusCode << "</title>\n</head>\n<body>\n";
 	ss << "<h1>Error " << statusCode << "</h1>\n";
