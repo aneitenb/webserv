@@ -177,6 +177,10 @@ void	Request::_parseHeaders(std::stringstream rawHeaders) {
 			val = line.substr(sep + 1);
 			_trimLWS(key);
 			_trimLWS(val);
+			if (val.empty()) {
+				valid = false;
+				continue ;
+			}
 			if (this->_headers.find(key) == this->_headers.end())
 				this->_headers[key] = val;
 			else
