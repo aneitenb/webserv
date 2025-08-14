@@ -231,13 +231,9 @@ const std::vector<std::string>& ServerBlock::getListen() const {
 }
 
 void ServerBlock::addListen(const std::string& port){
-	std::cout << "DEBUG: Adding port '" << port << "' (length: " << port.length() << ")" << std::endl;
-	if (port.length() > 10) {
-        std::cout << "ERROR: Port string suspiciously long: " << port << std::endl;
+	if (port.length() > 10)
         throw std::runtime_error("Invalid port length");
-	}
 	_listen.push_back(port);
-    std::cout << "DEBUG: Vector now has " << _listen.size() << " ports" << std::endl;
 }
 
 bool ServerBlock::hasPort(const std::string& port)const {
