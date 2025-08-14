@@ -521,10 +521,16 @@ bool ConfigurationFile::_validateServerBlock(ServerBlock& server) const {
 	
 	if (server.getIndex().empty())
 		server.setIndex("index.html");
-	const std::map<std::string, LocationBlock>& locationBlocks = server.getLocationBlocks();
-	for (std::map<std::string, LocationBlock>::const_iterator it = locationBlocks.begin(); 
+
+	std::map<std::string, LocationBlock>& locationBlocks = server.getLocationBlocksRef();
+
+	for (std::map<std::string, LocationBlock>::iterator it = locationBlocks.begin(); 
 		 it != locationBlocks.end(); ++it) {
 		_validateLocationBlock(it->first, it->second);
+		//inherit allowed_methods for location blocks if they don't have any listed
+		if (!it->second.hasAllowedMethods() && server.hasAllowedMethods()){
+			it->second.setAllowedMethods(server.getAllowedMethods());
+		}
 	}
 	
 	return true;

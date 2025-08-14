@@ -317,3 +317,7 @@ void ServerBlock::setAutoindex(bool value) {
 std::map<std::string, LocationBlock> ServerBlock::getLocationBlocks() const {
 	return _locationBlocks;
 }
+
+std::map<std::string, LocationBlock>& ServerBlock::getLocationBlocksRef() {
+	return _locationBlocks;
+}
