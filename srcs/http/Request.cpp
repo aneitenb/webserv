@@ -19,6 +19,8 @@
 #define _find(c, x)	(std::find(c.cbegin(), c.cend(), x))
 #define _trimLWS(s)	(s.erase(0, s.find_first_not_of(LWS)), s.erase(s.find_last_not_of(LWS) + 1))
 
+#define setError(err)	(this->_errorCode = err, this->_parsed = true, this->_valid = false)
+
 static inline bool	_getChunkSize(std::stringstream &bodySection, std::string &remainder, size_t &chunkSize);
 
 Request::Request(void): _contentLength(0), _maxBodySize(0), _chunkSize(0), _parsingStage(REQUESTLINE), _trailers(false), _chunked(false), _parsed(false), _valid(false), _errorCode(0) {}
@@ -73,14 +75,15 @@ void	Request::append(const Client &client, const std::string &reqData) {
 			this->_parsed = false;
 			end = this->_remainder.find(CRLF);
 			if (end == std::string::npos) {
-				if (this->_remainder.size() > REQUEST_MAX_REQUESTLINE_SIZE) {
-					this->_errorCode = HTTP_URI_TOO_LONG;
-					this->_parsed = true;
-					this->_valid = false;
-				}
+				if (this->_remainder.size() > REQUEST_MAX_REQUESTLINE_SIZE)
+					setError(HTTP_URI_TOO_LONG);
 				break ;
 			}
 			end += 2;
+			if (end > REQUEST_MAX_REQUESTLINE_SIZE) {
+				setError(HTTP_URI_TOO_LONG);
+				break ;
+			}
 			try {
 				this->_valid = true;
 				this->_parseRequestLine(this->_remainder.substr(0, end));
@@ -92,14 +95,15 @@ void	Request::append(const Client &client, const std::string &reqData) {
 		case HEADERS:
 			end = this->_remainder.find(CRLF CRLF);
 			if (end == std::string::npos) {
-				if (this->_remainder.size() > REQUEST_MAX_HEADER_SIZE) {
-					this->_errorCode = HTTP_REQUEST_HEADER_FIELDS_TOO_LARGE;
-					this->_parsed = true;
-					this->_valid = false;
-				}
+				if (this->_remainder.size() > REQUEST_MAX_HEADER_SIZE)
+					setError(HTTP_REQUEST_HEADER_FIELDS_TOO_LARGE);
 				break ;
 			}
 			end += 4;
+			if (end > REQUEST_MAX_HEADER_SIZE) {
+				setError(HTTP_REQUEST_HEADER_FIELDS_TOO_LARGE);
+				break ;
+			}
 			try {
 				this->_parseHeaders(std::stringstream(this->_remainder.substr(0, end)));
 			} catch (Request::InvalidHeaderException &) { this->_parsed = true; this->_valid = false; this->_errorCode = HTTP_BAD_REQUEST; }
@@ -223,6 +227,14 @@ bool	Request::_processBody(const std::string &rawBody) {
 	bool	rv;
 
 	if (this->_contentLength == 0 && !this->_chunked) {
+		if (rawBody.size() != 0) {
+			try {
+				this->getHeader("Content-Length");
+			} catch (Request::FieldNotFoundException &) {
+				this->_errorCode = HTTP_LENGTH_REQUIRED;
+				this->_valid = false;
+			}
+		}
 		this->_remainder.clear();
 		return true;
 	}
@@ -231,8 +243,8 @@ bool	Request::_processBody(const std::string &rawBody) {
 	else {
 		this->_body += rawBody;
 		if (this->_body.size() > this->_maxBodySize) {
-			this->_valid = false;
 			this->_errorCode = HTTP_PAYLOAD_TOO_LARGE;
+			this->_valid = false;
 			return true;
 		}
 		this->_remainder.clear();
