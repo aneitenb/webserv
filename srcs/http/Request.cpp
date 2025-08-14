@@ -111,7 +111,6 @@ void	Request::append(const Client &client, const std::string &reqData) {
 				this->_maxBodySize = 10000000; //so parsing would be valid
 			else 
 				this->_maxBodySize = temp->getClientMaxBodySize();
-			std::cout << "THIS --> " << this->_maxBodySize << "\n\n";
 			[[fallthrough]];
 		case BODY:
 			if (!this->_processBody(this->_remainder))

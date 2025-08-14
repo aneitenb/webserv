@@ -50,8 +50,9 @@ class CGIHandler: public EventHandler {
 		}	_inputPipe;
 
 		enum {
-			GET,
-			POST
+			GET = 1,
+			POST = 2,
+			DELETE = 4
 		}	_method;
 
 		i32	&_socketFd;
