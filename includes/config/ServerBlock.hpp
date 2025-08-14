@@ -101,4 +101,5 @@ public:
 	void setAutoindex(bool value);
 	
 	std::map<std::string, LocationBlock> getLocationBlocks() const;
+	std::map<std::string, LocationBlock>& getLocationBlocksRef();
 };
