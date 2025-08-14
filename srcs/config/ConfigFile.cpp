@@ -73,6 +73,7 @@ int ConfigurationFile::_parseConfigFile(void) {
 	std::string currentLocation;
 	int bracketCount = 0;
 	std::map<std::string, bool> locationBlocksStarted;
+	bool firstNonEmptyLine = true;
 
 	std::istringstream iss(_configContent);
 
@@ -86,6 +87,12 @@ int ConfigurationFile::_parseConfigFile(void) {
 		size_t commentPos = line.find('#');
 		if (commentPos != std::string::npos) {
 			line = _trimWhitespace(line.substr(0, commentPos));
+		}
+
+		if (firstNonEmptyLine){
+			if (line == "{" || line[0] == '{')
+				throw ErrorInvalidConfig("Configuration file cannot start with an open bracket");
+			firstNonEmptyLine = false;
 		}
 
 		// check for server block start
@@ -154,6 +161,16 @@ int ConfigurationFile::_parseConfigFile(void) {
 			continue;
 		}
 
+		//check for stray open brackets
+		if (line == "{" || line[0] == '{') {
+			if (!inServerBlock){
+				throw ErrorInvalidConfig("Bracket found outside server block content");
+			}
+			if (inServerBlock && line.substr(0, 9) != "location "){
+				throw ErrorInvalidConfig("Unexpected bracket in server block");
+			}
+		}
+
 		// Parse directives
 		if (inServerBlock && !line.empty()) {
 			//skip opening braces
@@ -181,6 +198,9 @@ int ConfigurationFile::_parseConfigFile(void) {
 				//throw semicolon error for non-block directives
 				throw ErrorInvalidConfig("Missing semicolon in directive: " + line);
 			}
+		}
+		else if (!inServerBlock && !line.empty() && line != "{" && line != "}"){
+			throw ErrorInvalidConfig("Extra characters outside of server block: " + line);
 		}
 	}
 
@@ -263,6 +283,13 @@ void ConfigurationFile::_parseServerDirective(ServerBlock& server, const std::st
 		std::string normalizedRoot = rootPath;
 		if (!normalizedRoot.empty() && normalizedRoot[normalizedRoot.length() - 1] == '/' ){
 			normalizedRoot = normalizedRoot.substr(0, normalizedRoot.length() -1);
+		}
+		struct stat dirCheck;
+		if (stat(rootPath.c_str(), &dirCheck) != 0) {
+			throw ErrorInvalidConfig("Root path does not exist: " + rootPath);
+		}
+		if (!S_ISDIR(dirCheck.st_mode)) {
+			throw ErrorInvalidConfig("Root path is not a directory: " + rootPath);
 		}
 		server.setRoot(normalizedRoot);
 	}
@@ -530,6 +557,8 @@ bool ConfigurationFile::_isValidIP(const std::string& ip) const {
 			return false;
 		if (segment.empty() || segment.length() > 3)
 			return false;
+		if ((segment.length() > 1) && (segment[0] == '0'))
+			return false;
 			
 		for (std::string::const_iterator it = segment.begin(); it != segment.end(); ++it) {
 			if (!std::isdigit(*it)) 
@@ -556,6 +585,9 @@ bool ConfigurationFile::_isValidPort(const std::string& port) const {
 		if (!std::isdigit(port[i]))
 			return false;
 	}
+	if (port.length() > 1 && port[0] == '0')
+		return false;
+
 	std::istringstream iss(port);
 	size_t portNum;
 	

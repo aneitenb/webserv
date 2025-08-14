@@ -20,26 +20,10 @@ ServerBlock::ServerBlock() :
 	_index(""),
 	_hasCustomErrorPages(false),
 	_maxBodySizeSet(false),
-	_defaultErrorDir("/default_errors"),
 	_allowedMethods(0),
 	_upload_store(""),
 	_timeout(CLIENT_DEFAULT_TIMEOUT)
-{
-	_defaultErrorPages.emplace_back(400, _defaultErrorDir + "/400.html");
-	_defaultErrorPages.emplace_back(403, _defaultErrorDir + "/403.html");
-	_defaultErrorPages.emplace_back(404, _defaultErrorDir + "/404.html");
-	_defaultErrorPages.emplace_back(405, _defaultErrorDir + "/405.html");
-	_defaultErrorPages.emplace_back(408, _defaultErrorDir + "/408.html");
-	_defaultErrorPages.emplace_back(409, _defaultErrorDir + "/409.html");
-	_defaultErrorPages.emplace_back(411, _defaultErrorDir + "/411.html");
-	_defaultErrorPages.emplace_back(413, _defaultErrorDir + "/413.html");
-	_defaultErrorPages.emplace_back(414, _defaultErrorDir + "/414.html");
-	_defaultErrorPages.emplace_back(431, _defaultErrorDir + "/431.html");
-	_defaultErrorPages.emplace_back(500, _defaultErrorDir + "/500.html");
-	_defaultErrorPages.emplace_back(501, _defaultErrorDir + "/501.html");
-	_defaultErrorPages.emplace_back(503, _defaultErrorDir + "/503.html");
-	_defaultErrorPages.emplace_back(505, _defaultErrorDir + "/505.html");
-}
+{}
 
 ServerBlock::~ServerBlock() {
 }
@@ -53,12 +37,10 @@ ServerBlock::ServerBlock(const ServerBlock& other){
 	_autoindex = other._autoindex;
 	_autoindexSet = other._autoindexSet;
 	_errorPages = other._errorPages;
-	_defaultErrorPages = other._defaultErrorPages;
 	_index = other._index;
 	_locationBlocks = other._locationBlocks;
 	_hasCustomErrorPages = other._hasCustomErrorPages;
 	_maxBodySizeSet = other._maxBodySizeSet;
-	_defaultErrorDir = other._defaultErrorDir;
 	_allowedMethods = other._allowedMethods;
 	_upload_store = other._upload_store;
 	_timeout = other._timeout;
@@ -74,12 +56,10 @@ ServerBlock& ServerBlock::operator=(const ServerBlock& other){
 	_autoindex = other._autoindex;
 	_autoindexSet = other._autoindexSet;
 	_errorPages = other._errorPages;
-	_defaultErrorPages = other._defaultErrorPages;
 	_index = other._index;
 	_locationBlocks = other._locationBlocks;
 	_hasCustomErrorPages = other._hasCustomErrorPages;
 	_maxBodySizeSet = other._maxBodySizeSet;
-	_defaultErrorDir = other._defaultErrorDir;
 	_allowedMethods = other._allowedMethods;
 	_upload_store = other._upload_store;
 	_timeout = other._timeout;}
@@ -95,12 +75,10 @@ bool ServerBlock::operator==(const ServerBlock& other) const{
 	&& this->_autoindex == other._autoindex \
 	&& this->_autoindexSet == other._autoindexSet \
 	&& this->_errorPages == other._errorPages \
-	&& this->_defaultErrorPages == other._defaultErrorPages \
 	&& this->_index == other._index \
 	&& this->_locationBlocks == other._locationBlocks \
 	&& this->_hasCustomErrorPages == other._hasCustomErrorPages \
 	&& this->_maxBodySizeSet == other._maxBodySizeSet \
-	&& this->_defaultErrorDir == other._defaultErrorDir \
 	&& this->_allowedMethods == other._allowedMethods \
 	&& this->_upload_store == other._upload_store \
 	&& this->_timeout == other._timeout)
@@ -119,26 +97,9 @@ void ServerBlock::clear() {
 	_locationBlocks.clear();
 	_index = "";
 	_hasCustomErrorPages = false;
-	_defaultErrorDir = "/default_errors";
 	_allowedMethods = 0;
 	_upload_store = "";
 	_timeout = CLIENT_DEFAULT_TIMEOUT;
-
-	_defaultErrorPages.clear();
-	_defaultErrorPages.emplace_back(400, _defaultErrorDir + "/400.html");
-	_defaultErrorPages.emplace_back(403, _defaultErrorDir + "/403.html");
-	_defaultErrorPages.emplace_back(404, _defaultErrorDir + "/404.html");
-	_defaultErrorPages.emplace_back(405, _defaultErrorDir + "/405.html");
-	_defaultErrorPages.emplace_back(408, _defaultErrorDir + "/408.html");
-	_defaultErrorPages.emplace_back(409, _defaultErrorDir + "/409.html");
-	_defaultErrorPages.emplace_back(411, _defaultErrorDir + "/411.html");
-	_defaultErrorPages.emplace_back(413, _defaultErrorDir + "/413.html");
-	_defaultErrorPages.emplace_back(414, _defaultErrorDir + "/414.html");
-	_defaultErrorPages.emplace_back(431, _defaultErrorDir + "/431.html");
-	_defaultErrorPages.emplace_back(500, _defaultErrorDir + "/500.html");
-	_defaultErrorPages.emplace_back(501, _defaultErrorDir + "/501.html");
-	_defaultErrorPages.emplace_back(503, _defaultErrorDir + "/503.html");
-	_defaultErrorPages.emplace_back(505, _defaultErrorDir + "/505.html");
 }
 
 bool ServerBlock::hasUploadStore() const {
@@ -220,26 +181,11 @@ std::string ServerBlock::getErrorPage(int status) const {
 			}
 		}
 	}
-	for (const auto& page : _defaultErrorPages) {
-		if (page.first == status) {
-			return page.second;
-		}
-	}
-	//use default if no custom or default page
-	std::string defaultPath = _defaultErrorDir + "/" + std::to_string(status) + ".html";
-	return defaultPath;
+	return "";
 }
 
 std::vector<std::pair<int, std::string>> ServerBlock::getErrorPages() const {
 	return _errorPages;
-}
-
-const std::vector<std::pair<int, std::string>>& ServerBlock::getDefaultErrorPages() const {
-	return _defaultErrorPages;
-}
-
-std::string ServerBlock::getDefaultErrorDir() const {
-	return _defaultErrorDir;
 }
 
 bool ServerBlock::hasCustomErrorPages() const {

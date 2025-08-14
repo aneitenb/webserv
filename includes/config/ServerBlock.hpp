@@ -31,12 +31,10 @@ private:
 	bool _autoindex;
 	bool _autoindexSet;
 	std::vector<std::pair<int, std::string>> _errorPages;
-	std::vector<std::pair<int, std::string>> _defaultErrorPages;
 	std::string _index;
 	std::map<std::string, LocationBlock> _locationBlocks;
 	bool _hasCustomErrorPages;
 	bool _maxBodySizeSet;
-	std::string _defaultErrorDir;
 	uint8_t _allowedMethods;
 	std::string _upload_store;
 	u64		_timeout;
@@ -61,8 +59,6 @@ public:
 	bool hasErrorPage(int status) const;
 	std::string getErrorPage(int status) const;
 	std::vector<std::pair<int, std::string>> getErrorPages() const;
-	const std::vector<std::pair<int, std::string>>& getDefaultErrorPages() const;
-	std::string getDefaultErrorDir() const;
 	bool hasCustomErrorPages() const;
 	
 	// Getter and setter methods
