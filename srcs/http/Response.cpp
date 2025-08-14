@@ -156,7 +156,9 @@ void  Response::prepareResponse() {
 	_bytesSent = 0;
 }
 
-void	Response::errorResponse(const u16 statusCode) {
+void	Response::errorResponse(const u16 statusCode, ServerBlock *serverConf) {
+	if (serverConf)
+		this->_serverBlock = serverConf;
 	this->_statusCode = statusCode;
 	this->setHeader("Content-Type", "text/html");
 	this->setHeader("Date", getCurrentDate());
