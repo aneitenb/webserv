@@ -647,7 +647,6 @@ void Response::handlePost() {
 		handleMultipartPost(uploadDir);
 		return;
 	}
-	std::cout << "about to send to post" << std::endl;
 	postResource(path);
 }
 
