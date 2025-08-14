@@ -66,8 +66,8 @@ Request::~Request(void) {}
 
 // public methods
 void	Request::append(const Client &client, const std::string &reqData) {
-	size_t	end;
-	ServerBlock* temp = nullptr;
+	const ServerBlock	*serverConf;
+	size_t				end;
 
 	this->_remainder += reqData;
 	switch (this->_parsingStage) {
@@ -110,11 +110,8 @@ void	Request::append(const Client &client, const std::string &reqData) {
 			this->_remainder.erase(0, end);
 			this->_body.clear();
 			this->_parsingStage = BODY;
-			temp = client.getSBforResponse(client.getHost());
-			if (!temp)
-				this->_maxBodySize = 10000000; //so parsing would be valid
-			else 
-				this->_maxBodySize = temp->getClientMaxBodySize();
+			serverConf = client.getSBforResponse(client.getHost());
+			this->_maxBodySize = (serverConf) ? serverConf->getClientMaxBodySize() : MAX_BODY_SIZE;
 			[[fallthrough]];
 		case BODY:
 			if (!this->_processBody(this->_remainder))
