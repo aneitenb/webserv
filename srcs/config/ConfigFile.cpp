@@ -73,6 +73,7 @@ int ConfigurationFile::_parseConfigFile(void) {
 	std::string currentLocation;
 	int bracketCount = 0;
 	std::map<std::string, bool> locationBlocksStarted;
+	bool firstNonEmptyLine = true;
 
 	std::istringstream iss(_configContent);
 
@@ -86,6 +87,12 @@ int ConfigurationFile::_parseConfigFile(void) {
 		size_t commentPos = line.find('#');
 		if (commentPos != std::string::npos) {
 			line = _trimWhitespace(line.substr(0, commentPos));
+		}
+
+		if (firstNonEmptyLine){
+			if (line == "{" || line[0] == '{')
+				throw ErrorInvalidConfig("Configuration file cannot start with an open bracket");
+			firstNonEmptyLine = false;
 		}
 
 		// check for server block start
@@ -152,6 +159,16 @@ int ConfigurationFile::_parseConfigFile(void) {
 				}
 			}
 			continue;
+		}
+
+		//check for stray open brackets
+		if (line == "{" || line[0] == '{') {
+			if (!inServerBlock){
+				throw ErrorInvalidConfig("Bracket found outside server block content");
+			}
+			if (inServerBlock && line.substr(0, 9) != "location "){
+				throw ErrorInvalidConfig("Unexpected bracket in server block");
+			}
 		}
 
 		// Parse directives
