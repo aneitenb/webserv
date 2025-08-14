@@ -277,12 +277,7 @@ int Client::handleEvent(uint32_t ev, [[maybe_unused]] i32 &efd){
                     this->setState(CLOSE);
                     return (0);
                 }
-                Response errorResponse(&_requesting, temp);
-                errorResponse.setStatusCode(_requesting.getErrorCode()); // 400 for invalid request line
-                errorResponse.setBody(errorResponse.getErrorPage(_requesting.getErrorCode()));
-                errorResponse.setHeader("Content-Type", "text/html");
-                errorResponse.prepareResponse();
-                _responding = std::move(errorResponse);
+				this->_responding.errorResponse(_requesting.getErrorCode());
                 this->setState(TOWRITE);
                 _buffer.clear();
                 return (0);
@@ -296,9 +291,15 @@ int Client::handleEvent(uint32_t ev, [[maybe_unused]] i32 &efd){
         } else {
 			_buffer.clear(); // CRITICAL
 			serverConf = this->getSBforResponse(this->getHost());
+			if (!this->_requesting.isValid()) {
+				this->_responding.errorResponse(this->_requesting.getErrorCode(), this->_allServerNames[this->getFirstKey()]);
+				this->setState(TOWRITE);
+				return (0);
+			}
             if (!serverConf){
-                this->setState(CLOSE);
-                return (0);                
+				this->_responding.errorResponse(HTTP_INTERNAL_SERVER_ERROR, this->_allServerNames[this->getFirstKey()]);
+                this->setState(TOWRITE);
+                return (0); 
             }
 			this->_responding = Response(&this->_requesting, serverConf);
 			try {
@@ -337,16 +338,9 @@ int Client::handleEvent(uint32_t ev, [[maybe_unused]] i32 &efd){
 				this->setState(CLOSE);
 				return (-1);
 			}
-            // Reset for next request
-			if (!_requesting.getMethod().empty() && _requesting.isParsed()) {
-                _requesting.reset();
-                _responding.clear();
-                this->setState(TOREAD);
-            } else {
-                warn("Client::handleEvent(): Invalid or empty request, closing connection");
-                this->setState(CLOSE);
-                return (-1);
-            }
+			this->_requesting.reset();
+			this->_responding.clear();
+			this->setState(TOREAD);
         }
         return (0);
     }

@@ -94,7 +94,7 @@ private:
 	
 	void handleResponse();
 
-	void	errorResponse(const u16 statusCode);
+	void	errorResponse(const u16 statusCode, ServerBlock *serverConf = nullptr);
 	
 	int getStatusCode() const;
 	const std::string& getBody() const;
