@@ -44,7 +44,6 @@ LDFLAGS_PQ_PRE	=	-dynamic-linker $(LDDIR)/ld-linux-x86-64.so.2 $(LDDIR)/crt1.o $
 LDFLAGS_PQ_POST	=	$(LDDIR)/crtn.o
 
 SRCDIR	=	srcs
-TESTDIR	=	tests
 OBJDIR	=	obj
 INCDIR	=	includes
 
@@ -79,25 +78,12 @@ FILES	=	main.cpp \
 SRCS	=	$(addprefix $(SRCDIR)/, $(FILES))
 OBJS	=	$(patsubst $(SRCDIR)/%.cpp, $(OBJDIR)/%.o, $(SRCS))
 
-REQUEST_TEST	=	$(TESTDIR)/request_test
-
 PRINT_QUERIES	=	webpage/cgi-bin/print_queries
 
 PQ_SRCS	=	$(SRCDIR)/$(CGIDIR)/print_queries.s
 PQ_OBJS	=	$(patsubst $(SRCDIR)/%.s, $(OBJDIR)/%.o, $(PQ_SRCS))
 
 all: $(NAME) $(PRINT_QUERIES)
-
-tests: httptests
-	@printf "\e[1;38;5;42mWEBSERV >\e[m All tests passed!\n"
-
-httptests: $(REQUEST_TEST)
-	@./run_test Request $(REQUEST_TEST)
-	@printf "\e[1;38;5;42mWEBSERV >\e[m All http tests passed!\n"
-
-$(REQUEST_TEST): $(SRCDIR)/$(UTILSDIR)/message.cpp $(SRCDIR)/$(HTTPDIR)/Request.cpp $(SRCDIR)/$(CONFIGDIR)/ServerBlock.cpp $(SRCDIR)/$(CONFIGDIR)/LocationBlock.cpp $(SRCDIR)/$(CONFIGDIR)/ConfigErrors.cpp $(TESTDIR)/$(HTTPDIR)/Request.cpp
-	@printf "\e[1;38;5;42mWEBSERV >\e[m Compiling Request test\n" $@
-	@$(CC) $(CFLAGS) -I$(INCDIR) $^ -o $@
 
 $(NAME): $(OBJDIR) $(OBJS)
 	@printf "\e[1;38;5;42mWEBSERV >\e[m Compiling %s\n" $@
@@ -128,23 +114,18 @@ $(OBJDIR)/%.o: $(SRCDIR)/%.s
 clean:
 	@rm -f $(OBJS)
 
-tclean:
-	@rm -f $(REQUEST_TEST)
-
-fclean: clean tclean
+fclean: clean
 	@rm -rf $(OBJDIR)
 	@rm -f $(PRINT_QUERIES)
 	@rm -f $(NAME)
 
 re: fclean all
 
-retest: tclean tests
-
 db:
 	@printf "\e[1;38;5;42mWEBSERV >\e[m Creating compilation command database\n"
 	@compiledb make --no-print-directory BUILD=$(BUILD) cflags.extra=$(cflags.extra) | sed -E '/^##.*\.\.\.$$|^[[:space:]]*$$/d'
 	@printf "\e[1;38;5;42mWEBSERV >\e[m \e[1mDone!\e[m\n"
 
-.PHONY: all tests httptests clean tclean fclean re retest db
+.PHONY: all clean fclean re db
 
 .WAIT:
