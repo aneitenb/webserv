@@ -91,7 +91,7 @@ int ConfigurationFile::_parseConfigFile(void) {
 
 		if (firstNonEmptyLine){
 			if (line == "{" || line[0] == '{')
-				throw ErrorInvalidConfig("Configuration file cannot start with an open bracket");
+				throw ErrorInvalidConfig("Configuration file cannot start with a bracket");
 			firstNonEmptyLine = false;
 		}
 
