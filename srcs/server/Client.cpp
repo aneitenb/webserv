@@ -156,38 +156,45 @@ std::string	Client::getFirstKey(void) const{
 }
 
 ServerBlock* Client::getSBforResponse(std::string hostHeader) const {
-    // remove port from host header (example.com:8080 -> example.com)
+   // remove port from host header (example.com:8080 -> example.com)
     auto colonPos = hostHeader.find(':');
     std::string serverNameFromHeader = (colonPos != std::string::npos) ? hostHeader.substr(0, colonPos) : hostHeader;
     std::string portFromHeader = (colonPos != std::string::npos) ? hostHeader.substr(colonPos, hostHeader.size()) : hostHeader;
 
+    std::cout << "here1\n";
+
     // get the IP and port the client actually connected to
     std::string connectionIP = getLocalIP();
     std::string connectionPort = getLocalPort();
+    std::cout << "here2\n";
 
     // try exact match with server_name@connection_ip:connection_port
     std::string exactKey = serverNameFromHeader + "@" + connectionIP + ":" + connectionPort;
     if (_allServerNames.count(exactKey) > 0) {
         return _allServerNames.at(exactKey);
     }
+    std::cout << "here3\n";
     
     // try match with server_name@wildcard:connection_port
     std::string wildcardKey = serverNameFromHeader + "@0.0.0.0:" + connectionPort;
     if (_allServerNames.count(wildcardKey) > 0) {
         return _allServerNames.at(wildcardKey);
     }
+    std::cout << "here4\n";
     
     // try connection_ip:connection_port (for empty server names)
     std::string ipPortKey = connectionIP + ":" + connectionPort;
     if (_allServerNames.count(ipPortKey) > 0) {
         return _allServerNames.at(ipPortKey);
     }
+    std::cout << "here5\n";
     
     // try wildcard IP with port (for empty server names)
     std::string wildcardIpPortKey = "0.0.0.0:" + connectionPort;
     if (_allServerNames.count(wildcardIpPortKey) > 0) {
         return _allServerNames.at(wildcardIpPortKey);
         }
+    std::cout << "here6\n";
     
     // try to match based on the server_name part only (fallback)
     for (const auto& pair : _allServerNames) {
@@ -198,11 +205,13 @@ ServerBlock* Client::getSBforResponse(std::string hostHeader) const {
             std::string keyServerName = key.substr(0, atPos);
             std::string fullAddressKey = keyServerName + "@" + serverNameFromHeader + ":" + connectionPort;
 
-            if (keyServerName == serverNameFromHeader || _allServerNames.count(fullAddressKey) > 0) {
+            if (_allServerNames.count(fullAddressKey) > 0) {
                 return pair.second;
             }
         }
     }
+    std::cout << "here7\n";
+
 
     return nullptr;
 }
@@ -297,8 +306,7 @@ int Client::handleEvent(uint32_t ev, [[maybe_unused]] i32 &efd){
 				return (0);
 			}
             if (!serverConf){
-				this->_responding.errorResponse(HTTP_INTERNAL_SERVER_ERROR, this->_allServerNames[this->getFirstKey()]);
-                this->setState(TOWRITE);
+                this->setState(CLOSE);
                 return (0); 
             }
 			this->_responding = Response(&this->_requesting, serverConf);
