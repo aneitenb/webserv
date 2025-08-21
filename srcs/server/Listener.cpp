@@ -154,9 +154,6 @@ int Listener::setSocketFd(void){
         return (-1);
     if ((setuping(&_sockFd)) == -1)
         return (-1);
-    int status = fcntl(_sockFd, F_GETFD); //delete
-    if (status == -1)
-		Warn("Listener::setSocketFd(): fcntl(" << _sockFd << ", F_GETFD) failed: " << strerror(errno));
     return (0);
 }
 
@@ -185,11 +182,6 @@ int Listener::handleEvent(uint32_t ev, i32 &efd){
         if (curC.setFd(&curFd) == -1) //pass the socket into Client
             return (-1);
         _activeClients.push_back(std::move(curC));   //move into stable list
-        //delete
-        int status = fcntl(*_activeClients.back().getSocketFd(0), F_GETFD);
-        if (status == -1)
-			Warn("Listener::handleEvent(): fcntl(" << *_activeClients.back().getSocketFd(0)
-				 << ", F_GETFD) failed: " << strerror(errno));
 		timeouts.updateClient(_activeClients.back());
     } else {
         //in the case of err, socket is unusable

@@ -13,7 +13,6 @@
 #include "server/WebServer.hpp"
 #include "server/EventLoop.hpp"
 #include <csignal>
-#include "log.hpp"
 
 /*a visible side-effect for the purposes of optimization 
 (that is, within a single thread of execution, volatile accesses cannot be optimized out or reordered with 
