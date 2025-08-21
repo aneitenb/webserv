@@ -10,8 +10,6 @@
 #include <string.h>
 #include <netdb.h> //getaddrinfo
 #include <fcntl.h> //delete after
-#include "log.hpp"
-
 #include "utils/message.hpp"
 #include "server/WebServer.hpp"
 
