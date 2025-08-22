@@ -41,6 +41,12 @@ CGIHandler::CGIHandler(Client *client, i32 &sfd, i32 &efd): _client(client), _pi
 CGIHandler::~CGIHandler(void) {}
 
 CGIHandler::CGIHandler(CGIHandler &&other) noexcept: _location(other._location), _socketFd(other._socketFd), _epollFd(other._epollFd) {
+	this->_outputPipe.event.events = EPOLLIN;
+	this->_inputPipe.event.events = EPOLLOUT;
+	this->_outputPipe.pfd[0] = -1;
+	this->_outputPipe.pfd[1] = -1;
+	this->_inputPipe.pfd[0] = -1;
+	this->_inputPipe.pfd[1] = -1;
 	*this = std::move(other);
 }
 
