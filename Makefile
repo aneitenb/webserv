@@ -112,7 +112,7 @@ $(OBJDIR)/%.o: $(SRCDIR)/%.s
 	@$(AS) $(ASFLAGS) $< -o $@
 
 clean:
-	@rm -f $(OBJS)
+	@rm -f $(OBJS) $(PQ_OBJS)
 
 fclean: clean
 	@rm -rf $(OBJDIR)
