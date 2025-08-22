@@ -6,26 +6,21 @@
 <body>
 	<h1>DELETE Test Page</h1>
 	
-	<p>First, create a test file (this will appear in the /uploads folder):</p>
-	<form action="/uploads/test-file.txt" method="POST">
-		<input type="text" name="content" value="This is test content">
-		<button type="submit">Create Test File</button>
-	</form>
-	
-	<p>Then delete the file:</p>
-	<button onclick="deleteResource()">Delete Test File</button>
+	<p>Enter filename to delete with full path:</p>
+	<input type="text" id="filename" value="/uploads/test-file.txt">
+	<button onclick="deleteResource()">Delete File</button>
 	
 	<p id="result"></p>
 	
 	<script>
 		function deleteResource() {
-			fetch('/uploads/test-file.txt', {
+			const path = document.getElementById('filename').value;
+			fetch(path, {
 				method: 'DELETE',
 			})
-			.then(response => response.text())
-			.then(result => {
+			.then(response => {
 				document.getElementById('result').textContent = 
-					'DELETE request sent.';
+					'DELETE request sent. Status: ' + response.status;
 			})
 			.catch(error => {
 				document.getElementById('result').textContent = 
